@@ -1,12 +1,14 @@
-import { GameState, GameWinner, PendingActionState } from '../game/game.types';
+import { GameState, GameWinner, PendingActionState, InspectionHand } from '../game/game.types';
 import { GameAction, GameEventRecord } from './action.types';
-import { CardColor } from '../cards/card.types';
+import { Card, CardColor } from '../cards/card.types';
 import { isWildCard } from '../cards/card.validation';
 import { DeckManager } from '../deck/deck.manager';
 import { HandManager } from '../players/hand.manager';
+import { Player } from '../players/player.types';
 import { TurnManager } from '../turns/turn.manager';
 import { MoveValidator } from '../validation/move.validator';
 import { RandomNumberGenerator, defaultCryptoRng } from '../deck/deck.shuffle';
+import { GameFactory } from '../game/game.factory';
 
 export interface ActionProcessResult {
   readonly nextState: GameState;
@@ -74,6 +76,10 @@ export class ActionProcessor {
         nextState = this.processAcceptWildDrawFour(state, action.playerId, addEvent, currentSeq, rng);
         break;
 
+      case 'START_NEXT_ROUND':
+        nextState = this.processStartNextRound(state, action.triggeredByPlayerId, addEvent, currentSeq, rng);
+        break;
+
       default:
         throw new Error('Unsupported action type');
     }
@@ -95,7 +101,8 @@ export class ActionProcessor {
 
     const { updatedHand, removedCard } = HandManager.removeCard(player.hand, cardId);
 
-    // Track whether playing Wild Draw Four was officially legal (player held NO matching color)
+    // Track whether playing Wild Draw Four was officially legal:
+    // A player may only play Wild Draw 4 if they do NOT hold any card of the active color!
     const wasWildDrawFourLegal = removedCard.value === 'wild_draw_four'
       ? !HandManager.hasMatchingColor(player.hand, state.activeColor)
       : true;
@@ -107,14 +114,28 @@ export class ActionProcessor {
 
     const newDiscardPile = DeckManager.discardCard(state.discardPile, removedCard);
 
-    // Update player state
+    // Mattel 42001 UNO shout declaration rule:
+    // When playing down to 1 card, player must have declared UNO before playing.
+    // If they have not declared UNO, they become vulnerable to a missed-UNO challenge
+    // until the next player starts their turn.
+    let isVulnerableToUnoChallenge = false;
+    let declaredUno = false;
+
+    if (updatedHand.length === 1) {
+      if (player.hasDeclaredUno) {
+        declaredUno = true;
+      } else {
+        isVulnerableToUnoChallenge = true;
+      }
+    }
+
+    // Update acting player
     const updatedPlayer = {
       ...player,
       hand: updatedHand,
       hasDrawnThisTurn: false,
       drawnCardId: null,
-      // If player now has 1 card but had NOT called UNO before playing, they are now vulnerable!
-      hasDeclaredUno: updatedHand.length === 1 ? player.hasDeclaredUno : false,
+      hasDeclaredUno: declaredUno,
     };
 
     const newPlayers = [...state.players];
@@ -128,37 +149,94 @@ export class ActionProcessor {
       wasWildDrawFourLegal: removedCard.value === 'wild_draw_four' ? wasWildDrawFourLegal : undefined,
     });
 
-    // Check WIN condition (emptied hand)
-    if (HandManager.isHandEmpty(updatedHand)) {
-      const loserHands = newPlayers.filter((p) => p.id !== playerId).map((p) => p.hand);
-      const roundScore = loserHands.reduce((acc, h) => acc + HandManager.calculateHandScore(h), 0);
-      const winner: GameWinner = {
-        id: playerId,
-        username: player.username,
-        score: roundScore,
-      };
-
-      addEvent('GAME_COMPLETED', playerId, { winner, roundScore });
-
-      return {
-        ...state,
-        status: 'COMPLETED',
-        players: newPlayers,
-        discardPile: newDiscardPile,
-        topDiscardCard: removedCard,
-        activeColor: newActiveColor,
-        winner,
-        sequenceNumber: seq + 1,
-        updatedAt: new Date().toISOString(),
-      };
-    }
-
-    // Process card effect and turn progression
     let currentDrawPile = state.drawPile;
     let currentDiscardPile = newDiscardPile;
+
+    // Check if player emptied their hand (round winning move)
+    if (HandManager.isHandEmpty(updatedHand)) {
+      // Per Mattel rules:
+      // If the final card is Draw Two, next player draws 2 cards before score calculation.
+      if (removedCard.value === 'draw_two') {
+        const victimIndex = TurnManager.getNextPlayerIndex(state.currentPlayerIndex, state.players.length, state.turnDirection, 1);
+        const victim = newPlayers[victimIndex];
+        const drawResult = DeckManager.drawCards(currentDrawPile, currentDiscardPile, 2, rng);
+        currentDrawPile = drawResult.newDrawPile;
+        currentDiscardPile = drawResult.newDiscardPile;
+        newPlayers[victimIndex] = {
+          ...victim,
+          hand: [...victim.hand, ...drawResult.drawnCards],
+        };
+        addEvent('CARDS_DRAWN_PENALTY', victim.id, {
+          count: 2,
+          victimId: victim.id,
+          reason: 'FINAL_CARD_DRAW_TWO',
+        });
+        return this.finalizeRoundScore(
+          state,
+          playerId,
+          newPlayers,
+          currentDrawPile,
+          currentDiscardPile,
+          removedCard,
+          newActiveColor,
+          addEvent,
+          seq
+        );
+      }
+
+      // If the final card is Wild Draw Four, the victim must still have the opportunity to challenge or accept!
+      if (removedCard.value === 'wild_draw_four') {
+        const victimIndex = TurnManager.getNextPlayerIndex(state.currentPlayerIndex, state.players.length, state.turnDirection, 1);
+        const victim = newPlayers[victimIndex];
+        const pendingActionState: PendingActionState = {
+          type: 'AWAITING_WILD_DRAW_FOUR_RESOLUTION',
+          playedByPlayerId: playerId,
+          victimPlayerId: victim.id,
+          wasOfficiallyLegal: wasWildDrawFourLegal,
+          chosenColor: newActiveColor,
+          offenderHandSnapshot: [], // offender has 0 cards left
+        };
+
+        addEvent('WILD_DRAW_FOUR_PENDING_RESOLUTION', victim.id, {
+          playedByPlayerId: playerId,
+          victimPlayerId: victim.id,
+          chosenColor: newActiveColor,
+        });
+
+        return {
+          ...state,
+          players: newPlayers,
+          drawPile: currentDrawPile,
+          discardPile: currentDiscardPile,
+          topDiscardCard: removedCard,
+          activeColor: newActiveColor,
+          currentPlayerIndex: victimIndex,
+          pendingActionState,
+          inspectionHand: null,
+          unoVulnerablePlayerId: null,
+          sequenceNumber: seq + 1,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+
+      // Normal card final play: finalize round immediately
+      return this.finalizeRoundScore(
+        state,
+        playerId,
+        newPlayers,
+        currentDrawPile,
+        currentDiscardPile,
+        removedCard,
+        newActiveColor,
+        addEvent,
+        seq
+      );
+    }
+
+    // Hand not empty: process card effects and turn progression
     let nextPlayerIndex = state.currentPlayerIndex;
     let nextDirection = state.turnDirection;
-    const pendingActionState: PendingActionState | null = null;
+    let pendingActionState: PendingActionState | null = null;
 
     if (removedCard.value === 'skip') {
       const resolved = TurnManager.resolveNextTurn(
@@ -181,8 +259,6 @@ export class ActionProcessor {
       nextDirection = resolved.newDirection;
       addEvent('DIRECTION_REVERSED', playerId, { newDirection: nextDirection });
     } else if (removedCard.value === 'draw_two') {
-      // In 2-player, opponent draws 2 and turn returns to current player.
-      // In 3+ players, next player draws 2 and is skipped.
       const victimIndex = TurnManager.getNextPlayerIndex(state.currentPlayerIndex, state.players.length, state.turnDirection, 1);
       const victim = newPlayers[victimIndex];
 
@@ -190,11 +266,10 @@ export class ActionProcessor {
       currentDrawPile = drawResult.newDrawPile;
       currentDiscardPile = drawResult.newDiscardPile;
 
-      const updatedVictim = {
+      newPlayers[victimIndex] = {
         ...victim,
         hand: [...victim.hand, ...drawResult.drawnCards],
       };
-      newPlayers[victimIndex] = updatedVictim;
 
       const resolved = TurnManager.resolveNextTurn(
         state.currentPlayerIndex,
@@ -211,34 +286,27 @@ export class ActionProcessor {
         reason: 'DRAW_TWO',
       });
     } else if (removedCard.value === 'wild_draw_four') {
-      // Target player is next in sequence
+      // Under Mattel 42001: Enter pending challenge/accept state!
+      // Cards are NOT drawn until the victim accepts or challenges!
       const victimIndex = TurnManager.getNextPlayerIndex(state.currentPlayerIndex, state.players.length, state.turnDirection, 1);
       const victim = newPlayers[victimIndex];
 
-      // Draw 4 cards for victim immediately per standard resolution
-      const drawResult = DeckManager.drawCards(currentDrawPile, currentDiscardPile, 4, rng);
-      currentDrawPile = drawResult.newDrawPile;
-      currentDiscardPile = drawResult.newDiscardPile;
-
-      const updatedVictim = {
-        ...victim,
-        hand: [...victim.hand, ...drawResult.drawnCards],
+      pendingActionState = {
+        type: 'AWAITING_WILD_DRAW_FOUR_RESOLUTION',
+        playedByPlayerId: playerId,
+        victimPlayerId: victim.id,
+        wasOfficiallyLegal: wasWildDrawFourLegal,
+        chosenColor: newActiveColor,
+        offenderHandSnapshot: [...updatedHand],
       };
-      newPlayers[victimIndex] = updatedVictim;
 
-      const resolved = TurnManager.resolveNextTurn(
-        state.currentPlayerIndex,
-        state.players.length,
-        state.turnDirection,
-        'draw_four'
-      );
-      nextPlayerIndex = resolved.nextIndex;
-      nextDirection = resolved.newDirection;
+      // Victim takes active resolution turn
+      nextPlayerIndex = victimIndex;
 
-      addEvent('CARDS_DRAWN_PENALTY', victim.id, {
-        count: 4,
-        victimId: victim.id,
-        reason: 'WILD_DRAW_FOUR',
+      addEvent('WILD_DRAW_FOUR_PENDING_RESOLUTION', victim.id, {
+        playedByPlayerId: playerId,
+        victimPlayerId: victim.id,
+        chosenColor: newActiveColor,
       });
     } else {
       // Normal number or regular wild card
@@ -263,7 +331,9 @@ export class ActionProcessor {
       turnDirection: nextDirection,
       turnNumber: state.turnNumber + 1,
       sequenceNumber: seq + 1,
+      unoVulnerablePlayerId: isVulnerableToUnoChallenge ? playerId : null,
       pendingActionState,
+      inspectionHand: null,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -294,11 +364,14 @@ export class ActionProcessor {
 
     addEvent('CARD_DRAWN', playerId, { cardId: drawnCard?.id });
 
+    // When the next player draws a card, any previous player's missed-UNO challenge window closes!
     return {
       ...state,
       players: newPlayers,
       drawPile: drawResult.newDrawPile,
       discardPile: drawResult.newDiscardPile,
+      unoVulnerablePlayerId: null,
+      inspectionHand: null,
       sequenceNumber: seq + 1,
       updatedAt: new Date().toISOString(),
     };
@@ -337,6 +410,8 @@ export class ActionProcessor {
       currentPlayerIndex: nextIndex,
       turnNumber: state.turnNumber + 1,
       sequenceNumber: seq + 1,
+      unoVulnerablePlayerId: null,
+      inspectionHand: null,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -358,11 +433,15 @@ export class ActionProcessor {
     const newPlayers = [...state.players];
     newPlayers[playerIndex] = updatedPlayer;
 
-    addEvent('UNO_CALLED', playerId, { playerId });
+    // If player was vulnerable and caught themselves before an opponent challenged, vulnerability is cleared!
+    const isVulnerable = state.unoVulnerablePlayerId === playerId;
+
+    addEvent('UNO_CALLED', playerId, { playerId, caughtThemselves: isVulnerable });
 
     return {
       ...state,
       players: newPlayers,
+      unoVulnerablePlayerId: isVulnerable ? null : state.unoVulnerablePlayerId,
       sequenceNumber: seq + 1,
       updatedAt: new Date().toISOString(),
     };
@@ -379,8 +458,8 @@ export class ActionProcessor {
     const targetIndex = state.players.findIndex((p) => p.id === targetPlayerId);
     const target = state.players[targetIndex];
 
-    // Penalty for failure to call UNO: draw 2 cards
-    const drawResult = DeckManager.drawCards(state.drawPile, state.discardPile, 2, rng);
+    // Under Mattel 42001 instructions: Failure to shout UNO incurs a 4-CARD PENALTY!
+    const drawResult = DeckManager.drawCards(state.drawPile, state.discardPile, 4, rng);
 
     const updatedTarget = {
       ...target,
@@ -394,7 +473,7 @@ export class ActionProcessor {
     addEvent('UNO_CHALLENGE_SUCCESS', challengerId, {
       challengerId,
       targetPlayerId,
-      penaltyCards: 2,
+      penaltyCards: 4,
     });
 
     return {
@@ -402,6 +481,67 @@ export class ActionProcessor {
       players: newPlayers,
       drawPile: drawResult.newDrawPile,
       discardPile: drawResult.newDiscardPile,
+      unoVulnerablePlayerId: null,
+      sequenceNumber: seq + 1,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  private static processAcceptWildDrawFour(
+    state: GameState,
+    playerId: string,
+    addEvent: (t: string, p: string | undefined, pl: Record<string, unknown>) => void,
+    seq: number,
+    rng: RandomNumberGenerator
+  ): GameState {
+    const pending = state.pendingActionState!;
+    const playerIndex = state.players.findIndex((p) => p.id === playerId);
+    const player = state.players[playerIndex];
+
+    // Victim accepts +4: draws 4 cards and loses their turn
+    const drawResult = DeckManager.drawCards(state.drawPile, state.discardPile, 4, rng);
+    const newPlayers = [...state.players];
+    newPlayers[playerIndex] = {
+      ...player,
+      hand: [...player.hand, ...drawResult.drawnCards],
+    };
+
+    addEvent('WILD_DRAW_FOUR_ACCEPTED', playerId, { playerId, cardsDrawn: 4 });
+
+    // Check if the player who played the Wild Draw Four has 0 cards (went out)
+    const offender = newPlayers.find((p) => p.id === pending.playedByPlayerId)!;
+    if (HandManager.isHandEmpty(offender.hand)) {
+      return this.finalizeRoundScore(
+        state,
+        offender.id,
+        newPlayers,
+        drawResult.newDrawPile,
+        drawResult.newDiscardPile,
+        state.topDiscardCard,
+        state.activeColor,
+        addEvent,
+        seq
+      );
+    }
+
+    // Otherwise, victim loses turn, turn advances
+    let nextPlayerIndex: number;
+    if (state.players.length === 2) {
+      // In 2-player, victim loses turn, turn returns to original player
+      nextPlayerIndex = state.players.findIndex((p) => p.id === pending.playedByPlayerId);
+    } else {
+      // In 3+, turn passes to the player following the victim
+      nextPlayerIndex = TurnManager.getNextPlayerIndex(playerIndex, state.players.length, state.turnDirection, 1);
+    }
+
+    return {
+      ...state,
+      players: newPlayers,
+      drawPile: drawResult.newDrawPile,
+      discardPile: drawResult.newDiscardPile,
+      currentPlayerIndex: nextPlayerIndex,
+      pendingActionState: null,
+      inspectionHand: null,
       sequenceNumber: seq + 1,
       updatedAt: new Date().toISOString(),
     };
@@ -415,77 +555,212 @@ export class ActionProcessor {
     rng: RandomNumberGenerator
   ): GameState {
     const pending = state.pendingActionState!;
-    const blufferIndex = state.players.findIndex((p) => p.id === pending.playedByPlayerId);
+    const offenderIndex = state.players.findIndex((p) => p.id === pending.playedByPlayerId);
     const challengerIndex = state.players.findIndex((p) => p.id === challengerId);
 
     const newPlayers = [...state.players];
-    let drawResult;
+    let currentDrawPile = state.drawPile;
+    let currentDiscardPile = state.discardPile;
+
+    // Grant temporary private hand disclosure to the authorized challenger only
+    const inspectionHand: InspectionHand = {
+      challengerPlayerId: challengerId,
+      offenderPlayerId: pending.playedByPlayerId,
+      hand: pending.offenderHandSnapshot,
+    };
 
     if (!pending.wasOfficiallyLegal) {
-      // Bluffer was GUILTY (they held matching color) -> bluffer draws 4 cards!
-      drawResult = DeckManager.drawCards(state.drawPile, state.discardPile, 4, rng);
-      newPlayers[blufferIndex] = {
-        ...newPlayers[blufferIndex],
-        hand: [...newPlayers[blufferIndex].hand, ...drawResult.drawnCards],
+      // Challenge SUCCEEDED: Offender was GUILTY (they held matching active color)
+      // Offender draws 4 penalty cards; challenger draws 0!
+      const drawResult = DeckManager.drawCards(currentDrawPile, currentDiscardPile, 4, rng);
+      currentDrawPile = drawResult.newDrawPile;
+      currentDiscardPile = drawResult.newDiscardPile;
+
+      newPlayers[offenderIndex] = {
+        ...newPlayers[offenderIndex],
+        hand: [...newPlayers[offenderIndex].hand, ...drawResult.drawnCards],
       };
+
       addEvent('WILD_DRAW_FOUR_CHALLENGE_WON', challengerId, {
         challengerId,
-        blufferId: pending.playedByPlayerId,
-        penaltyTo: pending.playedByPlayerId,
+        offenderId: pending.playedByPlayerId,
         penaltyCards: 4,
+        offenderHadMatchingColor: true,
       });
+
+      // Challenger continues their turn!
+      return {
+        ...state,
+        players: newPlayers,
+        drawPile: currentDrawPile,
+        discardPile: currentDiscardPile,
+        currentPlayerIndex: challengerIndex,
+        pendingActionState: null,
+        inspectionHand,
+        sequenceNumber: seq + 1,
+        updatedAt: new Date().toISOString(),
+      };
     } else {
-      // Bluffer was INNOCENT (clean play) -> challenger draws 6 cards (4 + 2 penalty)!
-      drawResult = DeckManager.drawCards(state.drawPile, state.discardPile, 6, rng);
+      // Challenge FAILED: Offender was INNOCENT (held no matching active color)
+      // Challenger draws 6 cards (4 + 2 penalty) and loses their turn!
+      const drawResult = DeckManager.drawCards(currentDrawPile, currentDiscardPile, 6, rng);
+      currentDrawPile = drawResult.newDrawPile;
+      currentDiscardPile = drawResult.newDiscardPile;
+
       newPlayers[challengerIndex] = {
         ...newPlayers[challengerIndex],
         hand: [...newPlayers[challengerIndex].hand, ...drawResult.drawnCards],
       };
+
       addEvent('WILD_DRAW_FOUR_CHALLENGE_LOST', challengerId, {
         challengerId,
-        penaltyTo: challengerId,
+        offenderId: pending.playedByPlayerId,
         penaltyCards: 6,
+        offenderWasInnocent: true,
       });
-    }
 
-    return {
-      ...state,
-      players: newPlayers,
-      drawPile: drawResult.newDrawPile,
-      discardPile: drawResult.newDiscardPile,
-      pendingActionState: null,
-      sequenceNumber: seq + 1,
-      updatedAt: new Date().toISOString(),
-    };
+      // Check if offender had 0 cards (went out)
+      const offender = newPlayers[offenderIndex];
+      if (HandManager.isHandEmpty(offender.hand)) {
+        return this.finalizeRoundScore(
+          state,
+          offender.id,
+          newPlayers,
+          currentDrawPile,
+          currentDiscardPile,
+          state.topDiscardCard,
+          state.activeColor,
+          addEvent,
+          seq
+        );
+      }
+
+      // Turn advances: challenger loses turn
+      let nextPlayerIndex: number;
+      if (state.players.length === 2) {
+        nextPlayerIndex = offenderIndex;
+      } else {
+        nextPlayerIndex = TurnManager.getNextPlayerIndex(challengerIndex, state.players.length, state.turnDirection, 1);
+      }
+
+      return {
+        ...state,
+        players: newPlayers,
+        drawPile: currentDrawPile,
+        discardPile: currentDiscardPile,
+        currentPlayerIndex: nextPlayerIndex,
+        pendingActionState: null,
+        inspectionHand,
+        sequenceNumber: seq + 1,
+        updatedAt: new Date().toISOString(),
+      };
+    }
   }
 
-  private static processAcceptWildDrawFour(
+  private static processStartNextRound(
     state: GameState,
-    playerId: string,
+    _playerId: string,
     addEvent: (t: string, p: string | undefined, pl: Record<string, unknown>) => void,
     seq: number,
     rng: RandomNumberGenerator
   ): GameState {
-    const playerIndex = state.players.findIndex((p) => p.id === playerId);
-    const player = state.players[playerIndex];
+    const nextRoundState = GameFactory.startNextRound(state, rng);
 
-    const drawResult = DeckManager.drawCards(state.drawPile, state.discardPile, 4, rng);
-    const newPlayers = [...state.players];
-    newPlayers[playerIndex] = {
-      ...player,
-      hand: [...player.hand, ...drawResult.drawnCards],
-    };
-
-    addEvent('WILD_DRAW_FOUR_ACCEPTED', playerId, { playerId, cardsDrawn: 4 });
+    addEvent('ROUND_STARTED', undefined, {
+      roundNumber: nextRoundState.roundNumber,
+      dealerIndex: nextRoundState.dealerIndex,
+      startingPlayerIndex: nextRoundState.currentPlayerIndex,
+    });
 
     return {
-      ...state,
-      players: newPlayers,
-      drawPile: drawResult.newDrawPile,
-      discardPile: drawResult.newDiscardPile,
-      pendingActionState: null,
+      ...nextRoundState,
       sequenceNumber: seq + 1,
-      updatedAt: new Date().toISOString(),
     };
+  }
+
+  private static finalizeRoundScore(
+    state: GameState,
+    winnerPlayerId: string,
+    players: Player[],
+    drawPile: readonly Card[],
+    discardPile: readonly Card[],
+    topDiscardCard: Card,
+    activeColor: CardColor,
+    addEvent: (t: string, p: string | undefined, pl: Record<string, unknown>) => void,
+    seq: number
+  ): GameState {
+    const winnerIndex = players.findIndex((p) => p.id === winnerPlayerId);
+    const winner = players[winnerIndex];
+
+    const loserHands = players.filter((p) => p.id !== winnerPlayerId).map((p) => p.hand);
+    const roundScore = loserHands.reduce((acc, h) => acc + HandManager.calculateHandScore(h), 0);
+    const newCumulativeScore = winner.score + roundScore;
+
+    const updatedWinner = {
+      ...winner,
+      score: newCumulativeScore,
+    };
+    const finalPlayers = [...players];
+    finalPlayers[winnerIndex] = updatedWinner;
+
+    const roundWinnerRecord: GameWinner = {
+      id: winnerPlayerId,
+      username: winner.username,
+      score: newCumulativeScore,
+      roundScore,
+    };
+
+    const isMatchOver = newCumulativeScore >= state.targetScore;
+
+    if (isMatchOver) {
+      addEvent('GAME_COMPLETED', winnerPlayerId, {
+        winner: roundWinnerRecord,
+        roundScore,
+        finalScore: newCumulativeScore,
+        targetScore: state.targetScore,
+      });
+
+      return {
+        ...state,
+        status: 'COMPLETED',
+        players: finalPlayers,
+        drawPile,
+        discardPile,
+        topDiscardCard,
+        activeColor,
+        roundWinner: roundWinnerRecord,
+        winner: roundWinnerRecord,
+        pendingActionState: null,
+        inspectionHand: null,
+        unoVulnerablePlayerId: null,
+        sequenceNumber: seq + 1,
+        updatedAt: new Date().toISOString(),
+      };
+    } else {
+      addEvent('ROUND_COMPLETED', winnerPlayerId, {
+        roundWinner: roundWinnerRecord,
+        roundNumber: state.roundNumber,
+        roundScore,
+        cumulativeScore: newCumulativeScore,
+        targetScore: state.targetScore,
+      });
+
+      return {
+        ...state,
+        status: 'ROUND_OVER',
+        players: finalPlayers,
+        drawPile,
+        discardPile,
+        topDiscardCard,
+        activeColor,
+        roundWinner: roundWinnerRecord,
+        winner: null,
+        pendingActionState: null,
+        inspectionHand: null,
+        unoVulnerablePlayerId: null,
+        sequenceNumber: seq + 1,
+        updatedAt: new Date().toISOString(),
+      };
+    }
   }
 }

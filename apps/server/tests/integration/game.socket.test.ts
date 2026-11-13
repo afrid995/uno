@@ -1,0 +1,229 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { createServer } from 'http';
+import { io as ioClient, Socket as ClientSocket } from 'socket.io-client';
+import { createApp } from '../../src/app';
+import { initializeSocketServer } from '../../src/sockets/socketServer';
+import { guestService } from '../../src/modules/guest/guest.service';
+import { SOCKET_EVENTS, PlayerGameState } from '@uno-ultimate/game-protocol';
+
+describe('Game Socket.IO Multiplayer Integration Tests', () => {
+  let httpServer: ReturnType<typeof createServer>;
+  let port: number;
+  let activeClients: ClientSocket[] = [];
+
+  let hostGuestId: string;
+  let hostToken: string;
+  let playerGuestId: string;
+  let playerToken: string;
+
+  beforeAll(async () => {
+    httpServer = createServer(createApp());
+    initializeSocketServer(httpServer);
+
+    await new Promise<void>((resolve) => {
+      httpServer.listen(0, () => {
+        const addr = httpServer.address();
+        port = typeof addr === 'object' && addr ? addr.port : 4001;
+        resolve();
+      });
+    });
+
+    const hostSession = await guestService.createGuest('GameHost');
+    hostGuestId = hostSession.guest.id;
+    hostToken = hostSession.rawSessionToken;
+
+    const playerSession = await guestService.createGuest('GamePlayer');
+    playerGuestId = playerSession.guest.id;
+    playerToken = playerSession.rawSessionToken;
+  });
+
+  afterAll(async () => {
+    for (const client of activeClients) {
+      if (client.connected) client.disconnect();
+    }
+    await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+  });
+
+  const createClient = (token?: string): ClientSocket => {
+    const socket = ioClient(`http://localhost:${port}`, {
+      auth: token ? { token } : undefined,
+      transports: ['websocket'],
+      forceNew: true,
+      autoConnect: true,
+    });
+    activeClients.push(socket);
+    return socket;
+  };
+
+  it('runs complete multiplayer match flow: start, private state delivery, turn actions, reconnection', async () => {
+    const hostSocket = createClient(hostToken);
+    const playerSocket = createClient(playerToken);
+
+    await Promise.all([
+      new Promise<void>((resolve) => hostSocket.on('connect', resolve)),
+      new Promise<void>((resolve) => playerSocket.on('connect', resolve)),
+    ]);
+
+    // 1. Host creates room
+    const createAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_CREATE, { maxPlayers: 2 }, resolve);
+    });
+    expect(createAck.success).toBe(true);
+    const roomCode = createAck.data.roomCode;
+
+    // 2. Player joins room
+    const joinAck = await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve);
+    });
+    expect(joinAck.success).toBe(true);
+
+    // 3. Player marks ready
+    const readyAck = await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve);
+    });
+    expect(readyAck.success).toBe(true);
+
+    // 4. Setup state listeners for game start
+    const hostStatePromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      hostSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+    const playerStatePromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      playerSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+
+    // 5. Host starts game with immediate: true (test mode)
+    const startAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_START, { immediate: true }, resolve);
+    });
+    expect(startAck.success).toBe(true);
+
+    const [hostStateEvent, playerStateEvent] = await Promise.all([
+      hostStatePromise,
+      playerStatePromise,
+    ]);
+
+    // 6. Security & Information Hiding assertions:
+    // Host receives their own hand, NOT player's hand!
+    expect(hostStateEvent.state.self.id).toBe(hostGuestId);
+    expect(hostStateEvent.state.self.hand).toHaveLength(7);
+    // Opponent hand is only exposed as a cardCount
+    const hostViewOfPlayer = hostStateEvent.state.players.find((p) => p.id === playerGuestId);
+    expect(hostViewOfPlayer).toBeDefined();
+    expect(hostViewOfPlayer?.cardCount).toBe(7);
+    expect((hostViewOfPlayer as any).hand).toBeUndefined();
+
+    // Player receives their own hand, NOT host's hand!
+    expect(playerStateEvent.state.self.id).toBe(playerGuestId);
+    expect(playerStateEvent.state.self.hand).toHaveLength(7);
+    const playerViewOfHost = playerStateEvent.state.players.find((p) => p.id === hostGuestId);
+    expect(playerViewOfHost?.cardCount).toBe(7);
+    expect((playerViewOfHost as any).hand).toBeUndefined();
+
+    // 7. Verify Turn Enforcement
+    const activePlayerId = hostStateEvent.state.currentTurnGuestId;
+    const inactiveSocket = activePlayerId === hostGuestId ? playerSocket : hostSocket;
+    const activeSocket = activePlayerId === hostGuestId ? hostSocket : playerSocket;
+    const activeGuestId = activePlayerId;
+    const activeState = activePlayerId === hostGuestId ? hostStateEvent.state : playerStateEvent.state;
+
+    // Inactive player tries to draw out of turn -> rejected!
+    const outOfTurnAck = await new Promise<any>((resolve) => {
+      inactiveSocket.emit(SOCKET_EVENTS.GAME_DRAW_CARD, {}, resolve);
+    });
+    expect(outOfTurnAck.success).toBe(false);
+    expect(outOfTurnAck.error.code).toBe('BAD_REQUEST');
+
+    // 8. Active player plays a card or draws
+    if (activeState.self.playableCardIds.length > 0) {
+      const cardToPlay = activeState.self.playableCardIds[0];
+      const nextStatePromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+        activeSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+      });
+
+      const playAck = await new Promise<any>((resolve) => {
+        activeSocket.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: cardToPlay, chosenColor: 'red' }, resolve);
+      });
+      expect(playAck.success).toBe(true);
+
+      const updatedActiveState = await nextStatePromise;
+      expect(updatedActiveState.state.self.hand).toHaveLength(6);
+    } else {
+      // No playable card: active player draws
+      const drawAck = await new Promise<any>((resolve) => {
+        activeSocket.emit(SOCKET_EVENTS.GAME_DRAW_CARD, {}, resolve);
+      });
+      expect(drawAck.success).toBe(true);
+      expect(drawAck.data.cardDrawn).toBe(true);
+    }
+
+    // 9. Reconnection during active match:
+    // Create new socket with same token, connect and resume
+    const reconnectSocket = createClient(activePlayerId === hostGuestId ? hostToken : playerToken);
+    await new Promise<void>((resolve) => reconnectSocket.on('connect', resolve));
+
+    const reconnectedStatePromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      reconnectSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+
+    const resumeAck = await new Promise<any>((resolve) => {
+      reconnectSocket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode }, resolve);
+    });
+    expect(resumeAck.success).toBe(true);
+
+    const reconnectedState = await reconnectedStatePromise;
+    expect(reconnectedState.state.roomId).toBe(hostStateEvent.state.roomId);
+    expect(reconnectedState.state.self.id).toBe(activeGuestId);
+    expect(reconnectedState.state.status).toBe('IN_PROGRESS');
+  });
+
+  it('handles UNO declaration and Wild Draw Four socket operations cleanly', async () => {
+    const hostSocket = createClient(hostToken);
+    const playerSocket = createClient(playerToken);
+
+    await Promise.all([
+      new Promise<void>((resolve) => hostSocket.on('connect', resolve)),
+      new Promise<void>((resolve) => playerSocket.on('connect', resolve)),
+    ]);
+
+    const createAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_CREATE, { maxPlayers: 2 }, resolve);
+    });
+    const roomCode = createAck.data.roomCode;
+
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve);
+    });
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve);
+    });
+
+    const gameStatePromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      hostSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+
+    const startAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_START, { immediate: true }, resolve);
+    });
+    expect(startAck.success).toBe(true);
+    await gameStatePromise;
+
+    // Test UNO shout: player with 7 cards calls UNO -> rejected because they hold > 2 cards
+    const unoAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.GAME_UNO, {}, resolve);
+    });
+    expect(unoAck.success).toBe(false);
+    expect(unoAck.error.code).toBe('BAD_REQUEST');
+
+    // Test UNO challenge: neither player has missed UNO shout -> rejected
+    const challengeAck = await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.GAME_CHALLENGE_UNO, { targetPlayerId: hostGuestId }, resolve);
+    });
+    expect(challengeAck.success).toBe(false);
+
+    // Test WDF accept when no WDF is pending -> rejected
+    const acceptWdfAck = await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_FOUR, {}, resolve);
+    });
+    expect(acceptWdfAck.success).toBe(false);
+  });
+});

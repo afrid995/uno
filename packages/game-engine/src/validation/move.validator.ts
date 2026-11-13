@@ -6,6 +6,8 @@ import { HandManager } from '../players/hand.manager';
 
 export type EngineErrorCode =
   | 'MATCH_NOT_ACTIVE'
+  | 'ROUND_NOT_OVER'
+  | 'PENDING_ACTION_REQUIRED'
   | 'NOT_YOUR_TURN'
   | 'INVALID_PLAYER'
   | 'CARD_NOT_IN_HAND'
@@ -16,6 +18,7 @@ export type EngineErrorCode =
   | 'ALREADY_DRAWN'
   | 'INVALID_UNO_CALL'
   | 'TARGET_NOT_VULNERABLE'
+  | 'CANNOT_CHALLENGE_SELF'
   | 'NO_PENDING_CHALLENGE';
 
 export interface ValidationSuccess {
@@ -35,7 +38,12 @@ export class MoveValidator {
    * Pure validation function asserting whether an action is legal given the current game state.
    */
   static validate(state: GameState, action: GameAction): ValidationResult {
-    // 1. General match status check
+    // START_NEXT_ROUND requires ROUND_OVER status
+    if (action.type === 'START_NEXT_ROUND') {
+      return this.validateStartNextRound(state, action.triggeredByPlayerId);
+    }
+
+    // All other actions require IN_PROGRESS match status
     if (state.status !== 'IN_PROGRESS') {
       return {
         valid: false,
@@ -44,14 +52,36 @@ export class MoveValidator {
       };
     }
 
-    // 2. Validate player existence
-    const player = state.players.find((p) => p.id === ('playerId' in action ? action.playerId : 'challengerPlayerId' in action ? action.challengerPlayerId : ''));
+    // Validate player existence
+    let playerId = '';
+    if ('playerId' in action) {
+      playerId = action.playerId;
+    } else if ('challengerPlayerId' in action) {
+      playerId = action.challengerPlayerId;
+    }
+
+    const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       return {
         valid: false,
         code: 'INVALID_PLAYER',
         message: 'Player is not registered in this match.',
       };
+    }
+
+    // If there is an active pending action (such as Wild Draw Four resolution),
+    // only the corresponding resolution actions are allowed!
+    if (state.pendingActionState) {
+      if (
+        action.type !== 'ACCEPT_WILD_DRAW_FOUR' &&
+        action.type !== 'CHALLENGE_WILD_DRAW_FOUR'
+      ) {
+        return {
+          valid: false,
+          code: 'PENDING_ACTION_REQUIRED',
+          message: 'Must resolve pending Wild Draw Four challenge or accept before continuing gameplay.',
+        };
+      }
     }
 
     switch (action.type) {
@@ -221,20 +251,30 @@ export class MoveValidator {
 
   private static validateChallengeUno(
     state: GameState,
-    _challengerId: string,
+    challengerId: string,
     targetPlayerId: string
   ): ValidationResult {
+    if (challengerId === targetPlayerId) {
+      return {
+        valid: false,
+        code: 'CANNOT_CHALLENGE_SELF',
+        message: 'You cannot challenge yourself.',
+      };
+    }
+
     const target = state.players.find((p) => p.id === targetPlayerId);
     if (!target) {
       return { valid: false, code: 'INVALID_PLAYER', message: 'Target player not found.' };
     }
 
-    // A player is vulnerable to UNO challenge only if they have exactly 1 card AND have not declared UNO
-    if (target.hand.length !== 1 || target.hasDeclaredUno) {
+    // Under Mattel 42001:
+    // A player is vulnerable to an UNO failure challenge ONLY if they are marked as unoVulnerablePlayerId
+    // which is set when they play down to 1 card without declaring UNO, and clears as soon as the next player acts.
+    if (state.unoVulnerablePlayerId !== targetPlayerId) {
       return {
         valid: false,
         code: 'TARGET_NOT_VULNERABLE',
-        message: 'Player is not vulnerable to an UNO failure challenge.',
+        message: 'Player is not currently vulnerable to an UNO challenge.',
       };
     }
 
@@ -255,6 +295,27 @@ export class MoveValidator {
         valid: false,
         code: 'INVALID_PLAYER',
         message: 'Only the targeted victim of the Wild Draw Four can resolve this action.',
+      };
+    }
+
+    return { valid: true };
+  }
+
+  private static validateStartNextRound(state: GameState, playerId: string): ValidationResult {
+    if (state.status !== 'ROUND_OVER') {
+      return {
+        valid: false,
+        code: 'ROUND_NOT_OVER',
+        message: 'Cannot start next round because the current round is still in progress or match is complete.',
+      };
+    }
+
+    const player = state.players.find((p) => p.id === playerId);
+    if (!player) {
+      return {
+        valid: false,
+        code: 'INVALID_PLAYER',
+        message: 'Player is not registered in this match.',
       };
     }
 

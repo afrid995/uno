@@ -1,5 +1,5 @@
 import { Card, CardColor } from '../cards/card.types';
-import { GameState, GameStatus, GameWinner, PendingActionState } from '../game/game.types';
+import { GameState, GameStatus, GameWinner } from '../game/game.types';
 import { TurnDirection } from '../turns/turn.direction';
 
 export interface PublicPlayer {
@@ -10,11 +10,21 @@ export interface PublicPlayer {
   readonly score: number;
 }
 
+export interface PublicPendingWildDrawFour {
+  readonly type: 'AWAITING_WILD_DRAW_FOUR_RESOLUTION';
+  readonly playedByPlayerId: string;
+  readonly victimPlayerId: string;
+  readonly chosenColor: CardColor;
+}
+
 export interface PublicGameState {
   readonly id: string;
   readonly roomId: string;
   readonly variant: string;
   readonly status: GameStatus;
+  readonly roundNumber: number;
+  readonly dealerIndex: number;
+  readonly targetScore: number;
   readonly players: readonly PublicPlayer[];
   readonly playerOrder: readonly string[];
   readonly currentPlayerIndex: number;
@@ -26,18 +36,33 @@ export interface PublicGameState {
   readonly discardPileCount: number;
   readonly turnNumber: number;
   readonly sequenceNumber: number;
-  readonly pendingActionState: PendingActionState | null;
+  readonly unoVulnerablePlayerId: string | null;
+  readonly pendingActionState: PublicPendingWildDrawFour | null;
+  readonly roundWinner: GameWinner | null;
   readonly winner: GameWinner | null;
 }
 
 export function getPublicGameState(state: GameState): PublicGameState {
   const currentTurnGuestId = state.players[state.currentPlayerIndex]?.id ?? '';
 
+  // Sanitize pendingActionState so neither wasOfficiallyLegal nor offenderHandSnapshot are exposed
+  const pendingActionState: PublicPendingWildDrawFour | null = state.pendingActionState
+    ? {
+        type: 'AWAITING_WILD_DRAW_FOUR_RESOLUTION',
+        playedByPlayerId: state.pendingActionState.playedByPlayerId,
+        victimPlayerId: state.pendingActionState.victimPlayerId,
+        chosenColor: state.pendingActionState.chosenColor,
+      }
+    : null;
+
   return {
     id: state.id,
     roomId: state.roomId,
     variant: state.variant,
     status: state.status,
+    roundNumber: state.roundNumber,
+    dealerIndex: state.dealerIndex,
+    targetScore: state.targetScore,
     players: state.players.map((p) => ({
       id: p.id,
       username: p.username,
@@ -55,7 +80,9 @@ export function getPublicGameState(state: GameState): PublicGameState {
     discardPileCount: state.discardPile.length,
     turnNumber: state.turnNumber,
     sequenceNumber: state.sequenceNumber,
-    pendingActionState: state.pendingActionState,
+    unoVulnerablePlayerId: state.unoVulnerablePlayerId,
+    pendingActionState,
+    roundWinner: state.roundWinner,
     winner: state.winner,
   };
 }

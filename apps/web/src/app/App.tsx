@@ -7,6 +7,7 @@ import { LandingPage } from '../pages/LandingPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { LobbyPage } from '../pages/LobbyPage';
 import { JoinInvitePage } from '../pages/JoinInvitePage';
+import { GamePage } from '../pages/GamePage';
 
 export const App: React.FC = () => {
   const { resumeSession, guest, isResuming } = useGuestStore();
@@ -39,6 +40,10 @@ export const App: React.FC = () => {
             <Route
               path="/room/:roomCode"
               element={<LobbyPage />}
+            />
+            <Route
+              path="/game/:roomCode"
+              element={<GamePage />}
             />
             <Route
               path="/join/:roomCode"

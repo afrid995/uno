@@ -19,13 +19,15 @@ import { SocketAck } from '@uno-ultimate/game-protocol';
 import { AppError } from '../middleware/errorHandler';
 import { HTTP_STATUS } from '@uno-ultimate/shared';
 import { roomService } from '../modules/room/room.service';
+import { gameService } from '../modules/game/game.service';
+import { gameStatePublisher } from '../modules/game/game.state.publisher';
 import { logger } from '../utils/logger';
 
-type UnoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
-type UnoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+export type UnoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+export type UnoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
 // Track active sockets per guest to prevent duplicate connections and handle replacement
-const guestSockets = new Map<string, UnoSocket>();
+export const guestSockets = new Map<string, UnoSocket>();
 
 export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
   const getAuthenticatedGuestId = (): string => {
@@ -62,6 +64,14 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
           guestId: socket.data.guestId,
           roomCode: activeRoom.roomCode,
         });
+
+        // If room is IN_GAME, also deliver active player game state
+        if (activeRoom.status === 'IN_GAME') {
+          const playerState = gameService.getActivePlayerState(socket.data.guestId!, activeRoom.roomCode);
+          if (playerState) {
+            socket.emit(SOCKET_EVENTS.GAME_STATE, { state: playerState });
+          }
+        }
       }
     });
   }
@@ -126,6 +136,14 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       // Broadcast updated room state to all members
       io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room });
 
+      // If room is IN_GAME, deliver active player state
+      if (room.status === 'IN_GAME') {
+        const playerState = gameService.getActivePlayerState(guestId, room.roomCode);
+        if (playerState) {
+          socket.emit(SOCKET_EVENTS.GAME_STATE, { state: playerState });
+        }
+      }
+
       callback({ success: true, data: room });
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to join room';
@@ -144,10 +162,28 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       const guestId = getAuthenticatedGuestId();
       const validated = await joinRoomSchema.parseAsync(payload);
 
-      const { room } = await roomService.joinRoom(guestId, validated.roomCode);
+      const room = await roomService.getRoomByCode(validated.roomCode);
+      if (!room) {
+        callback({ success: false, error: { code: ERROR_CODES.ROOM_NOT_FOUND, message: 'Room not found.' } });
+        return;
+      }
+
+      const isMember = room.members.some((m) => m.guestId === guestId);
+      if (!isMember) {
+        callback({ success: false, error: { code: ERROR_CODES.NOT_IN_ROOM, message: 'You are not a member of this room.' } });
+        return;
+      }
 
       socket.data.currentRoomCode = room.roomCode;
       socket.join(room.roomCode);
+
+      // If room is IN_GAME, restore player state
+      if (room.status === 'IN_GAME') {
+        const playerState = gameService.getActivePlayerState(guestId, room.roomCode);
+        if (playerState) {
+          socket.emit(SOCKET_EVENTS.GAME_STATE, { state: playerState });
+        }
+      }
 
       io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room });
       callback({ success: true, data: room });
@@ -164,30 +200,33 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       const guestId = getAuthenticatedGuestId();
       const roomCode = socket.data.currentRoomCode;
 
-      const result = await roomService.leaveRoom(guestId, roomCode);
+      if (!roomCode) {
+        callback({ success: true, data: { left: true } });
+        return;
+      }
 
-      if (roomCode) {
-        socket.leave(roomCode);
-        socket.data.currentRoomCode = undefined;
+      const result = await roomService.leaveRoom(guestId);
 
-        if (result.roomDeleted) {
-          io.to(roomCode).emit(SOCKET_EVENTS.ROOM_CLOSED, {
-            reason: 'All players left the room.',
-          });
-        } else if (result.room) {
-          if (result.newHostGuestId) {
-            io.to(roomCode).emit(SOCKET_EVENTS.ROOM_HOST_CHANGED, {
-              newHostGuestId: result.newHostGuestId,
-              version: result.room.version,
-            });
-          }
-          io.to(roomCode).emit(SOCKET_EVENTS.ROOM_PLAYER_LEFT, {
-            guestId,
+      socket.leave(roomCode);
+      socket.data.currentRoomCode = undefined;
+
+      if (result.roomDeleted) {
+        io.to(roomCode).emit(SOCKET_EVENTS.ROOM_CLOSED, { reason: 'Host closed or all members left.' });
+      } else if (result.room) {
+        io.to(roomCode).emit(SOCKET_EVENTS.ROOM_PLAYER_LEFT, {
+          guestId,
+          newHostGuestId: result.newHostGuestId,
+          version: result.room.version,
+        });
+
+        if (result.newHostGuestId) {
+          io.to(roomCode).emit(SOCKET_EVENTS.ROOM_HOST_CHANGED, {
             newHostGuestId: result.newHostGuestId,
             version: result.room.version,
           });
-          io.to(roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: result.room });
         }
+
+        io.to(roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: result.room });
       }
 
       callback({ success: true, data: { left: true } });
@@ -239,7 +278,7 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
   });
 
   // Handle room:start
-  socket.on(SOCKET_EVENTS.ROOM_START, async (_payload, callback) => {
+  socket.on(SOCKET_EVENTS.ROOM_START, async (payload, callback) => {
     try {
       const guestId = getAuthenticatedGuestId();
       const roomCode = socket.data.currentRoomCode;
@@ -281,7 +320,6 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
         return;
       }
 
-      // In Phase 2, card gameplay engine is coming in Phase 3.
       // Broadcast room:starting with 5-second countdown notification
       io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STARTING, {
         countdownSeconds: 5,
@@ -289,6 +327,43 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       });
 
       callback({ success: true, data: { starting: true } });
+
+      // Start match after countdown (or immediate if requested via test payload)
+      const countdownMs = (payload as { immediate?: boolean })?.immediate ? 0 : 5000;
+      setTimeout(async () => {
+        try {
+          const currentRoom = await roomService.getRoomByCode(room.roomCode);
+          if (!currentRoom || currentRoom.members.length < 2 || currentRoom.status === 'IN_GAME') {
+            return;
+          }
+
+          // Transition room status to IN_GAME
+          const updatedRoom = await roomService.updateRoomStatus(currentRoom.id, 'IN_GAME');
+
+          // Initialize Match and GameState
+          const gameState = await gameService.startMatch(
+            currentRoom.id,
+            currentRoom.roomCode,
+            currentRoom.hostGuestId,
+            currentRoom.members.map((m) => ({ guestId: m.guestId, username: m.username }))
+          );
+
+          // Broadcast game:started
+          io.to(currentRoom.roomCode).emit(SOCKET_EVENTS.GAME_STARTED, {
+            matchId: gameState.id,
+            roomCode: currentRoom.roomCode,
+            roundNumber: gameState.roundNumber,
+          });
+
+          // Sync room state with status: IN_GAME
+          io.to(currentRoom.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: updatedRoom });
+
+          // Publish personalized states to all participants
+          gameStatePublisher.publishToAllParticipants(gameState, guestSockets);
+        } catch (err: unknown) {
+          logger.error('Failed to initialize match after countdown', { error: String(err), roomCode: room.roomCode });
+        }
+      }, countdownMs);
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to start game';
       const code = (err as { code?: string }).code || ERROR_CODES.INTERNAL_ERROR;

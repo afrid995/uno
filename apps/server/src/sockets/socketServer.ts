@@ -10,7 +10,8 @@ import {
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { guestService } from '../modules/guest/guest.service';
-import { registerRoomHandlers } from './roomSocketHandler';
+import { registerRoomHandlers, guestSockets } from './roomSocketHandler';
+import { registerGameHandlers } from '../modules/game/game.socket.handler';
 
 function parseCookieHeader(cookieHeader: string): Record<string, string> {
   const list: Record<string, string> = {};
@@ -120,6 +121,9 @@ export function initializeSocketServer(httpServer: HttpServer): Server {
 
     // Register Room Event Handlers
     registerRoomHandlers(io, socket);
+
+    // Register Game Action Handlers
+    registerGameHandlers(io, socket, guestSockets);
 
     // Ping / Pong heartbeat test
     socket.on(SOCKET_EVENTS.PING, () => {

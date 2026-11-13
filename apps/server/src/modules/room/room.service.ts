@@ -444,6 +444,26 @@ export class RoomService {
   }
 
   /**
+   * Updates room lifecycle status (e.g. WAITING -> IN_GAME).
+   */
+  async updateRoomStatus(roomId: string, status: RoomStatus): Promise<RoomPublicDto> {
+    const updated = await prisma.room.update({
+      where: { id: roomId },
+      data: {
+        status,
+        version: { increment: 1 },
+      },
+      include: {
+        members: {
+          include: { guest: { select: { username: true } } },
+          orderBy: { joinedAt: 'asc' },
+        },
+      },
+    });
+    return this.formatRoom(updated);
+  }
+
+  /**
    * Updates room settings (host-only).
    */
   async updateSettings(guestId: string, settings: Record<string, unknown>): Promise<RoomPublicDto> {
@@ -602,15 +622,20 @@ export class RoomService {
     if (!member) return null;
 
     if (member.connectionStatus === 'DISCONNECTED') {
-      await prisma.roomMember.update({
-        where: { id: member.id },
-        data: { connectionStatus: 'CONNECTED', lastSeenAt: new Date() },
-      });
+      try {
+        await prisma.roomMember.update({
+          where: { id: member.id },
+          data: { connectionStatus: 'CONNECTED', lastSeenAt: new Date() },
+        });
 
-      await prisma.room.update({
-        where: { id: member.roomId },
-        data: { version: { increment: 1 } },
-      });
+        await prisma.room.update({
+          where: { id: member.roomId },
+          data: { version: { increment: 1 } },
+        });
+      } catch {
+        // Record may have been removed concurrently
+        return null;
+      }
     }
 
     return this.getRoomByCode(member.room.roomCode);

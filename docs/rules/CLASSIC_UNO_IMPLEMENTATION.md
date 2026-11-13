@@ -1,17 +1,17 @@
 # Classic UNO Rules Implementation Specification
 
-This document details the exact rule mechanics, card definitions, scoring formulas, and edge-case behaviors implemented in `@uno-ultimate/game-engine`, verified against the official Mattel UNO rulesheet.
+This document details the exact rule mechanics, card definitions, scoring formulas, and edge-case behaviors implemented in `@uno-ultimate/game-engine`, verified strictly against the official Mattel UNO instructions for Product Reference **42001**.
 
-> **Source of Truth**: Mattel UNO Classic Rulesheet (Standard 108-Card Edition, Reference 42001 / BJV44).
+> **Source of Truth**: Mattel UNO Instructions (Product Reference 42001). Zero house rules permitted.
 
 ---
 
-## 1. Canonical 108-Card Deck Composition
+## 1. Canonical 108-Card Playable Deck Composition
 
-The deck consists of exactly **108 cards** partitioned across 4 distinct colors (**Red**, **Yellow**, **Green**, **Blue**) and neutral Wild cards.
+The official playable deck consists of exactly **108 cards** partitioned across 4 distinct colors (**Red**, **Yellow**, **Green**, **Blue**) and neutral Wild cards. (Note: Some physical 42001 boxes include 4 blank customizable cards; these are omitted from gameplay per official tournament and digital Classic UNO rules).
 
 ```
-Total Deck (108 cards)
+Total Deck (108 playable cards)
 ├── Red (25 cards)
 │   ├── Number 0 (1 card)
 │   ├── Numbers 1–9 (2 of each = 18 cards)
@@ -44,112 +44,97 @@ Total Deck (108 cards)
 
 ---
 
-## 2. Setup & Initial Discard Pile Resolution
+## 2. Setup & Initial Discard Pile Resolution (Mattel 42001)
 
-### Dealing
-1. Every player receives **7 cards** face down.
-2. The remaining cards become the **Draw Pile** (face down).
-3. The top card of the draw pile is turned face up to start the **Discard Pile**.
+### Dealer Determination & Dealing
+1. **Dealer Selection**: Prior to Round 1, each player draws a card; highest number card deals (action cards count as 0). Dealer index rotates clockwise by 1 for each subsequent round.
+2. Every player receives **7 cards** face down.
+3. The remaining cards form the **Draw Pile** (face down).
+4. Play begins with the player to the left of the dealer (`(dealerIndex + 1) % playerCount`).
 
-### Starting Card Edge Cases (Mattel Rules)
-When the initial card turned over is an action or wild card, official Mattel rules prescribe the following immediate resolutions:
-
-- **Wild Draw Four**: *Illegal start card*. It must be returned to the draw pile, the deck reshuffled, and a new card flipped. In `@uno-ultimate/game-engine`, this is executed iteratively in `GameFactory.createGame` until a non-Wild-Draw-Four card is turned over.
-- **Wild**: The starting player (Player 0 / Host) chooses which color begins play before playing their first card.
-- **Draw Two**: The starting player must immediately draw **2 cards** (starting with 9 cards in hand) and loses their turn. The next player in sequence takes the first move.
-- **Reverse**: The direction of play is reversed immediately (from clockwise to counter-clockwise). The starting player remains Player 0, but the next turn proceeds counter-clockwise.
-- **Skip**: The starting player is skipped. The player to their left (Player 1 in clockwise order) plays first.
-- **Number Card (0–9)**: Standard gameplay begins with Player 0. The active color is the color of the card.
-
----
-
-## 3. Legal Moves & Card Play
-
-On their turn, a player may play one card that matches:
-1. The **active color** of the top discard card (e.g., Red on Red).
-2. The **number** or **symbol** of the top discard card (e.g., Yellow 7 on Blue 7, or Blue Skip on Green Skip).
-3. A neutral **Wild** card (legal on any card regardless of color).
-4. A neutral **Wild Draw Four** card (legal on any card).
-
-### Drawing When Unable or Unwilling to Play
-- If a player has no matching card, they **must draw one card** from the draw pile.
-- If the card drawn is playable under standard matching rules, the player may **optionally play it immediately**.
-- If the player cannot or chooses not to play the drawn card, their turn ends (`PASS_TURN`).
-- Players draw **exactly one card** per turn when drawing; there is no drawing repeatedly until a playable card is found.
+### Starting Card Edge Cases (Mattel 42001)
+When the top card of the draw pile is turned face up to start the discard pile:
+- **Wild Draw Four**: *Illegal start card*. It is returned to the draw pile, the deck is reshuffled, and another card is turned over.
+- **Wild**: *Illegal start card per Mattel 42001*. It is returned to the draw pile, the deck is reshuffled, and another card is turned over until a non-Wild card is revealed.
+- **Draw Two**: Player to the left of the dealer must draw **2 cards** and loses their turn. The next player takes the first turn.
+- **Reverse**: The dealer plays first, and the direction of play reverses counter-clockwise.
+- **Skip**: The player to the left of the dealer is skipped. The next player begins play.
+- **Number Card (0–9)**: Standard play begins with the player to the left of the dealer matching the card by number, color, or symbol.
 
 ---
 
-## 4. Action Card Semantics
+## 3. Official Turn Progression & Move Legality
 
-- **Skip**: The next player in sequence loses their turn.
-- **Reverse**: Inverts play direction (`CLOCKWISE` $\leftrightarrow$ `COUNTER_CLOCKWISE`).
-- **Draw Two (+2)**: The next player draws 2 cards from the draw pile and loses their turn.
-- **Wild**: Allows the player to designate the new active color (`red`, `yellow`, `green`, `blue`).
-- **Wild Draw Four (+4)**: Allows the player to designate the new active color, and forces the next player to draw 4 cards and forfeit their turn.
+### Legal Plays
+A player may play a card from their hand if it matches:
+1. The **active color** of the discard pile.
+2. The **number** of the top discard card (if number card).
+3. The **action symbol** of the top discard card (Skip, Reverse, Draw Two).
+4. A **Wild card** (may be played on any card regardless of color or symbol).
+5. A **Wild Draw Four** card (see legality restriction below).
 
-### Official 2-Player Match Adaptations
-When only 2 players are in the match ($N = 2$), Mattel rules specify:
-1. **Reverse behaves as a Skip**: Playing a Reverse skips the opponent, immediately granting the current player another turn.
-2. **Skip**: Skips the opponent, granting the player another turn.
-3. **Draw Two**: Opponent draws 2 cards and forfeits turn; player takes another turn.
-4. **Wild Draw Four**: Opponent draws 4 cards and forfeits turn; player takes another turn.
-
----
-
-## 5. Reshuffling & Card Conservation
-
-The total number of cards in play must always equal 108:
-
-$$|\text{DrawPile}| + |\text{DiscardPile}| + \sum_{p \in \text{Players}} |\text{Hand}_p| = 108$$
-
-When the draw pile is depleted:
-1. The active top discard card remains in the discard pile.
-2. All remaining cards in the discard pile ($|\text{DiscardPile}| - 1$) are collected.
-3. Any temporary chosen colors on wild cards are cleared.
-4. The collected cards are shuffled and placed face down as the new draw pile.
-5. If the discard pile contains only 1 card (all cards are in players' hands), the draw pile remains empty and players cannot draw cards.
+### Drawing & Optional Play
+- If a player cannot or chooses not to play a card, they must draw **one card** from the draw pile.
+- After drawing, if the drawn card is legal to play, the player may optionally play that drawn card immediately. They cannot play any other card from their hand on that turn.
+- If the player chooses not to play the drawn card, or if it is unplayable, they may pass their turn to the next player.
 
 ---
 
-## 6. The "UNO" Rule & Penalties
+## 4. Wild Draw Four: Legality, Acceptance & Challenge Lifecycle
 
-### Calling UNO
-When a player plays a card that reduces their hand to **one card**, they must announce **"UNO"**.
-- Action: `CALL_UNO`
-- If called promptly, the player's `hasDeclaredUno` flag is set to `true`.
+### Official Legality Restriction
+Per Mattel 42001 rules:
+> "You may only play this card when you DO NOT have another card in your hand that matches the COLOR on the discard pile (although it is acceptable to play this card if you have matching number or Action cards)."
 
-### Penalty for Failure to Call
-If a player has 1 card remaining and fails to call UNO before the next player takes their turn:
-- Any player may issue a challenge (`CHALLENGE_UNO_FAILURE`).
-- If the challenge is valid (player holds 1 card and `hasDeclaredUno` is false), the challenged player must immediately draw **2 penalty cards** from the draw pile.
-
----
-
-## 7. Round Completion & Scoring
-
-### Winning a Round
-The round terminates immediately when a player plays their final card and their hand count reaches zero (`cardsRemaining === 0`).
-- If the final card played is a **Draw Two** or **Wild Draw Four**, the next player **must still draw the penalty cards** before the final scores are calculated.
-
-### Official Mattel Scoring
-The round winner receives points for all cards remaining in all opponents' hands:
-- **Number Cards (0–9)**: Face value (0 to 9 points).
-- **Draw Two**: 20 points.
-- **Reverse**: 20 points.
-- **Skip**: 20 points.
-- **Wild**: 50 points.
-- **Wild Draw Four**: 50 points.
-
-### Winning the Match
-The first player whose accumulated score across rounds reaches **500 points** wins the match.
+### Resolution Lifecycle: Accept vs Challenge
+When a player plays a Wild Draw Four:
+1. They must declare the chosen active color (Red, Yellow, Green, or Blue).
+2. The match enters `AWAITING_WILD_DRAW_FOUR_RESOLUTION`. All other actions are suspended.
+3. The victim (next player in sequence) has two choices:
+   - **Accept**: The victim accepts the play. They draw **4 cards** from the draw pile and their turn is skipped.
+   - **Challenge**: The victim challenges the legality of the play.
+4. **Challenge Outcome**:
+   - **Challenger inspects offender's hand**: The server projects the offender's hand *exclusively* to the challenger (`inspectedChallengedHand`).
+   - **Guilty (Illegal Play)**: The offender held a card matching the active color prior to playing the +4.
+     - **Penalty**: The offender must draw **4 cards**.
+     - The challenger does **not** draw and gets to take their regular turn!
+   - **Innocent (Legal Play)**: The offender held no matching color cards.
+     - **Penalty**: The challenger must draw **6 cards** (4 for the Wild Draw Four + 2 penalty cards) and their turn is skipped!
 
 ---
 
-## 8. Explicit Non-Goals & House Rules Excluded
+## 5. UNO Declaration & The 4-Card Penalty (Mattel 42001)
 
-In strict adherence to Mattel's official rules, the following common "house rules" are **NOT** implemented in Classic UNO:
-- ❌ **No Stacking (+2 on +2, +4 on +4)**: A player facing a Draw Two or Wild Draw Four cannot play another draw card to pass the penalty to the next player.
-- ❌ **No Draw-Until-Playable**: Players draw at most one card when they cannot or choose not to play.
-- ❌ **No 7-0 Rule**: Playing a 7 does not swap hands with another player; playing a 0 does not rotate everyone's hands.
-- ❌ **No Jump-Ins**: Players cannot interrupt the turn sequence even if they hold an identical card.
-- ❌ **No Forced Play**: A player may choose to draw even if they hold a playable card in hand.
+### Shouting "UNO"
+When a player plays their second-to-last card and is about to hold only **1 card**, they must declare **UNO**.
+
+### Vulnerability Window
+- If a player fails to call UNO before playing down to 1 card, they become **vulnerable to being caught**.
+- **Catch Window**: An opponent must catch them before the next player takes a turn (draws from the pile or plays a card).
+- If the vulnerable player declares UNO before anyone catches them, they successfully save themselves.
+
+### Missed UNO Penalty
+Per official Mattel 42001 instructions:
+- If a player is caught before the next player takes an action, they must draw **4 cards** from the draw pile as penalty! (Zero house-rule 2-card penalties).
+
+---
+
+## 6. Multi-Round Scoring & Winning the Match
+
+### Round Termination
+A round ends the instant a player plays their final card and holds 0 cards in hand.
+
+### Action Card Exception on Winning Play
+- If the last card played is a **Draw Two**, the next player must draw **2 cards** before scores are tallied.
+- If the last card played is a **Wild Draw Four**, the resolution must complete (with appropriate draws) before scores are tallied.
+
+### Point Accumulation
+The winner of the round scores points for all cards remaining in opponents' hands:
+- **Number cards (0–9)**: Face value (0–9 points)
+- **Skip, Reverse, Draw Two**: 20 points each
+- **Wild, Wild Draw Four**: 50 points each
+
+### Match Victory Target (500 Points)
+- Cumulative scores carry over across rounds.
+- If no player reaches **500 points**, the round ends (`ROUND_OVER`), dealer rotates clockwise, and a new round is dealt.
+- The first player to reach or exceed **500 points** wins the match (`COMPLETED`).

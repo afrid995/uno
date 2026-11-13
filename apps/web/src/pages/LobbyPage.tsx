@@ -10,6 +10,8 @@ import {
   Info,
 } from 'lucide-react';
 import { RoomMemberPublicDto } from '@uno-ultimate/shared';
+import { SOCKET_EVENTS } from '@uno-ultimate/game-protocol';
+import { socketManager } from '../services/socketClient';
 import { useRoomStore } from '../stores/roomStore';
 import { useGuestStore } from '../stores/guestStore';
 import { PlayerCard } from '../features/room/components/PlayerCard';
@@ -40,6 +42,28 @@ export const LobbyPage: React.FC = () => {
     const cleanup = initSocketListeners();
     return () => cleanup();
   }, [initSocketListeners]);
+
+  // Navigate to game if room status is already IN_GAME
+  useEffect(() => {
+    if (room?.status === 'IN_GAME' && roomCode) {
+      navigate(`/game/${roomCode}`, { replace: true });
+    }
+  }, [room?.status, roomCode, navigate]);
+
+  // Listen for game:started socket event to navigate to game table
+  useEffect(() => {
+    const socket = socketManager.getSocket();
+    const handleGameStarted = () => {
+      if (roomCode) {
+        navigate(`/game/${roomCode}`);
+      }
+    };
+
+    socket.on(SOCKET_EVENTS.GAME_STARTED, handleGameStarted);
+    return () => {
+      socket.off(SOCKET_EVENTS.GAME_STARTED, handleGameStarted);
+    };
+  }, [roomCode, navigate]);
 
   // Join or restore room state if not already set
   useEffect(() => {
@@ -120,10 +144,10 @@ export const LobbyPage: React.FC = () => {
           >
             <div className="flex items-center justify-center gap-2 mb-1">
               <Sparkles className="w-5 h-5 text-yellow-300" />
-              <h2 className="font-display font-black text-2xl tracking-tight">Starting Game Lobby</h2>
+              <h2 className="font-display font-black text-2xl tracking-tight">Starting Game Match</h2>
             </div>
             <p className="text-sm text-white/90">
-              Match countdown initiated ({startingCountdown}s). Card gameplay engine activates in Phase 3!
+              Match countdown initiated ({startingCountdown}s). Preparing the 108-card deck and dealing hands...
             </p>
           </motion.div>
         )}
@@ -257,15 +281,13 @@ export const LobbyPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Fair Play & Phase 2 Notice */}
+      {/* Fair Play & Official Rules Notice */}
       <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 flex items-start gap-3 text-xs text-slate-400">
         <Info className="w-4 h-4 text-uno-blue shrink-0 mt-0.5" />
         <div className="space-y-1">
-          <p className="font-semibold text-slate-200">Phase 2 Real-Time Presence</p>
+          <p className="font-semibold text-slate-200">Server-Authoritative Classic UNO</p>
           <p className="text-[11px] leading-relaxed">
-            Lobby membership and ready statuses are synchronized via authoritative Socket.IO events and persisted in PostgreSQL.
-            If a player accidentally closes their browser, a 30-second reconnection grace period holds their spot.
-            Actual UNO card deals, deck shuffling, and play actions will activate in Phase 3.
+            Official Mattel 42001 rules: 108-card deck, non-wild starting card enforcement, UNO declarations &amp; 4-card challenge penalties, Wild Draw Four challenge/accept lifecycles, and multi-round scoring to 500 points.
           </p>
         </div>
       </div>

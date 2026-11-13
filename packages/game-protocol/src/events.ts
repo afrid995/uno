@@ -6,6 +6,8 @@ import {
   ReadyStatusInput,
   UpdateRoomSettingsInput,
 } from '@uno-ultimate/shared';
+import { PlayerGameState, CardColor, GameWinner } from '@uno-ultimate/game-engine';
+import { z } from 'zod';
 
 export interface SocketAck<T = unknown> {
   success: boolean;
@@ -49,17 +51,39 @@ export const SOCKET_EVENTS = {
   ROOM_CLOSED: 'room:closed',
   ROOM_STARTING: 'room:starting',
 
-  // Phase 3+ Gameplay Actions
+  // Phase 4 Gameplay Actions: Client to Server
   GAME_START: 'game:start',
   GAME_PLAY_CARD: 'game:play-card',
   GAME_DRAW_CARD: 'game:draw-card',
+  GAME_PASS_TURN: 'game:pass-turn',
   GAME_CHOOSE_COLOR: 'game:choose-color',
   GAME_UNO: 'game:uno',
+  GAME_CHALLENGE_UNO: 'game:challenge-uno',
+  GAME_CHALLENGE_WILD_DRAW_FOUR: 'game:challenge-wild-draw-four',
+  GAME_ACCEPT_WILD_DRAW_FOUR: 'game:accept-wild-draw-four',
+  GAME_NEXT_ROUND: 'game:next-round',
+
+  // Phase 4 Gameplay Broadcasts: Server to Client
+  GAME_STARTED: 'game:started',
   GAME_STATE: 'game:state',
+  GAME_ROUND_FINISHED: 'game:round-finished',
   GAME_FINISHED: 'game:finished',
+  GAME_ERROR: 'game:error',
 } as const;
 
 export type SocketEventName = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];
+
+// Validation schemas for gameplay actions
+export const playCardInputSchema = z.object({
+  cardId: z.string().min(1, 'Card ID is required'),
+  chosenColor: z.enum(['red', 'yellow', 'green', 'blue']).optional(),
+});
+export type PlayCardInput = z.infer<typeof playCardInputSchema>;
+
+export const challengeUnoInputSchema = z.object({
+  targetPlayerId: z.string().min(1, 'Target player ID is required'),
+});
+export type ChallengeUnoInput = z.infer<typeof challengeUnoInputSchema>;
 
 /**
  * Socket.IO client-to-server event signatures
@@ -104,22 +128,43 @@ export interface ClientToServerEvents {
     payload: JoinRoomInput,
     callback: (response: SocketAck<RoomPublicDto>) => void
   ) => void;
+
   // Gameplay operations
   [SOCKET_EVENTS.GAME_PLAY_CARD]: (
-    payload: { cardId: string; chosenColor?: string },
-    callback: (response: SocketAck<{ success: boolean }>) => void
+    payload: PlayCardInput,
+    callback: (response: SocketAck<{ success: boolean; roundOver?: boolean; matchOver?: boolean }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_DRAW_CARD]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ cardDrawn: boolean }>) => void
+    callback: (response: SocketAck<{ cardDrawn: boolean; cardId?: string }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_PASS_TURN]: (
+    payload: Record<string, never> | undefined,
+    callback: (response: SocketAck<{ passed: boolean }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_COLOR]: (
-    payload: { chosenColor: string },
+    payload: { chosenColor: CardColor },
     callback: (response: SocketAck<{ success: boolean }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_UNO]: (
-    payload: { action?: 'call' | 'catch'; targetPlayerId?: string } | undefined,
-    callback: (response: SocketAck<{ success: boolean }>) => void
+    payload: Record<string, never> | undefined,
+    callback: (response: SocketAck<{ declared: boolean }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_CHALLENGE_UNO]: (
+    payload: ChallengeUnoInput,
+    callback: (response: SocketAck<{ success: boolean; penaltyCards: number }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_FOUR]: (
+    payload: Record<string, never> | undefined,
+    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_FOUR]: (
+    payload: Record<string, never> | undefined,
+    callback: (response: SocketAck<{ accepted: boolean; cardsDrawn: number }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_NEXT_ROUND]: (
+    payload: Record<string, never> | undefined,
+    callback: (response: SocketAck<{ started: boolean }>) => void
   ) => void;
 }
 
@@ -143,9 +188,12 @@ export interface ServerToClientEvents {
   [SOCKET_EVENTS.ROOM_CLOSED]: (payload: { reason: string }) => void;
   [SOCKET_EVENTS.ROOM_STARTING]: (payload: { countdownSeconds: number; version: number }) => void;
 
-  // Gameplay broadcasts
-  [SOCKET_EVENTS.GAME_STATE]: (payload: { state: unknown }) => void;
-  [SOCKET_EVENTS.GAME_FINISHED]: (payload: { winner: unknown; finalScores?: Record<string, number> }) => void;
+  // Gameplay broadcasts & personalized state delivery
+  [SOCKET_EVENTS.GAME_STARTED]: (payload: { matchId: string; roomCode: string; roundNumber: number }) => void;
+  [SOCKET_EVENTS.GAME_STATE]: (payload: { state: PlayerGameState }) => void;
+  [SOCKET_EVENTS.GAME_ROUND_FINISHED]: (payload: { roundWinner: GameWinner; roundNumber: number; scores: Record<string, number> }) => void;
+  [SOCKET_EVENTS.GAME_FINISHED]: (payload: { winner: GameWinner; finalScores: Record<string, number> }) => void;
+  [SOCKET_EVENTS.GAME_ERROR]: (payload: { code: string; message: string }) => void;
 }
 
 export interface InterServerEvents {

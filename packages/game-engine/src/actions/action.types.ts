@@ -7,7 +7,8 @@ export type GameActionType =
   | 'CALL_UNO'
   | 'CHALLENGE_UNO_FAILURE'
   | 'CHALLENGE_WILD_DRAW_FOUR'
-  | 'ACCEPT_WILD_DRAW_FOUR';
+  | 'ACCEPT_WILD_DRAW_FOUR'
+  | 'START_NEXT_ROUND';
 
 export interface PlayCardAction {
   readonly type: 'PLAY_CARD';
@@ -48,6 +49,11 @@ export interface AcceptWildDrawFourAction {
   readonly playerId: string;
 }
 
+export interface StartNextRoundAction {
+  readonly type: 'START_NEXT_ROUND';
+  readonly triggeredByPlayerId: string;
+}
+
 export type GameAction =
   | PlayCardAction
   | DrawCardAction
@@ -55,7 +61,8 @@ export type GameAction =
   | CallUnoAction
   | ChallengeUnoFailureAction
   | ChallengeWildDrawFourAction
-  | AcceptWildDrawFourAction;
+  | AcceptWildDrawFourAction
+  | StartNextRoundAction;
 
 export interface GameEventRecord {
   readonly sequenceNumber: number;

@@ -19,6 +19,9 @@ describe('Card Action Effects and State Transitions', () => {
     roomId: 'r1',
     variant: 'classic',
     status: 'IN_PROGRESS',
+    roundNumber: 1,
+    dealerIndex: 2,
+    targetScore: 500,
     players: [
       {
         id: 'p1',
@@ -58,13 +61,18 @@ describe('Card Action Effects and State Transitions', () => {
       CardFactory.createNumberCard('red', '4', 1),
       CardFactory.createNumberCard('red', '6', 1),
       CardFactory.createNumberCard('red', '8', 1),
+      CardFactory.createNumberCard('yellow', '5', 1),
+      CardFactory.createNumberCard('green', '5', 1),
     ],
     discardPile: [CardFactory.createNumberCard('red', '9', 1)],
     topDiscardCard: CardFactory.createNumberCard('red', '9', 1),
     activeColor: 'red',
     turnNumber: 1,
     sequenceNumber: 0,
+    unoVulnerablePlayerId: null,
     pendingActionState: null,
+    inspectionHand: null,
+    roundWinner: null,
     winner: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -139,9 +147,8 @@ describe('Card Action Effects and State Transitions', () => {
     expect(nextState.currentPlayerIndex).toBe(1);
   });
 
-  it('playing a Wild Draw Four updates activeColor, gives 4 cards to p2, and skips p2', () => {
+  it('playing a Wild Draw Four enters pending resolution state for victim (Mattel 42001)', () => {
     const state = createInitialState();
-    const p2InitialHandCount = state.players[1].hand.length; // 2
     const { nextState, events } = ActionProcessor.process(state, {
       type: 'PLAY_CARD',
       playerId: 'p1',
@@ -150,9 +157,81 @@ describe('Card Action Effects and State Transitions', () => {
     });
 
     expect(nextState.activeColor).toBe('yellow');
-    expect(nextState.players[1].hand).toHaveLength(p2InitialHandCount + 4);
-    expect(nextState.currentPlayerIndex).toBe(2); // p2 skipped
-    expect(events.some((e) => e.type === 'CARDS_DRAWN_PENALTY')).toBe(true);
+    expect(nextState.pendingActionState).toBeDefined();
+    expect(nextState.pendingActionState?.type).toBe('AWAITING_WILD_DRAW_FOUR_RESOLUTION');
+    expect(nextState.pendingActionState?.victimPlayerId).toBe('p2');
+    expect(nextState.currentPlayerIndex).toBe(1); // victim is active to choose accept or challenge
+    expect(events.some((e) => e.type === 'WILD_DRAW_FOUR_PENDING_RESOLUTION')).toBe(true);
+  });
+
+  it('accepting a Wild Draw Four gives 4 cards to victim and skips victim', () => {
+    const state = createInitialState();
+    const { nextState: pendingState } = ActionProcessor.process(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: cWildDrawFour.id,
+      chosenColor: 'yellow',
+    });
+
+    const p2InitialCount = pendingState.players[1].hand.length;
+    const { nextState: acceptedState, events } = ActionProcessor.process(pendingState, {
+      type: 'ACCEPT_WILD_DRAW_FOUR',
+      playerId: 'p2',
+    });
+
+    expect(acceptedState.players[1].hand).toHaveLength(p2InitialCount + 4);
+    expect(acceptedState.currentPlayerIndex).toBe(2); // p2 skipped, turn is p3
+    expect(acceptedState.pendingActionState).toBeNull();
+    expect(events.some((e) => e.type === 'WILD_DRAW_FOUR_ACCEPTED')).toBe(true);
+  });
+
+  it('challenging a Wild Draw Four when offender was guilty penalizes offender with 4 cards', () => {
+    // P1 holds cRed5, active color is red, so playing Wild Draw 4 is BLUFFING (illegal)
+    const state = createInitialState([cRed5, cWildDrawFour]);
+    const { nextState: pendingState } = ActionProcessor.process(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: cWildDrawFour.id,
+      chosenColor: 'blue',
+    });
+
+    expect(pendingState.pendingActionState?.wasOfficiallyLegal).toBe(false);
+
+    const { nextState: challengedState, events } = ActionProcessor.process(pendingState, {
+      type: 'CHALLENGE_WILD_DRAW_FOUR',
+      challengerPlayerId: 'p2',
+    });
+
+    // P1 (offender) draws 4 cards!
+    expect(challengedState.players[0].hand).toHaveLength(1 + 4); // held 1 card + 4 drawn
+    // P2 (challenger) draws 0 cards!
+    expect(challengedState.players[1].hand).toHaveLength(2);
+    // Challenger continues their turn!
+    expect(challengedState.currentPlayerIndex).toBe(1);
+    expect(events.some((e) => e.type === 'WILD_DRAW_FOUR_CHALLENGE_WON')).toBe(true);
+  });
+
+  it('challenging a Wild Draw Four when offender was innocent penalizes challenger with 6 cards', () => {
+    // P1 holds only cBlue5 and cWildDrawFour (active color is red), so playing WDF is LEGAL (innocent)
+    const state = createInitialState([cBlue5, cWildDrawFour]);
+    const { nextState: pendingState } = ActionProcessor.process(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: cWildDrawFour.id,
+      chosenColor: 'blue',
+    });
+
+    expect(pendingState.pendingActionState?.wasOfficiallyLegal).toBe(true);
+
+    const { nextState: challengedState, events } = ActionProcessor.process(pendingState, {
+      type: 'CHALLENGE_WILD_DRAW_FOUR',
+      challengerPlayerId: 'p2',
+    });
+
+    // P2 (challenger) draws 6 cards (4 + 2 penalty) and loses turn!
+    expect(challengedState.players[1].hand).toHaveLength(2 + 6);
+    expect(challengedState.currentPlayerIndex).toBe(2); // P2 loses turn, turn passes to P3
+    expect(events.some((e) => e.type === 'WILD_DRAW_FOUR_CHALLENGE_LOST')).toBe(true);
   });
 
   it('drawing 1 card keeps turn with current player, sets hasDrawnThisTurn', () => {
@@ -185,7 +264,7 @@ describe('Card Action Effects and State Transitions', () => {
     expect(passedState.players[0].drawnCardId).toBeNull();
   });
 
-  it('calling UNO flags hasDeclaredUno on player', () => {
+  it('calling UNO flags hasDeclaredUno on player with 2 cards', () => {
     // P1 with 2 cards
     const state = createInitialState([cRed5, cBlue5]);
     const { nextState } = ActionProcessor.process(state, {
@@ -196,24 +275,60 @@ describe('Card Action Effects and State Transitions', () => {
     expect(nextState.players[0].hasDeclaredUno).toBe(true);
   });
 
-  it('catching a player who failed to call UNO applies a 2-card draw penalty', () => {
-    // P3 has 1 card and has NOT declared UNO
-    const state = createInitialState();
-    const p3InitialHand = state.players[2].hand.length; // 1
-
-    const { nextState, events } = ActionProcessor.process(state, {
-      type: 'CHALLENGE_UNO_FAILURE',
-      challengerPlayerId: 'p1',
-      targetPlayerId: 'p3',
+  it('playing down to 1 card without calling UNO makes player vulnerable to catch', () => {
+    // P1 has 2 cards and plays 1 without calling UNO first
+    const state = createInitialState([cRed5, cBlue5]);
+    const { nextState } = ActionProcessor.process(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: cRed5.id,
     });
 
-    expect(nextState.players[2].hand).toHaveLength(p3InitialHand + 2);
+    expect(nextState.players[0].hand).toHaveLength(1);
+    expect(nextState.players[0].hasDeclaredUno).toBe(false);
+    expect(nextState.unoVulnerablePlayerId).toBe('p1');
+
+    // P2 catches P1's failure -> P1 draws 4 penalty cards (Mattel 42001)
+    const { nextState: caughtState, events } = ActionProcessor.process(nextState, {
+      type: 'CHALLENGE_UNO_FAILURE',
+      challengerPlayerId: 'p2',
+      targetPlayerId: 'p1',
+    });
+
+    expect(caughtState.players[0].hand).toHaveLength(1 + 4);
+    expect(caughtState.unoVulnerablePlayerId).toBeNull();
     expect(events.some((e) => e.type === 'UNO_CHALLENGE_SUCCESS')).toBe(true);
   });
 
-  it('emptying hand transitions match to COMPLETED and calculates winner score', () => {
+  it('emptying hand transitions match to ROUND_OVER and calculates winner score', () => {
     // P1 has only 1 card left (cRed5)
     const state = createInitialState([cRed5]);
+    const { nextState, events } = ActionProcessor.process(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: cRed5.id,
+    });
+
+    expect(nextState.status).toBe('ROUND_OVER');
+    expect(nextState.roundWinner).toBeDefined();
+    expect(nextState.roundWinner?.id).toBe('p1');
+    expect(nextState.roundWinner?.roundScore).toBeGreaterThan(0);
+    expect(nextState.players[0].score).toBe(nextState.roundWinner?.roundScore);
+    expect(events.some((e) => e.type === 'ROUND_COMPLETED')).toBe(true);
+  });
+
+  it('reaches COMPLETED status when cumulative score hits target score 500', () => {
+    const baseState = createInitialState([cRed5]);
+    // Set P1 already at 490 points, so winning round pushes them over 500
+    const state: GameState = {
+      ...baseState,
+      players: [
+        { ...baseState.players[0], score: 490 },
+        baseState.players[1],
+        baseState.players[2],
+      ],
+    };
+
     const { nextState, events } = ActionProcessor.process(state, {
       type: 'PLAY_CARD',
       playerId: 'p1',
@@ -223,7 +338,7 @@ describe('Card Action Effects and State Transitions', () => {
     expect(nextState.status).toBe('COMPLETED');
     expect(nextState.winner).toBeDefined();
     expect(nextState.winner?.id).toBe('p1');
-    expect(nextState.winner?.score).toBeGreaterThan(0);
+    expect(nextState.winner?.score).toBeGreaterThanOrEqual(500);
     expect(events.some((e) => e.type === 'GAME_COMPLETED')).toBe(true);
   });
 });
