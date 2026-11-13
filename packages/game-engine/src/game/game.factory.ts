@@ -7,6 +7,7 @@ import { HandManager } from '../players/hand.manager';
 import { RandomNumberGenerator, defaultCryptoRng, shuffleDeck } from '../deck/deck.shuffle';
 import { TurnDirection } from '../turns/turn.direction';
 import { TurnManager } from '../turns/turn.manager';
+import { VariantRegistry } from '../variants/variant.types';
 
 export interface DealerDrawRecord {
   readonly candidateIndex: number;
@@ -128,9 +129,21 @@ export class GameFactory {
 
   /**
    * Initializes a new GameState from a game configuration.
-   * Strictly follows official Mattel 42001 setup rules.
+   * Delegates to the registered variant adapter (e.g. Classic UNO or UNO Flip).
    */
   static createGame(config: GameConfig, rng: RandomNumberGenerator = defaultCryptoRng): GameState {
+    const variant = config.variant ?? 'classic';
+    if (variant === 'classic') {
+      return this.createClassicGame(config, rng);
+    }
+    const adapter = VariantRegistry.get(variant);
+    return adapter.createGame(config, rng);
+  }
+
+  /**
+   * Internal classic Mattel 42001 game creation.
+   */
+  static createClassicGame(config: GameConfig, rng: RandomNumberGenerator = defaultCryptoRng): GameState {
     const minPlayers = 2;
     const maxPlayers = 10;
     const playerCount = config.players.length;
@@ -244,10 +257,21 @@ export class GameFactory {
 
   /**
    * Initializes the next round for a multi-round match.
-   * Preserves cumulative scores and players, rotates the dealer,
-   * deals fresh 7-card hands, and flips a new starting card.
+   * Delegates to the registered variant adapter.
    */
   static startNextRound(state: GameState, rng: RandomNumberGenerator = defaultCryptoRng): GameState {
+    const variant = state.variant ?? 'classic';
+    if (variant === 'classic') {
+      return this.startClassicNextRound(state, rng);
+    }
+    const adapter = VariantRegistry.get(variant);
+    return adapter.startNextRound(state, rng);
+  }
+
+  /**
+   * Internal classic Mattel 42001 next round initialization.
+   */
+  static startClassicNextRound(state: GameState, rng: RandomNumberGenerator = defaultCryptoRng): GameState {
     if (state.status !== 'ROUND_OVER') {
       throw new Error(`Cannot start next round when game status is ${state.status}`);
     }

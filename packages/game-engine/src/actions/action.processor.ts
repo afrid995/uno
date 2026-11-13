@@ -9,6 +9,7 @@ import { TurnManager } from '../turns/turn.manager';
 import { MoveValidator } from '../validation/move.validator';
 import { RandomNumberGenerator, defaultCryptoRng } from '../deck/deck.shuffle';
 import { GameFactory } from '../game/game.factory';
+import { VariantRegistry } from '../variants/variant.types';
 
 export interface ActionProcessResult {
   readonly nextState: GameState;
@@ -18,8 +19,25 @@ export interface ActionProcessResult {
 export class ActionProcessor {
   /**
    * Pure state transition function applying a validated GameAction to GameState.
+   * Delegates to the registered variant adapter (Classic UNO or UNO Flip).
    */
   static process(
+    state: GameState,
+    action: GameAction,
+    rng: RandomNumberGenerator = defaultCryptoRng
+  ): ActionProcessResult {
+    const variant = state.variant ?? 'classic';
+    if (variant === 'classic') {
+      return this.processClassic(state, action, rng);
+    }
+    const adapter = VariantRegistry.get(variant);
+    return adapter.processAction(state, action, rng);
+  }
+
+  /**
+   * Classic Mattel 42001 state transition processor.
+   */
+  static processClassic(
     state: GameState,
     action: GameAction,
     rng: RandomNumberGenerator = defaultCryptoRng

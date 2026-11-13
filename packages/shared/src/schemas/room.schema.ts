@@ -15,6 +15,11 @@ export const roomCodeSchema = z
       })
   );
 
+export const roomSettingsSchema = z.object({
+  variant: z.enum(['classic', 'uno_flip']).default('classic'),
+}).passthrough();
+export type RoomSettings = z.infer<typeof roomSettingsSchema>;
+
 export const createRoomSchema = z.object({
   maxPlayers: z
     .number()
@@ -27,7 +32,7 @@ export const createRoomSchema = z.object({
     })
     .default(ROOM_RULES.DEFAULT_MAX_PLAYERS)
     .optional(),
-  settings: z.record(z.unknown()).default({}).optional(),
+  settings: roomSettingsSchema.default({ variant: 'classic' }).optional(),
 });
 
 export const joinRoomSchema = z.object({

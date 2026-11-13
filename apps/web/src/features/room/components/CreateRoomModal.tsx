@@ -12,6 +12,7 @@ interface CreateRoomModalProps {
 
 export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) => {
   const [maxPlayers, setMaxPlayers] = useState<number>(ROOM_RULES.DEFAULT_MAX_PLAYERS);
+  const [variant, setVariant] = useState<'classic' | 'uno_flip'>('classic');
   const { createRoom, isLoading, error, clearError } = useRoomStore();
   const navigate = useNavigate();
 
@@ -20,7 +21,10 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
-    const success = await createRoom({ maxPlayers });
+    const payload = variant !== 'classic'
+      ? { maxPlayers, settings: { variant } }
+      : { maxPlayers };
+    const success = await createRoom(payload);
     if (success) {
       const room = useRoomStore.getState().room;
       if (room) {
@@ -61,6 +65,56 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
           </div>
 
           <form onSubmit={handleCreate} className="space-y-6">
+            {/* Game Variant Selector */}
+            <div className="space-y-3">
+              <label className="font-medium text-slate-300 flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-uno-yellow" />
+                  Game Variant
+                </span>
+                <span className="font-mono text-xs text-amber-400 font-bold uppercase">
+                  {variant === 'classic' ? 'Classic UNO' : 'UNO Flip!'}
+                </span>
+              </label>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  data-testid="variant-select-classic"
+                  onClick={() => setVariant('classic')}
+                  className={`p-3 rounded-2xl text-left border transition-all ${
+                    variant === 'classic'
+                      ? 'bg-gradient-to-br from-uno-red/20 to-uno-yellow/10 border-uno-red text-white shadow-glow'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                  }`}
+                >
+                  <div className="font-bold font-display text-sm text-white mb-0.5">Classic UNO</div>
+                  <div className="text-[11px] text-slate-400 leading-tight">
+                    Official Mattel 42001 rules (108 cards, single-sided).
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  data-testid="variant-select-uno-flip"
+                  onClick={() => setVariant('uno_flip')}
+                  className={`p-3 rounded-2xl text-left border transition-all ${
+                    variant === 'uno_flip'
+                      ? 'bg-gradient-to-br from-purple-600/30 to-teal-500/20 border-purple-400 text-white shadow-glow'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                  }`}
+                >
+                  <div className="font-bold font-display text-sm text-white mb-0.5 flex items-center gap-1.5">
+                    UNO Flip!
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-500/30 text-purple-300 font-mono">NEW</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 leading-tight">
+                    Double-sided cards, Light &amp; Dark sides, Flip card (112 cards).
+                  </div>
+                </button>
+              </div>
+            </div>
+
             {/* Max Players Selector */}
             <div className="space-y-3">
               <div className="flex justify-between items-center text-xs">

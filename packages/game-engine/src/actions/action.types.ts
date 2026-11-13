@@ -8,13 +8,17 @@ export type GameActionType =
   | 'CHALLENGE_UNO_FAILURE'
   | 'CHALLENGE_WILD_DRAW_FOUR'
   | 'ACCEPT_WILD_DRAW_FOUR'
+  | 'CHALLENGE_WILD_DRAW_TWO'
+  | 'ACCEPT_WILD_DRAW_TWO'
+  | 'CHALLENGE_WILD_DRAW_COLOR'
+  | 'ACCEPT_WILD_DRAW_COLOR'
   | 'START_NEXT_ROUND';
 
 export interface PlayCardAction {
   readonly type: 'PLAY_CARD';
   readonly playerId: string;
   readonly cardId: string;
-  /** Chosen color if playing a Wild or Wild Draw Four */
+  /** Chosen color if playing a Wild, Wild Draw Four, Wild Draw Two, or Wild Draw Color */
   readonly chosenColor?: CardColor;
 }
 
@@ -49,6 +53,26 @@ export interface AcceptWildDrawFourAction {
   readonly playerId: string;
 }
 
+export interface ChallengeWildDrawTwoAction {
+  readonly type: 'CHALLENGE_WILD_DRAW_TWO';
+  readonly challengerPlayerId: string;
+}
+
+export interface AcceptWildDrawTwoAction {
+  readonly type: 'ACCEPT_WILD_DRAW_TWO';
+  readonly playerId: string;
+}
+
+export interface ChallengeWildDrawColorAction {
+  readonly type: 'CHALLENGE_WILD_DRAW_COLOR';
+  readonly challengerPlayerId: string;
+}
+
+export interface AcceptWildDrawColorAction {
+  readonly type: 'ACCEPT_WILD_DRAW_COLOR';
+  readonly playerId: string;
+}
+
 export interface StartNextRoundAction {
   readonly type: 'START_NEXT_ROUND';
   readonly triggeredByPlayerId: string;
@@ -62,6 +86,10 @@ export type GameAction =
   | ChallengeUnoFailureAction
   | ChallengeWildDrawFourAction
   | AcceptWildDrawFourAction
+  | ChallengeWildDrawTwoAction
+  | AcceptWildDrawTwoAction
+  | ChallengeWildDrawColorAction
+  | AcceptWildDrawColorAction
   | StartNextRoundAction;
 
 export interface GameEventRecord {

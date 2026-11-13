@@ -18,6 +18,10 @@ export const DiscardPile: React.FC<DiscardPileProps> = ({
     yellow: { bg: 'bg-amber-400', text: 'Yellow', ring: 'ring-amber-300' },
     green: { bg: 'bg-emerald-500', text: 'Green', ring: 'ring-emerald-400' },
     blue: { bg: 'bg-sky-500', text: 'Blue', ring: 'ring-sky-400' },
+    pink: { bg: 'bg-pink-500', text: 'Pink', ring: 'ring-pink-400' },
+    teal: { bg: 'bg-teal-400', text: 'Teal', ring: 'ring-teal-300' },
+    orange: { bg: 'bg-orange-500', text: 'Orange', ring: 'ring-orange-400' },
+    purple: { bg: 'bg-purple-600', text: 'Purple', ring: 'ring-purple-400' },
   }[activeColor] || { bg: 'bg-slate-700', text: activeColor, ring: 'ring-slate-500' };
 
   return (

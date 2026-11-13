@@ -3,6 +3,7 @@ import { GameAction } from '../actions/action.types';
 import { Card, CardColor } from '../cards/card.types';
 import { isWildCard } from '../cards/card.validation';
 import { HandManager } from '../players/hand.manager';
+import { VariantRegistry } from '../variants/variant.types';
 
 export type EngineErrorCode =
   | 'MATCH_NOT_ACTIVE'
@@ -36,8 +37,21 @@ export type ValidationResult = ValidationSuccess | ValidationFailure;
 export class MoveValidator {
   /**
    * Pure validation function asserting whether an action is legal given the current game state.
+   * Delegates to the registered variant adapter (Classic UNO or UNO Flip).
    */
   static validate(state: GameState, action: GameAction): ValidationResult {
+    const variant = state.variant ?? 'classic';
+    if (variant === 'classic') {
+      return this.validateClassic(state, action);
+    }
+    const adapter = VariantRegistry.get(variant);
+    return adapter.validateMove(state, action);
+  }
+
+  /**
+   * Classic Mattel 42001 move validation.
+   */
+  static validateClassic(state: GameState, action: GameAction): ValidationResult {
     // START_NEXT_ROUND requires ROUND_OVER status
     if (action.type === 'START_NEXT_ROUND') {
       return this.validateStartNextRound(state, action.triggeredByPlayerId);

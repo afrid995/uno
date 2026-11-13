@@ -51,7 +51,7 @@ export const SOCKET_EVENTS = {
   ROOM_CLOSED: 'room:closed',
   ROOM_STARTING: 'room:starting',
 
-  // Phase 4 Gameplay Actions: Client to Server
+  // Phase 4 & Phase 5 Gameplay Actions: Client to Server
   GAME_START: 'game:start',
   GAME_PLAY_CARD: 'game:play-card',
   GAME_DRAW_CARD: 'game:draw-card',
@@ -61,6 +61,10 @@ export const SOCKET_EVENTS = {
   GAME_CHALLENGE_UNO: 'game:challenge-uno',
   GAME_CHALLENGE_WILD_DRAW_FOUR: 'game:challenge-wild-draw-four',
   GAME_ACCEPT_WILD_DRAW_FOUR: 'game:accept-wild-draw-four',
+  GAME_CHALLENGE_WILD_DRAW_TWO: 'game:challenge-wild-draw-two',
+  GAME_ACCEPT_WILD_DRAW_TWO: 'game:accept-wild-draw-two',
+  GAME_CHALLENGE_WILD_DRAW_COLOR: 'game:challenge-wild-draw-color',
+  GAME_ACCEPT_WILD_DRAW_COLOR: 'game:accept-wild-draw-color',
   GAME_NEXT_ROUND: 'game:next-round',
 
   // Phase 4 Gameplay Broadcasts: Server to Client
@@ -76,7 +80,16 @@ export type SocketEventName = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS]
 // Validation schemas for gameplay actions
 export const playCardInputSchema = z.object({
   cardId: z.string().min(1, 'Card ID is required'),
-  chosenColor: z.enum(['red', 'yellow', 'green', 'blue']).optional(),
+  chosenColor: z.enum([
+    'red',
+    'yellow',
+    'green',
+    'blue',
+    'pink',
+    'teal',
+    'orange',
+    'purple',
+  ]).optional(),
 });
 export type PlayCardInput = z.infer<typeof playCardInputSchema>;
 
@@ -159,6 +172,22 @@ export interface ClientToServerEvents {
     callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_FOUR]: (
+    payload: Record<string, never> | undefined,
+    callback: (response: SocketAck<{ accepted: boolean; cardsDrawn: number }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_TWO]: (
+    payload: Record<string, never> | undefined,
+    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_TWO]: (
+    payload: Record<string, never> | undefined,
+    callback: (response: SocketAck<{ accepted: boolean; cardsDrawn: number }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_COLOR]: (
+    payload: Record<string, never> | undefined,
+    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_COLOR]: (
     payload: Record<string, never> | undefined,
     callback: (response: SocketAck<{ accepted: boolean; cardsDrawn: number }>) => void
   ) => void;

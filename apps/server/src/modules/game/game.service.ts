@@ -24,7 +24,8 @@ export class GameService {
     roomId: string,
     roomCode: string,
     hostGuestId: string,
-    members: { guestId: string; username: string }[]
+    members: { guestId: string; username: string }[],
+    variant: string = 'classic'
   ): Promise<GameState> {
     // 1. Guard against duplicate active matches
     const existingMatch = await gamePersistenceService.findActiveMatchForRoom(roomId);
@@ -40,17 +41,17 @@ export class GameService {
       throw new AppError(
         HTTP_STATUS.BAD_REQUEST,
         ERROR_CODES.BAD_REQUEST,
-        'Classic UNO requires between 2 and 10 players.'
+        'Match requires between 2 and 10 players.'
       );
     }
 
     const matchId = uuidv4();
 
-    // 2. Initialize GameState through official Mattel 42001 engine factory
+    // 2. Initialize GameState through official engine factory
     const initialGameState = GameFactory.createGame({
       matchId,
       roomId,
-      variant: 'classic',
+      variant,
       players: members.map((m) => ({ id: m.guestId, username: m.username })),
       targetScore: 500,
     });
@@ -59,7 +60,7 @@ export class GameService {
     await gamePersistenceService.createMatch(
       matchId,
       roomId,
-      'classic',
+      variant,
       members.map((m, idx) => ({ guestId: m.guestId, seatIndex: idx })),
       initialGameState
     );
@@ -67,9 +68,10 @@ export class GameService {
     // 4. Register in active memory manager
     gameSessionManager.setSession(matchId, roomCode, roomId, initialGameState);
 
-    logger.info('Classic UNO match started', {
+    logger.info('Match started', {
       matchId,
       roomCode,
+      variant,
       dealerIndex: initialGameState.dealerIndex,
       startingPlayerIndex: initialGameState.currentPlayerIndex,
       topDiscard: `${initialGameState.topDiscardCard.color} ${initialGameState.topDiscardCard.value}`,
@@ -180,6 +182,46 @@ export class GameService {
   ): Promise<ActionProcessResult> {
     return this.executeAction(roomCode, {
       type: 'ACCEPT_WILD_DRAW_FOUR',
+      playerId: guestId,
+    });
+  }
+
+  async challengeWildDrawTwo(
+    guestId: string,
+    roomCode: string
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'CHALLENGE_WILD_DRAW_TWO',
+      challengerPlayerId: guestId,
+    });
+  }
+
+  async acceptWildDrawTwo(
+    guestId: string,
+    roomCode: string
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'ACCEPT_WILD_DRAW_TWO',
+      playerId: guestId,
+    });
+  }
+
+  async challengeWildDrawColor(
+    guestId: string,
+    roomCode: string
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'CHALLENGE_WILD_DRAW_COLOR',
+      challengerPlayerId: guestId,
+    });
+  }
+
+  async acceptWildDrawColor(
+    guestId: string,
+    roomCode: string
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'ACCEPT_WILD_DRAW_COLOR',
       playerId: guestId,
     });
   }

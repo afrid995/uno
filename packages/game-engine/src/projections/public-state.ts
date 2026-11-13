@@ -1,4 +1,4 @@
-import { Card, CardColor } from '../cards/card.types';
+import { Card, CardColor, FlipSide } from '../cards/card.types';
 import { GameState, GameStatus, GameWinner } from '../game/game.types';
 import { TurnDirection } from '../turns/turn.direction';
 
@@ -17,6 +17,25 @@ export interface PublicPendingWildDrawFour {
   readonly chosenColor: CardColor;
 }
 
+export interface PublicPendingWildDrawTwo {
+  readonly type: 'AWAITING_WILD_DRAW_TWO_RESOLUTION';
+  readonly playedByPlayerId: string;
+  readonly victimPlayerId: string;
+  readonly chosenColor: CardColor;
+}
+
+export interface PublicPendingWildDrawColor {
+  readonly type: 'AWAITING_WILD_DRAW_COLOR_RESOLUTION';
+  readonly playedByPlayerId: string;
+  readonly victimPlayerId: string;
+  readonly chosenColor: CardColor;
+}
+
+export type PublicPendingActionState =
+  | PublicPendingWildDrawFour
+  | PublicPendingWildDrawTwo
+  | PublicPendingWildDrawColor;
+
 export interface PublicGameState {
   readonly id: string;
   readonly roomId: string;
@@ -32,12 +51,13 @@ export interface PublicGameState {
   readonly turnDirection: TurnDirection;
   readonly topDiscardCard: Card;
   readonly activeColor: CardColor;
+  readonly activeSide?: FlipSide;
   readonly drawPileCount: number;
   readonly discardPileCount: number;
   readonly turnNumber: number;
   readonly sequenceNumber: number;
   readonly unoVulnerablePlayerId: string | null;
-  readonly pendingActionState: PublicPendingWildDrawFour | null;
+  readonly pendingActionState: PublicPendingActionState | null;
   readonly roundWinner: GameWinner | null;
   readonly winner: GameWinner | null;
 }
@@ -46,14 +66,31 @@ export function getPublicGameState(state: GameState): PublicGameState {
   const currentTurnGuestId = state.players[state.currentPlayerIndex]?.id ?? '';
 
   // Sanitize pendingActionState so neither wasOfficiallyLegal nor offenderHandSnapshot are exposed
-  const pendingActionState: PublicPendingWildDrawFour | null = state.pendingActionState
-    ? {
+  let pendingActionState: PublicPendingActionState | null = null;
+  if (state.pendingActionState) {
+    if (state.pendingActionState.type === 'AWAITING_WILD_DRAW_FOUR_RESOLUTION') {
+      pendingActionState = {
         type: 'AWAITING_WILD_DRAW_FOUR_RESOLUTION',
         playedByPlayerId: state.pendingActionState.playedByPlayerId,
         victimPlayerId: state.pendingActionState.victimPlayerId,
         chosenColor: state.pendingActionState.chosenColor,
-      }
-    : null;
+      };
+    } else if (state.pendingActionState.type === 'AWAITING_WILD_DRAW_TWO_RESOLUTION') {
+      pendingActionState = {
+        type: 'AWAITING_WILD_DRAW_TWO_RESOLUTION',
+        playedByPlayerId: state.pendingActionState.playedByPlayerId,
+        victimPlayerId: state.pendingActionState.victimPlayerId,
+        chosenColor: state.pendingActionState.chosenColor,
+      };
+    } else if (state.pendingActionState.type === 'AWAITING_WILD_DRAW_COLOR_RESOLUTION') {
+      pendingActionState = {
+        type: 'AWAITING_WILD_DRAW_COLOR_RESOLUTION',
+        playedByPlayerId: state.pendingActionState.playedByPlayerId,
+        victimPlayerId: state.pendingActionState.victimPlayerId,
+        chosenColor: state.pendingActionState.chosenColor,
+      };
+    }
+  }
 
   return {
     id: state.id,
@@ -76,6 +113,7 @@ export function getPublicGameState(state: GameState): PublicGameState {
     turnDirection: state.turnDirection,
     topDiscardCard: state.topDiscardCard,
     activeColor: state.activeColor,
+    activeSide: state.activeSide,
     drawPileCount: state.drawPile.length,
     discardPileCount: state.discardPile.length,
     turnNumber: state.turnNumber,

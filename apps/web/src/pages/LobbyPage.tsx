@@ -31,6 +31,7 @@ export const LobbyPage: React.FC = () => {
     joinRoom,
     leaveRoom,
     toggleReady,
+    updateSettings,
     startGame,
     initSocketListeners,
   } = useRoomStore();
@@ -130,6 +131,7 @@ export const LobbyPage: React.FC = () => {
   const nonHostMembers = room.members.filter((m: RoomMemberPublicDto) => m.guestId !== room.hostGuestId);
   const allPlayersReady = nonHostMembers.length > 0 && nonHostMembers.every((m: RoomMemberPublicDto) => m.readyStatus);
   const canStartMatch = isCurrentPlayerHost && room.members.length >= 2 && allPlayersReady;
+  const roomVariant = ((room.settings as Record<string, unknown>)?.variant as string) || 'classic';
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-6 sm:py-8 space-y-6">
@@ -148,7 +150,7 @@ export const LobbyPage: React.FC = () => {
               <h2 className="font-display font-black text-2xl tracking-tight">Starting Game Match</h2>
             </div>
             <p className="text-sm text-white/90">
-              Match countdown initiated ({startingCountdown}s). Preparing the 108-card deck and dealing hands...
+              Match countdown initiated ({startingCountdown}s). Preparing the {roomVariant === 'uno_flip' ? '112-card dual-sided' : '108-card'} deck and dealing hands...
             </p>
           </motion.div>
         )}
@@ -177,6 +179,70 @@ export const LobbyPage: React.FC = () => {
           </span>
           <span className="text-slate-500">Players</span>
         </div>
+      </div>
+
+      {/* Game Variant Banner / Selector */}
+      <div className="glass-panel p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs ${
+            roomVariant === 'uno_flip'
+              ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+              : 'bg-uno-red/20 text-uno-red border border-uno-red/30'
+          }`}>
+            {roomVariant === 'uno_flip' ? 'FLIP' : 'UNO'}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-white font-display">
+                {roomVariant === 'uno_flip' ? 'UNO Flip!' : 'Classic UNO'}
+              </span>
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                roomVariant === 'uno_flip'
+                  ? 'bg-purple-900/60 text-purple-300 border border-purple-700/50'
+                  : 'bg-red-950/60 text-rose-300 border border-rose-800/50'
+              }`}>
+                {roomVariant === 'uno_flip' ? '112 DUAL-SIDED CARDS' : '108 CARDS'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              {roomVariant === 'uno_flip'
+                ? 'Light Side vs Dark Side, Flip card, Draw 1 / Draw 5, Skip Everyone.'
+                : 'Official Mattel 42001 rules, Wild Draw Four, 4-card UNO challenge penalty.'}
+            </p>
+          </div>
+        </div>
+
+        {isCurrentPlayerHost && (
+          <div className="flex items-center gap-2 self-stretch sm:self-auto">
+            <span className="text-xs text-slate-400 mr-1 hidden sm:inline">Change:</span>
+            <button
+              type="button"
+              data-testid="lobby-toggle-classic"
+              disabled={roomVariant === 'classic'}
+              onClick={() => updateSettings({ variant: 'classic' })}
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                roomVariant === 'classic'
+                  ? 'bg-uno-red text-white shadow-glow'
+                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              Classic
+            </button>
+            <button
+              type="button"
+              data-testid="lobby-toggle-flip"
+              disabled={roomVariant === 'uno_flip'}
+              onClick={() => updateSettings({ variant: 'uno_flip' })}
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                roomVariant === 'uno_flip'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-glow'
+                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              UNO Flip!
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Invite Link & Code Card */}
@@ -288,9 +354,13 @@ export const LobbyPage: React.FC = () => {
       <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 flex items-start gap-3 text-xs text-slate-400">
         <Info className="w-4 h-4 text-uno-blue shrink-0 mt-0.5" />
         <div className="space-y-1">
-          <p className="font-semibold text-slate-200">Server-Authoritative Classic UNO</p>
+          <p className="font-semibold text-slate-200">
+            {roomVariant === 'uno_flip' ? 'Server-Authoritative UNO Flip!' : 'Server-Authoritative Classic UNO'}
+          </p>
           <p className="text-[11px] leading-relaxed">
-            Official Mattel 42001 rules: 108-card deck, non-wild starting card enforcement, UNO declarations &amp; 4-card challenge penalties, Wild Draw Four challenge/accept lifecycles, and multi-round scoring to 500 points.
+            {roomVariant === 'uno_flip'
+              ? 'Official Mattel GDR44 rules: 112 dual-sided cards, Light & Dark sides, Flip card, Draw 1 / Draw 5, Skip Everyone, Wild Draw Two / Wild Draw Color challenges, and 2-card missed UNO penalties.'
+              : 'Official Mattel 42001 rules: 108-card deck, non-wild starting card enforcement, UNO declarations & 4-card challenge penalties, Wild Draw Four challenge/accept lifecycles, and multi-round scoring to 500 points.'}
           </p>
         </div>
       </div>

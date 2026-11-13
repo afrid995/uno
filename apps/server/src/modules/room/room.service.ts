@@ -109,6 +109,14 @@ export class RoomService {
     maxPlayers: number = ROOM_RULES.DEFAULT_MAX_PLAYERS,
     settings: Record<string, unknown> = {}
   ): Promise<RoomPublicDto> {
+    if (settings.variant !== undefined && settings.variant !== 'classic' && settings.variant !== 'uno_flip') {
+      throw new AppError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        'Invalid game variant. Supported variants are classic and uno_flip.'
+      );
+    }
+
     // Verify host guest exists
     const hostGuest = await prisma.guestSession.findUnique({
       where: { id: hostGuestId },
@@ -492,6 +500,22 @@ export class RoomService {
           HTTP_STATUS.FORBIDDEN,
           ERROR_CODES.HOST_ONLY_ACTION,
           'Only the host can modify room settings.'
+        );
+      }
+
+      if (member.room.status !== 'WAITING') {
+        throw new AppError(
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.BAD_REQUEST,
+          'Cannot modify room settings while a match is in progress.'
+        );
+      }
+
+      if (settings.variant !== undefined && settings.variant !== 'classic' && settings.variant !== 'uno_flip') {
+        throw new AppError(
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.VALIDATION_ERROR,
+          'Invalid game variant. Supported variants are classic and uno_flip.'
         );
       }
 

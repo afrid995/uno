@@ -89,6 +89,20 @@ export const GameBoard: React.FC = () => {
               </>
             )}
           </div>
+
+          {/* UNO Flip Active Side Badge */}
+          {gameState.activeSide && (
+            <div
+              data-testid="active-side-badge"
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl font-display font-black text-xs tracking-wider border shadow-md transition-all ${
+                gameState.activeSide === 'DARK'
+                  ? 'bg-gradient-to-r from-purple-950 via-fuchsia-950 to-slate-950 border-fuchsia-500/80 text-fuchsia-300 shadow-fuchsia-950/60 shadow-lg'
+                  : 'bg-gradient-to-r from-amber-950/60 to-yellow-950/60 border-amber-400/60 text-amber-300'
+              }`}
+            >
+              <span>{gameState.activeSide === 'DARK' ? '🌙 DARK SIDE' : '☀️ LIGHT SIDE'}</span>
+            </div>
+          )}
         </div>
 
         {/* Scoreboard popover */}
@@ -200,6 +214,7 @@ export const GameBoard: React.FC = () => {
       {/* Modals */}
       <WildColorPicker
         isOpen={!!selectedCardForWild}
+        activeSide={gameState.activeSide}
         onSelectColor={(color) => {
           if (selectedCardForWild) {
             playCard(selectedCardForWild.id, color);

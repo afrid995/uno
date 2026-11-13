@@ -1,4 +1,4 @@
-import { Card, CardColor } from '../cards/card.types';
+import { Card, CardColor, FlipSide } from '../cards/card.types';
 import { Player } from '../players/player.types';
 import { TurnDirection } from '../turns/turn.direction';
 
@@ -21,7 +21,28 @@ export interface PendingWildDrawFourState {
   readonly offenderHandSnapshot: readonly Card[];
 }
 
-export type PendingActionState = PendingWildDrawFourState;
+export interface PendingWildDrawTwoState {
+  readonly type: 'AWAITING_WILD_DRAW_TWO_RESOLUTION';
+  readonly playedByPlayerId: string;
+  readonly victimPlayerId: string;
+  readonly wasOfficiallyLegal: boolean;
+  readonly chosenColor: CardColor;
+  readonly offenderHandSnapshot: readonly Card[];
+}
+
+export interface PendingWildDrawColorState {
+  readonly type: 'AWAITING_WILD_DRAW_COLOR_RESOLUTION';
+  readonly playedByPlayerId: string;
+  readonly victimPlayerId: string;
+  readonly wasOfficiallyLegal: boolean;
+  readonly chosenColor: CardColor;
+  readonly offenderHandSnapshot: readonly Card[];
+}
+
+export type PendingActionState =
+  | PendingWildDrawFourState
+  | PendingWildDrawTwoState
+  | PendingWildDrawColorState;
 
 export interface GameWinner {
   readonly id: string;
@@ -67,6 +88,8 @@ export interface GameState {
   readonly topDiscardCard: Card;
   /** Active playing color (tracks chosen color after Wilds) */
   readonly activeColor: CardColor;
+  /** Authoritative side for UNO Flip ('LIGHT' or 'DARK') */
+  readonly activeSide?: FlipSide;
   /** Incremental turn number */
   readonly turnNumber: number;
   /** Monotonically increasing sequence number for event sourcing */

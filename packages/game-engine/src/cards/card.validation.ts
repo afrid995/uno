@@ -1,15 +1,37 @@
 import { z } from 'zod';
 import { Card, CardColor } from './card.types';
 
-export const cardColorSchema = z.enum(['red', 'yellow', 'green', 'blue']);
+export const cardColorSchema = z.enum([
+  'red',
+  'yellow',
+  'green',
+  'blue',
+  'pink',
+  'teal',
+  'orange',
+  'purple',
+]);
 
 export const numberCardValueSchema = z.enum([
   '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
 ]);
 
-export const actionCardValueSchema = z.enum(['skip', 'reverse', 'draw_two']);
+export const actionCardValueSchema = z.enum([
+  'skip',
+  'reverse',
+  'draw_two',
+  'draw_one',
+  'draw_five',
+  'skip_everyone',
+  'flip',
+]);
 
-export const wildCardValueSchema = z.enum(['wild', 'wild_draw_four']);
+export const wildCardValueSchema = z.enum([
+  'wild',
+  'wild_draw_four',
+  'wild_draw_two',
+  'wild_draw_color',
+]);
 
 export const cardValueSchema = z.union([
   numberCardValueSchema,
@@ -19,13 +41,23 @@ export const cardValueSchema = z.union([
 
 export const cardTypeSchema = z.enum(['number', 'action', 'wild']);
 
+export const cardFaceSchema = z.object({
+  color: cardColorSchema.nullable(),
+  value: cardValueSchema,
+  type: cardTypeSchema,
+  scoreValue: z.number().int().min(0).max(60),
+});
+
 export const cardSchema = z.object({
   id: z.string().min(1),
   color: cardColorSchema.nullable(),
   value: cardValueSchema,
   type: cardTypeSchema,
-  scoreValue: z.number().int().min(0).max(50),
+  scoreValue: z.number().int().min(0).max(60),
   variant: z.string().min(1),
+  lightFace: cardFaceSchema.optional(),
+  darkFace: cardFaceSchema.optional(),
+  currentSide: z.enum(['LIGHT', 'DARK']).optional(),
 });
 
 export function isCard(candidate: unknown): candidate is Card {

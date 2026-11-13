@@ -9,18 +9,95 @@ export const ChallengePanel: React.FC = () => {
     isActionLoading,
     acceptWildDrawFour,
     challengeWildDrawFour,
+    acceptWildDrawTwo,
+    challengeWildDrawTwo,
+    acceptWildDrawColor,
+    challengeWildDrawColor,
   } = useGameStore();
 
   if (!gameState) return null;
 
   const { self, pendingActionState, inspectedChallengedHand } = gameState;
-  const isTargeted = self?.isTargetedByWildDrawFour;
+
+  const pType = pendingActionState?.type;
+  const isTargetedByFour = !!self?.isTargetedByWildDrawFour;
+  const isTargetedByTwo = !!self?.isTargetedByWildDrawTwo;
+  const isTargetedByColor = !!self?.isTargetedByWildDrawColor;
+  const isTargeted = isTargetedByFour || isTargetedByTwo || isTargetedByColor;
 
   // Find offender name
   const offender = pendingActionState
     ? gameState.players.find((p) => p.id === pendingActionState.playedByPlayerId)
     : null;
   const offenderName = offender?.username || 'Opponent';
+
+  const getActionTitle = () => {
+    switch (pType) {
+      case 'AWAITING_WILD_DRAW_TWO_RESOLUTION':
+        return 'Wild Draw Two Played Against You';
+      case 'AWAITING_WILD_DRAW_COLOR_RESOLUTION':
+        return 'Wild Draw Color Played Against You';
+      case 'AWAITING_WILD_DRAW_FOUR_RESOLUTION':
+      default:
+        return 'Wild Draw Four Played Against You';
+    }
+  };
+
+  const getActionHeading = () => {
+    switch (pType) {
+      case 'AWAITING_WILD_DRAW_TWO_RESOLUTION':
+        return `${offenderName} played a Wild Draw Two!`;
+      case 'AWAITING_WILD_DRAW_COLOR_RESOLUTION':
+        return `${offenderName} played a Wild Draw Color!`;
+      case 'AWAITING_WILD_DRAW_FOUR_RESOLUTION':
+      default:
+        return `${offenderName} played a Wild Draw Four!`;
+    }
+  };
+
+  const getActionDescription = () => {
+    switch (pType) {
+      case 'AWAITING_WILD_DRAW_TWO_RESOLUTION':
+        return `Per Mattel GDR44 rules: If they played illegally (held a matching color card), they must draw 2. If they played legally, you must draw 4 cards (2 + 2 penalty) and lose your turn!`;
+      case 'AWAITING_WILD_DRAW_COLOR_RESOLUTION':
+        return `Per Mattel GDR44 rules: If they played illegally (held a matching color card), they must draw until the chosen color. If they played legally, you must draw until the chosen color + 2 penalty cards and lose your turn!`;
+      case 'AWAITING_WILD_DRAW_FOUR_RESOLUTION':
+      default:
+        return `Per Mattel 42001 rules: If they played illegally (held a matching color card), they must draw 4. If they played legally, you must draw 6 cards (4 + 2 penalty) and lose your turn!`;
+    }
+  };
+
+  const handleAccept = () => {
+    if (pType === 'AWAITING_WILD_DRAW_TWO_RESOLUTION') {
+      acceptWildDrawTwo();
+    } else if (pType === 'AWAITING_WILD_DRAW_COLOR_RESOLUTION') {
+      acceptWildDrawColor();
+    } else {
+      acceptWildDrawFour();
+    }
+  };
+
+  const handleChallenge = () => {
+    if (pType === 'AWAITING_WILD_DRAW_TWO_RESOLUTION') {
+      challengeWildDrawTwo();
+    } else if (pType === 'AWAITING_WILD_DRAW_COLOR_RESOLUTION') {
+      challengeWildDrawColor();
+    } else {
+      challengeWildDrawFour();
+    }
+  };
+
+  const getAcceptLabel = () => {
+    switch (pType) {
+      case 'AWAITING_WILD_DRAW_TWO_RESOLUTION':
+        return 'Accept (+2 Cards & Skip)';
+      case 'AWAITING_WILD_DRAW_COLOR_RESOLUTION':
+        return 'Accept (Draw Until Color & Skip)';
+      case 'AWAITING_WILD_DRAW_FOUR_RESOLUTION':
+      default:
+        return 'Accept (+4 Cards & Skip)';
+    }
+  };
 
   return (
     <div className="w-full max-w-xl mx-auto my-2">
@@ -42,7 +119,7 @@ export const ChallengePanel: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-300 mb-3">
-            Official Mattel 42001 verification: Inspected hand of {offenderName}.
+            Authoritative verification: Inspected hand of {offenderName}.
           </p>
           <div className="flex flex-wrap gap-2 justify-center max-h-48 overflow-y-auto p-1 bg-slate-950/60 rounded-lg">
             {inspectedChallengedHand.map((card) => (
@@ -60,27 +137,27 @@ export const ChallengePanel: React.FC = () => {
           className="p-5 rounded-2xl border-2 border-rose-500/80 bg-gradient-to-b from-rose-950/90 via-slate-900/95 to-slate-950 shadow-2xl text-center backdrop-blur-md"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold uppercase tracking-wider mb-2">
-            Wild Draw Four Played Against You
+            {getActionTitle()}
           </div>
           <h3 className="text-lg sm:text-xl font-black text-white mb-2">
-            {offenderName} played a Wild Draw Four!
+            {getActionHeading()}
           </h3>
           <p className="text-xs sm:text-sm text-slate-300 mb-4 max-w-md mx-auto leading-relaxed">
-            Per Mattel 42001 rules: If they played illegally (held a matching color card), they must draw 4. If they played legally, you must draw 6 cards (4 + 2 penalty) and lose your turn!
+            {getActionDescription()}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
             <button
-              data-testid="accept-wild-draw-four-btn"
-              onClick={() => acceptWildDrawFour()}
+              data-testid="accept-wild-draw-btn"
+              onClick={handleAccept}
               disabled={isActionLoading}
               className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-white bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all text-sm shadow-md disabled:opacity-50"
             >
-              Accept (+4 Cards & Skip)
+              {getAcceptLabel()}
             </button>
             <button
-              data-testid="challenge-wild-draw-four-btn"
-              onClick={() => challengeWildDrawFour()}
+              data-testid="challenge-wild-draw-btn"
+              onClick={handleChallenge}
               disabled={isActionLoading}
               className="w-full sm:w-auto px-6 py-3 rounded-xl font-black text-white bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 active:scale-95 transition-all text-sm shadow-lg shadow-rose-900/40 ring-2 ring-rose-400 disabled:opacity-50"
             >
@@ -93,7 +170,7 @@ export const ChallengePanel: React.FC = () => {
       {/* Waiting Indicator for Other Players */}
       {!isTargeted && pendingActionState && (
         <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-950/30 text-center text-xs text-amber-200 animate-pulse">
-          Waiting for victim to accept or challenge {offenderName}&apos;s Wild Draw Four...
+          Waiting for victim to accept or challenge {offenderName}&apos;s action...
         </div>
       )}
     </div>

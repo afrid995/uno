@@ -11,7 +11,16 @@
  * 4. The discard pile top card is public.
  */
 
-export type UnoColor = 'RED' | 'YELLOW' | 'GREEN' | 'BLUE' | 'WILD';
+export type UnoColor =
+  | 'RED'
+  | 'YELLOW'
+  | 'GREEN'
+  | 'BLUE'
+  | 'WILD'
+  | 'PINK'
+  | 'TEAL'
+  | 'ORANGE'
+  | 'PURPLE';
 
 export type UnoValue =
   | '0'
@@ -27,8 +36,14 @@ export type UnoValue =
   | 'SKIP'
   | 'REVERSE'
   | 'DRAW_TWO'
+  | 'DRAW_ONE'
+  | 'DRAW_FIVE'
+  | 'SKIP_EVERYONE'
+  | 'FLIP'
   | 'WILD'
-  | 'WILD_DRAW_FOUR';
+  | 'WILD_DRAW_FOUR'
+  | 'WILD_DRAW_TWO'
+  | 'WILD_DRAW_COLOR';
 
 export interface UnoCard {
   id: string;

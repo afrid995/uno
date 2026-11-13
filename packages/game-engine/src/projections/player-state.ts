@@ -15,12 +15,16 @@ export interface PlayerPrivateView {
   readonly canCatchUno: boolean;
   readonly canResolveWildDrawFour: boolean;
   readonly isTargetedByWildDrawFour: boolean;
+  readonly canResolveWildDrawTwo?: boolean;
+  readonly isTargetedByWildDrawTwo?: boolean;
+  readonly canResolveWildDrawColor?: boolean;
+  readonly isTargetedByWildDrawColor?: boolean;
 }
 
 export interface PlayerGameState extends PublicGameState {
   readonly self: PlayerPrivateView;
   /**
-   * Only disclosed to the authorized challenger during a Wild Draw Four challenge inspection.
+   * Only disclosed to the authorized challenger during a Wild Draw Four, Two, or Color challenge inspection.
    * Completely hidden from all other participants.
    */
   readonly inspectedChallengedHand?: readonly Card[] | null;
@@ -37,7 +41,7 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
   const isCurrentTurn = publicState.currentTurnGuestId === playerId;
   let playableCardIds: string[] = [];
 
-  // Card play is only allowed when match is in progress and NO pending Wild Draw Four resolution is blocking
+  // Card play is only allowed when match is in progress and NO pending resolution is blocking
   if (isCurrentTurn && state.status === 'IN_PROGRESS' && !state.pendingActionState) {
     if (player.hasDrawnThisTurn) {
       // Per official rules, after drawing, only the drawn card can be played (if it matches)
@@ -54,11 +58,19 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     }
   }
 
-  const hasPendingWdf = !!state.pendingActionState;
-  const isVictimOfWdf = state.pendingActionState?.victimPlayerId === playerId;
+  const isPendingAction = !!state.pendingActionState;
+  const isVictimOfWdf =
+    state.pendingActionState?.type === 'AWAITING_WILD_DRAW_FOUR_RESOLUTION' &&
+    state.pendingActionState.victimPlayerId === playerId;
+  const isVictimOfWd2 =
+    state.pendingActionState?.type === 'AWAITING_WILD_DRAW_TWO_RESOLUTION' &&
+    state.pendingActionState.victimPlayerId === playerId;
+  const isVictimOfWdc =
+    state.pendingActionState?.type === 'AWAITING_WILD_DRAW_COLOR_RESOLUTION' &&
+    state.pendingActionState.victimPlayerId === playerId;
 
-  const canDraw = isCurrentTurn && !player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !hasPendingWdf;
-  const canPass = isCurrentTurn && player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !hasPendingWdf;
+  const canDraw = isCurrentTurn && !player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
+  const canPass = isCurrentTurn && player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
 
   // Player can call UNO if they hold 1 or 2 cards and haven't declared it yet
   const canCallUno = player.hand.length <= 2 && !player.hasDeclaredUno;
@@ -67,6 +79,8 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
   const canCatchUno = !!(state.unoVulnerablePlayerId && state.unoVulnerablePlayerId !== playerId);
 
   const canResolveWildDrawFour = isVictimOfWdf;
+  const canResolveWildDrawTwo = isVictimOfWd2;
+  const canResolveWildDrawColor = isVictimOfWdc;
 
   const self: PlayerPrivateView = {
     id: player.id,
@@ -80,6 +94,10 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     canCatchUno,
     canResolveWildDrawFour,
     isTargetedByWildDrawFour: isVictimOfWdf,
+    canResolveWildDrawTwo,
+    isTargetedByWildDrawTwo: isVictimOfWd2,
+    canResolveWildDrawColor,
+    isTargetedByWildDrawColor: isVictimOfWdc,
   };
 
   // Temporary private disclosure of offender's hand to authorized challenger only

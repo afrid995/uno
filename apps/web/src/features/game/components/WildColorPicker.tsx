@@ -5,23 +5,36 @@ import { X } from 'lucide-react';
 
 export interface WildColorPickerProps {
   isOpen: boolean;
+  activeSide?: 'LIGHT' | 'DARK';
   onSelectColor: (color: CardColor) => void;
   onClose: () => void;
 }
 
 export const WildColorPicker: React.FC<WildColorPickerProps> = ({
   isOpen,
+  activeSide = 'LIGHT',
   onSelectColor,
   onClose,
 }) => {
   if (!isOpen) return null;
 
-  const colors: Array<{ color: CardColor; label: string; bgClass: string; shadowClass: string }> = [
+  const isDarkSide = activeSide === 'DARK';
+
+  const lightColors: Array<{ color: CardColor; label: string; bgClass: string; shadowClass: string }> = [
     { color: 'red', label: 'Red', bgClass: 'bg-rose-600 hover:bg-rose-500 text-white', shadowClass: 'shadow-glow-red' },
     { color: 'yellow', label: 'Yellow', bgClass: 'bg-amber-400 hover:bg-amber-300 text-slate-950', shadowClass: 'shadow-glow-amber' },
     { color: 'green', label: 'Green', bgClass: 'bg-emerald-600 hover:bg-emerald-500 text-white', shadowClass: 'shadow-glow-green' },
     { color: 'blue', label: 'Blue', bgClass: 'bg-sky-600 hover:bg-sky-500 text-white', shadowClass: 'shadow-glow-blue' },
   ];
+
+  const darkColors: Array<{ color: CardColor; label: string; bgClass: string; shadowClass: string }> = [
+    { color: 'pink', label: 'Pink', bgClass: 'bg-pink-600 hover:bg-pink-500 text-white', shadowClass: 'shadow-pink-500/40' },
+    { color: 'teal', label: 'Teal', bgClass: 'bg-teal-500 hover:bg-teal-400 text-white', shadowClass: 'shadow-teal-500/40' },
+    { color: 'orange', label: 'Orange', bgClass: 'bg-orange-500 hover:bg-orange-400 text-white', shadowClass: 'shadow-orange-500/40' },
+    { color: 'purple', label: 'Purple', bgClass: 'bg-purple-600 hover:bg-purple-500 text-white', shadowClass: 'shadow-purple-500/40' },
+  ];
+
+  const colors = isDarkSide ? darkColors : lightColors;
 
   return (
     <AnimatePresence>

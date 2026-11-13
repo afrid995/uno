@@ -35,8 +35,15 @@ export * from './projections/player-state';
 
 // Variants
 export * from './variants/variant.types';
+export * from './variants/classic/classic.adapter';
 export * from './variants/classic/classic.definition';
 export * from './variants/classic/classic.rules';
+export * from './variants/flip/flip.constants';
+export * from './variants/flip/flip.deck';
+export * from './variants/flip/flip.dealer';
+export * from './variants/flip/flip.validator';
+export * from './variants/flip/flip.actions';
+export * from './variants/flip/flip.adapter';
 
 // Testing utilities
 export * from './testing/deterministic-random';

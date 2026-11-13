@@ -1,48 +1,47 @@
-# UNO Ultimate — Phase 4.3: Official Rule Source Alignment & Verification Evidence Audit
+# UNO Ultimate — Phase 5: Variant Architecture & Complete UNO Flip Implementation
 
 UNO Ultimate is an online, private multiplayer card game crafted specifically for groups of friends. It does not provide public matchmaking, open player lobbies, or social networking features.
 
-Phase 4.3 completes a rigorous rule source alignment and verification evidence audit: aligning dealer-determination and deck composition documentation with the official Mattel 42001 instruction sheet, distinguishing official Mattel rules from application-level design policies (such as tie-breaking redraws and fallbacks), accurately categorizing test tiers (57 server integration tests including full-round playout vs 2 multi-context Playwright browser E2E tests), verifying in-process session-loss recovery within a single-instance architecture, and validating real PostgreSQL transaction rollback under injected database failures.
+Phase 5 establishes an extensible, decoupled **Variant Architecture** and implements the first official variant: **UNO Flip!**, strictly following the official **Mattel UNO Flip GDR44** rules sheet (English and Spanish editions), while maintaining 100% backward compatibility and test stability for **Classic UNO** (Mattel 42001).
 
 ---
 
 ## Tech Stack
 
-- **Game Engine**: Pure TypeScript, transport-agnostic, zero-IO, cryptographically secure and deterministic PRNGs (`@uno-ultimate/game-engine`)
-- **Protocol**: Shared Zod schemas, socket contracts, typed payloads, and projections (`@uno-ultimate/game-protocol`)
+- **Game Engine**: Pure TypeScript, transport-agnostic, zero-IO, extensible variant registry, deterministic PRNGs (`@uno-ultimate/game-engine`)
+- **Protocol**: Shared Zod schemas, socket contracts, typed payloads, 8-color model, and projections (`@uno-ultimate/game-protocol`)
 - **Frontend**: React 18, Vite, TypeScript, Tailwind CSS, React Router v7, Zustand, Socket.IO Client, Framer Motion, Howler.js, Zod (`@uno-ultimate/web`)
 - **Backend**: Node.js, Express, TypeScript, Socket.IO, Zod validation, Helmet, CORS, Cookie-Parser, Express-Rate-Limit (`@uno-ultimate/server`)
 - **Database**: PostgreSQL 16, Prisma ORM (`@uno-ultimate/database`)
 - **Monorepo**: pnpm workspaces
-- **Testing**: Vitest, React Testing Library, Supertest, Playwright E2E (180 unit and integration tests across monorepo + 2 browser Playwright E2E tests)
+- **Testing**: Vitest, React Testing Library, Supertest, Playwright E2E (comprehensive unit, socket integration, and browser E2E test suites)
 
 ---
 
-## Core Features (Phases 1, 2, 3, 4, 4.1, 4.2 & 4.3)
+## Core Features (Phases 1 through 5)
 
 - **Zero Sign-Up Guest Identity**: Instant play with a username. Server-generated UUID guest ID and temporary session token with HttpOnly cookie support and resumption validation.
-- **Private Room Creation**: Server generates unique, unambiguous 6-character room codes (`23456789ABCDEFGHJKLMNPQRSTUVWXYZ`).
+- **Private Room Creation & Variant Selection**: Host can choose between Classic UNO and UNO Flip during room creation, or toggle before match start.
 - **Direct Invitation Links**: Shareable `/join/:roomCode` URLs with pre-flight metadata checks.
-- **Real-Time Lobby Presence**: Live member lists, player avatar badges, online/reconnecting indicators, and optimistic state versioning.
-- **Player Readiness & Host Controls**: Ready status toggling, host capacity management (2–10 players), and match initiation with countdown.
+- **Real-Time Lobby Presence**: Live member lists, player avatar badges, variant indicator badge (`108 CARDS` vs `112 DUAL-SIDED CARDS`), online/reconnecting indicators, and optimistic state versioning.
 - **Deterministic Host Transfer**: Seamless host handover to the earliest eligible member (`joinedAt ASC`) if the host disconnects or leaves.
-- **30-Second Reconnection Grace Period**: Transient network disconnections retain room slot and state without aborting the lobby.
-- **Playable Real-Time Classic UNO (Mattel 42001)**:
-  - **Authoritative 108-Card Playable Deck**: The official Mattel 42001 instruction sheet lists 112 physical cards in the box (including 4 customizable Blank Cards). For digital gameplay, UNO Ultimate implements the canonical 108 non-blank card deck (76 number cards, 24 action cards, 8 wild cards), intentionally omitting the optional Blank Cards.
-  - **Hardened Opening Reverse Rule**: Tested against real `createGame` and `startNextRound` methods with deterministic card fixtures. When Reverse is turned up at the beginning of play, play proceeds counter-clockwise and the player to the dealer's right plays first (e.g. for dealer 0 with 4 players, player 3; with 3 players, player 2; with 2 players, player 1).
-  - **Canonical Dealer Determination & Application Tie-Breaking Policy**: Follows official Mattel 42001 Setup and Scoring tables: each player draws a card from the shuffled 108-card deck, and the highest point value deals (0–9 face value, 20 for action cards, 50 for wild cards). Ties are resolved through an explicit application-level policy (not specified by Mattel): tied candidates redraw cards up to a safety ceiling of 20 rounds, with a deterministic fallback (`Math.min(...candidates)`) to guarantee termination with zero infinite loops.
-  - **Starting Wild Discard Resolution**: Adopts official Setup Section precedence—an opening Wild or Wild Draw Four card is returned to the deck and reshuffled until a non-Wild card is revealed.
-  - **Monotonic Event Sequencing Invariant**: Ensures `nextState.sequenceNumber === (events.at(-1)?.sequenceNumber ?? state.sequenceNumber)` across all multi-event actions, preventing database unique constraint collisions.
-  - **Atomic Transactional Persistence & Rollback**: Every game action batch (Match status, MatchPlayer standings, GameEvents, and GameSnapshot) commits in a single atomic Prisma `$transaction`. In-memory state advances only on database commit success. Verified through unit and integration tests injecting mid-transaction database failures to prove PostgreSQL ACID rollback of all partial writes without orphaned records or sequence gaps.
-  - **In-Process Session-Loss Recovery**: Reconnection via `room:resume` deserializes the latest PostgreSQL GameSnapshot, validates membership, and restores the player's private hand and active table state seamlessly. Verified via in-process session clearing (`clearAllSessionsForTesting()`) within the single-instance server architecture.
-  - **Active Countdown Tracking & Cancellation**: Production 5-second countdown is tracked in `activeCountdownTimers` and cleanly cancelled if any player unreadies, leaves, or disconnects.
-  - **Information Hiding Security**: Players only ever receive their own private 7-card hand. Opponents receive only card counts; draw pile order is completely hidden.
-  - **Wild Draw Four Challenge Lifecycle**: Suspected illegal plays can be challenged by the victim. The server securely reveals the offender's hand *only* to the challenger. If guilty: offender draws 4 cards; if innocent: challenger draws 6 cards and loses turn.
-  - **UNO Shouting & 4-Card Penalty**: Players holding 1 card who fail to declare UNO can be caught by opponents before the next player's move, receiving a strict 4-card penalty per Mattel 42001 rules.
-  - **Multi-Round Match Scoring & 500-Point Target**: Opponent cards scored at round conclusion (0-9 face value, 20 for action cards, 50 for wilds) accumulating towards the official 500-point match target. Match transitions to COMPLETED when cumulative score hits 500 points.
-  - **Full Round & Multi-Round Socket/Database Integration Tests**: Complete round playouts down to zero cards, dealer rotation, score accumulation, and game completion validated through Socket.IO and PostgreSQL integration tests (`apps/server/tests/integration/game.full-round.test.ts`).
-  - **Interactive Responsive Game Board**: SVG/CSS Uno cards with hover/playable glow, fan layouts, opponent seats, draw/discard piles, wild color selector modal, and round/match victory celebration modals.
-  - **Multi-Context Browser E2E Testing**: Automated Playwright test suite (`apps/web/tests/e2e/multiplayer-game.spec.ts`) exercising 2 independent browser contexts (Alice & Bob in real Google Chrome) across room creation, joining, countdown display, dealing, real-time play, and disconnect recovery.
+- **Extensible Variant Architecture (`@uno-ultimate/game-engine`)**:
+  - `GameVariantAdapter` interface isolating rules, deck factory, dealer selection, starting cards, moves, actions, and scoring.
+  - `VariantRegistry` supporting runtime variant resolution (`classic` and `uno_flip`).
+- **Complete Playable UNO Flip! (Mattel GDR44)**:
+  - **Authoritative 112 Double-Sided Deck**: Physical card model where every card preserves identity and dual faces (`lightFace` and `darkFace`).
+  - **Reconciled Inventory**: Adopts 8 Flip cards per side (2 per color) to resolve the English manual arithmetic discrepancy and match the 112-card total affirmed by the Spanish edition.
+  - **Light Side Mechanics**: Red, Yellow, Green, Blue. Draw One (+1), Reverse, Skip, Flip, Wild, Wild Draw Two (+2, challengeable).
+  - **Dark Side Mechanics**: Pink, Teal, Orange, Purple. Draw Five (+5), Reverse, Skip Everyone, Flip, Wild, Wild Draw Color (draws until chosen color, challengeable, infinite-draw safe).
+  - **Atomic Flip Transition Protocol**: Flips active side, inverts and flips discard pile (placing played Flip card at bottom, underneath card becomes new top discard on opposite face), flips draw pile, and flips all hands in real time.
+  - **Mattel GDR44 Dealer Selection**: Highest number 1–9 on Light side deals, symbol cards count as 0, candidate redraws, safety ceiling of 20 rounds with lowest-seat fallback.
+  - **Mattel GDR44 Opening Starting Cards**: Reverse causes dealer to play first counter-clockwise; Flip immediately flips deck to Dark side; Draw One causes victim to draw 1 and lose turn; Wild Draw Two returned and reshuffled.
+  - **Mattel GDR44 Missed UNO Penalty**: 2 cards (differs from Classic UNO's 4-card rule).
+  - **Side-Specific Scoring to 500 Points**: Light Side face values / 20 action / 50 wild; Dark Side face values / 20 action / 50 wild / 60 Wild Draw Color. First to 500 points wins match.
+- **Playable Classic UNO (Mattel 42001)**:
+  - Preserved 108-card single-sided deck, 4-card missed UNO penalty, Wild Draw Four challenge lifecycle, and classic scoring.
+- **Multi-Context Browser E2E Testing**:
+  - Automated Playwright test suites (`multiplayer-game.spec.ts` and `uno-flip-game.spec.ts`) validating 2-player multi-browser context matches across both variants.
 
 ---
 
