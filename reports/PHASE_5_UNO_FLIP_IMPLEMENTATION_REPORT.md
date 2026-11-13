@@ -9,6 +9,7 @@
 - **Workspace**: `D:\uno`
 - **Branch**: `main`
 - **Baseline Commit**: `44c8a83b1c69d69f32fcdfa1efaeed0b555997bc`
+- **Published Phase 5 Commit**: `00673c0ac4ca0ad4303f93be50c7bee1c683791b`
 - **Phase Target**: Phase 5 — Extensible Variant Architecture & Complete Playable UNO Flip Implementation
 - **Source of Truth for UNO Flip**: Mattel UNO Flip (GDR44) Official Rules Sheet (English & Spanish editions)
 - **Source of Truth for Classic UNO**: Mattel UNO (42001) Official Rules Sheet
