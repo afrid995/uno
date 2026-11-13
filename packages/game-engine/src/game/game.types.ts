@@ -39,10 +39,16 @@ export interface PendingWildDrawColorState {
   readonly offenderHandSnapshot: readonly Card[];
 }
 
+export interface PendingStartingWildColorState {
+  readonly type: 'AWAITING_STARTING_WILD_COLOR_SELECTION';
+  readonly designatedPlayerId: string;
+}
+
 export type PendingActionState =
   | PendingWildDrawFourState
   | PendingWildDrawTwoState
-  | PendingWildDrawColorState;
+  | PendingWildDrawColorState
+  | PendingStartingWildColorState;
 
 export interface GameWinner {
   readonly id: string;
@@ -86,8 +92,8 @@ export interface GameState {
   readonly discardPile: readonly Card[];
   /** Top visible card of the discard pile */
   readonly topDiscardCard: Card;
-  /** Active playing color (tracks chosen color after Wilds) */
-  readonly activeColor: CardColor;
+  /** Active playing color (tracks chosen color after Wilds, null if awaiting starting Wild color selection) */
+  readonly activeColor: CardColor | null;
   /** Authoritative side for UNO Flip ('LIGHT' or 'DARK') */
   readonly activeSide?: FlipSide;
   /** Incremental turn number */

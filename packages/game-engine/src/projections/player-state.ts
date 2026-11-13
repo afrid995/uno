@@ -19,6 +19,8 @@ export interface PlayerPrivateView {
   readonly isTargetedByWildDrawTwo?: boolean;
   readonly canResolveWildDrawColor?: boolean;
   readonly isTargetedByWildDrawColor?: boolean;
+  readonly canChooseStartingColor?: boolean;
+  readonly isAwaitingStartingColor?: boolean;
 }
 
 export interface PlayerGameState extends PublicGameState {
@@ -68,6 +70,11 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
   const isVictimOfWdc =
     state.pendingActionState?.type === 'AWAITING_WILD_DRAW_COLOR_RESOLUTION' &&
     state.pendingActionState.victimPlayerId === playerId;
+  const isAwaitingStartingColor =
+    state.pendingActionState?.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION';
+  const canChooseStartingColor =
+    state.pendingActionState?.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION' &&
+    state.pendingActionState.designatedPlayerId === playerId;
 
   const canDraw = isCurrentTurn && !player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
   const canPass = isCurrentTurn && player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
@@ -98,6 +105,8 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     isTargetedByWildDrawTwo: isVictimOfWd2,
     canResolveWildDrawColor,
     isTargetedByWildDrawColor: isVictimOfWdc,
+    canChooseStartingColor,
+    isAwaitingStartingColor,
   };
 
   // Temporary private disclosure of offender's hand to authorized challenger only

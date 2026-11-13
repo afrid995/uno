@@ -8,7 +8,7 @@ import { gameSessionManager } from '../../src/modules/game/game.session.manager'
 import { cancelAllCountdownTimersForTesting } from '../../src/sockets/roomSocketHandler';
 import { prisma } from '@uno-ultimate/database';
 import { SOCKET_EVENTS, PlayerGameState } from '@uno-ultimate/game-protocol';
-import { FlipDeckFactory } from '@uno-ultimate/game-engine';
+import { FlipDeckFactory, GameSerializer } from '@uno-ultimate/game-engine';
 
 describe('UNO Flip Multiplayer Integration & Persistence Tests', () => {
   let httpServer: ReturnType<typeof createServer>;
@@ -153,6 +153,9 @@ describe('UNO Flip Multiplayer Integration & Persistence Tests', () => {
         resolve
       );
     });
+    if (!playAck.success) {
+      console.error('PLAY_ACK FAILED:', JSON.stringify(playAck));
+    }
     expect(playAck.success).toBe(true);
 
     const { state: p1Dark } = await p1DarkPromise;
@@ -186,5 +189,171 @@ describe('UNO Flip Multiplayer Integration & Persistence Tests', () => {
     // Snapshot was rehydrated from PostgreSQL!
     expect(recoveredState.activeSide).toBe('DARK');
     expect(recoveredState.self.hand.every((c) => c.currentSide === 'DARK')).toBe(true);
+  });
+
+  it('handles starting Wild flow over WebSocket: validates chooser, broadcasts color, and recovers from crash', async () => {
+    const p1Socket = createClient(player1Token);
+    const p2Socket = createClient(player2Token);
+
+    await Promise.all([
+      new Promise<void>((resolve) => p1Socket.on('connect', resolve)),
+      new Promise<void>((resolve) => p2Socket.on('connect', resolve)),
+    ]);
+
+    // 1. Host creates room with UNO Flip variant
+    const createAck = await new Promise<any>((resolve) => {
+      p1Socket.emit(
+        SOCKET_EVENTS.ROOM_CREATE,
+        { maxPlayers: 2, settings: { variant: 'uno_flip' } },
+        resolve
+      );
+    });
+    expect(createAck.success).toBe(true);
+    const roomCode = createAck.data.roomCode;
+
+    // 2. Bob joins and marks ready
+    await new Promise<any>((resolve) => {
+      p2Socket.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve);
+    });
+    await new Promise<any>((resolve) => {
+      p2Socket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve);
+    });
+
+    // 3. Host starts match
+    const p1InitialPromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      p1Socket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+    const p2InitialPromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      p2Socket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+
+    const startAck = await new Promise<any>((resolve) => {
+      p1Socket.emit(SOCKET_EVENTS.ROOM_START, { immediate: true }, resolve);
+    });
+    expect(startAck.success).toBe(true);
+
+    await Promise.all([p1InitialPromise, p2InitialPromise]);
+
+    const session = gameSessionManager.getSessionByRoomCode(roomCode);
+    expect(session).toBeDefined();
+
+    // 4. Inject starting Wild card state
+    const deck = FlipDeckFactory.createFlipDeck();
+    const wildCard = deck.find((c) => c.lightFace.value === 'wild')!;
+    const designatedPlayerId = player2GuestId; // Let Bob be designated chooser
+    const nonDesignatedPlayerId = player1GuestId;
+    const designatedSocket = p2Socket;
+    const nonDesignatedSocket = p1Socket;
+
+    session!.state = {
+      ...session!.state,
+      topDiscardCard: wildCard,
+      discardPile: [wildCard],
+      activeColor: null,
+      currentPlayerIndex: 1, // Bob
+      pendingActionState: {
+        type: 'AWAITING_STARTING_WILD_COLOR_SELECTION',
+        designatedPlayerId,
+      },
+    };
+
+    // Persist snapshot to database for restart recovery
+    const serializedSnapshot = GameSerializer.serialize(session!.state);
+    await prisma.gameSnapshot.upsert({
+      where: {
+        matchId_sequenceNumber: {
+          matchId: session!.matchId,
+          sequenceNumber: session!.state.sequenceNumber,
+        },
+      },
+      update: { state: JSON.parse(serializedSnapshot) },
+      create: {
+        matchId: session!.matchId,
+        sequenceNumber: session!.state.sequenceNumber,
+        state: JSON.parse(serializedSnapshot),
+      },
+    });
+
+    // 5. Test unauthorized choice: Alice attempts to choose color
+    const unauthorizedAck = await new Promise<any>((resolve) => {
+      nonDesignatedSocket.emit(
+        SOCKET_EVENTS.GAME_CHOOSE_STARTING_WILD_COLOR,
+        { chosenColor: 'blue' },
+        resolve
+      );
+    });
+    expect(unauthorizedAck.success).toBe(false);
+
+    // 6. Test invalid color: Bob attempts to choose Dark Side color 'pink'
+    const invalidColorAck = await new Promise<any>((resolve) => {
+      designatedSocket.emit(
+        SOCKET_EVENTS.GAME_CHOOSE_STARTING_WILD_COLOR,
+        { chosenColor: 'pink' },
+        resolve
+      );
+    });
+    expect(invalidColorAck.success).toBe(false);
+
+    // 7. Test crash / restart recovery with pending starting Wild state
+    gameSessionManager.clearAllSessionsForTesting();
+    expect(gameSessionManager.getSessionByRoomCode(roomCode)).toBeNull();
+
+    // Bob resumes
+    const bobResumePromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      designatedSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+    const bobResumeAck = await new Promise<any>((resolve) => {
+      designatedSocket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode }, resolve);
+    });
+    expect(bobResumeAck.success).toBe(true);
+    const { state: bobRecovered } = await bobResumePromise;
+
+    expect(bobRecovered.activeColor).toBeNull();
+    expect(bobRecovered.self.canChooseStartingColor).toBe(true);
+    expect(bobRecovered.self.isAwaitingStartingColor).toBe(true);
+
+    // Alice resumes
+    const aliceResumePromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      nonDesignatedSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+    const aliceResumeAck = await new Promise<any>((resolve) => {
+      nonDesignatedSocket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode }, resolve);
+    });
+    expect(aliceResumeAck.success).toBe(true);
+    const { state: aliceRecovered } = await aliceResumePromise;
+
+    expect(aliceRecovered.activeColor).toBeNull();
+    expect(aliceRecovered.self.canChooseStartingColor).toBe(false);
+    expect(aliceRecovered.self.isAwaitingStartingColor).toBe(true);
+
+    // 8. Bob selects valid Light color 'green'
+    const bobPostSelectPromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      designatedSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+    const alicePostSelectPromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      nonDesignatedSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+
+    const chooseAck = await new Promise<any>((resolve) => {
+      designatedSocket.emit(
+        SOCKET_EVENTS.GAME_CHOOSE_STARTING_WILD_COLOR,
+        { chosenColor: 'green' },
+        resolve
+      );
+    });
+    expect(chooseAck.success).toBe(true);
+    expect(chooseAck.data.chosenColor).toBe('green');
+
+    const { state: bobFinal } = await bobPostSelectPromise;
+    const { state: aliceFinal } = await alicePostSelectPromise;
+
+    // Both players see activeColor 'green' and starting color waiting cleared!
+    expect(bobFinal.activeColor).toBe('green');
+    expect(bobFinal.self.canChooseStartingColor).toBe(false);
+    expect(bobFinal.self.isAwaitingStartingColor).toBe(false);
+
+    expect(aliceFinal.activeColor).toBe('green');
+    expect(aliceFinal.self.canChooseStartingColor).toBe(false);
+    expect(aliceFinal.self.isAwaitingStartingColor).toBe(false);
   });
 });

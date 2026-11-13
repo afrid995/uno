@@ -57,6 +57,7 @@ export const SOCKET_EVENTS = {
   GAME_DRAW_CARD: 'game:draw-card',
   GAME_PASS_TURN: 'game:pass-turn',
   GAME_CHOOSE_COLOR: 'game:choose-color',
+  GAME_CHOOSE_STARTING_WILD_COLOR: 'game:choose-starting-wild-color',
   GAME_UNO: 'game:uno',
   GAME_CHALLENGE_UNO: 'game:challenge-uno',
   GAME_CHALLENGE_WILD_DRAW_FOUR: 'game:challenge-wild-draw-four',
@@ -97,6 +98,20 @@ export const challengeUnoInputSchema = z.object({
   targetPlayerId: z.string().min(1, 'Target player ID is required'),
 });
 export type ChallengeUnoInput = z.infer<typeof challengeUnoInputSchema>;
+
+export const chooseColorInputSchema = z.object({
+  chosenColor: z.enum([
+    'red',
+    'yellow',
+    'green',
+    'blue',
+    'pink',
+    'teal',
+    'orange',
+    'purple',
+  ]),
+});
+export type ChooseColorInput = z.infer<typeof chooseColorInputSchema>;
 
 /**
  * Socket.IO client-to-server event signatures
@@ -157,7 +172,11 @@ export interface ClientToServerEvents {
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_COLOR]: (
     payload: { chosenColor: CardColor },
-    callback: (response: SocketAck<{ success: boolean }>) => void
+    callback: (response: SocketAck<{ success: boolean; chosenColor?: CardColor }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_CHOOSE_STARTING_WILD_COLOR]: (
+    payload: { chosenColor: CardColor },
+    callback: (response: SocketAck<{ success: boolean; chosenColor?: CardColor }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_UNO]: (
     payload: Record<string, never> | undefined,

@@ -31,10 +31,16 @@ export interface PublicPendingWildDrawColor {
   readonly chosenColor: CardColor;
 }
 
+export interface PublicPendingStartingWildColor {
+  readonly type: 'AWAITING_STARTING_WILD_COLOR_SELECTION';
+  readonly designatedPlayerId: string;
+}
+
 export type PublicPendingActionState =
   | PublicPendingWildDrawFour
   | PublicPendingWildDrawTwo
-  | PublicPendingWildDrawColor;
+  | PublicPendingWildDrawColor
+  | PublicPendingStartingWildColor;
 
 export interface PublicGameState {
   readonly id: string;
@@ -50,7 +56,7 @@ export interface PublicGameState {
   readonly currentTurnGuestId: string;
   readonly turnDirection: TurnDirection;
   readonly topDiscardCard: Card;
-  readonly activeColor: CardColor;
+  readonly activeColor: CardColor | null;
   readonly activeSide?: FlipSide;
   readonly drawPileCount: number;
   readonly discardPileCount: number;
@@ -88,6 +94,11 @@ export function getPublicGameState(state: GameState): PublicGameState {
         playedByPlayerId: state.pendingActionState.playedByPlayerId,
         victimPlayerId: state.pendingActionState.victimPlayerId,
         chosenColor: state.pendingActionState.chosenColor,
+      };
+    } else if (state.pendingActionState.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION') {
+      pendingActionState = {
+        type: 'AWAITING_STARTING_WILD_COLOR_SELECTION',
+        designatedPlayerId: state.pendingActionState.designatedPlayerId,
       };
     }
   }

@@ -1,5 +1,5 @@
 import { Card, CardColor, FlipSide } from '../../cards/card.types';
-import { GameConfig, GameState } from '../../game/game.types';
+import { GameConfig, GameState, PendingActionState } from '../../game/game.types';
 import { GameAction } from '../../actions/action.types';
 import { ActionProcessResult } from '../../actions/action.processor';
 import { ValidationResult } from '../../validation/move.validator';
@@ -85,6 +85,8 @@ export class UnoFlipAdapter implements GameVariantAdapter {
     let turnDirection: TurnDirection = 'clockwise';
     const startingPlayerIndex = (dealerIndex + 1) % playerCount;
     let currentPlayerIndex = startingPlayerIndex;
+    let pendingActionState: PendingActionState | null = null;
+    let activeColor: CardColor | null = topDiscard.color;
 
     const initialPlayers: Player[] = config.players.map((p) => ({
       id: p.id,
@@ -149,10 +151,15 @@ export class UnoFlipAdapter implements GameVariantAdapter {
     } else if (topDiscard.value === 'skip') {
       // Light Side: Skip starting card — player to dealer's left is skipped
       currentPlayerIndex = TurnManager.getNextPlayerIndex(startingPlayerIndex, playerCount, turnDirection, 1);
+    } else if (topDiscard.value === 'wild') {
+      // Per GDR44: "Wild — The person to the left of the dealer chooses the color that continues play and plays the first card."
+      activeColor = null;
+      pendingActionState = {
+        type: 'AWAITING_STARTING_WILD_COLOR_SELECTION',
+        designatedPlayerId: initialPlayers[startingPlayerIndex].id,
+      };
+      currentPlayerIndex = startingPlayerIndex;
     }
-
-    const activeColor: CardColor =
-      topDiscard.color ?? (activeSide === 'LIGHT' ? 'blue' : 'pink');
 
     const timestamp = new Date().toISOString();
     const matchId = config.matchId ?? `match_${Date.now()}`;
@@ -177,7 +184,7 @@ export class UnoFlipAdapter implements GameVariantAdapter {
       turnNumber: 1,
       sequenceNumber: 0,
       unoVulnerablePlayerId: null,
-      pendingActionState: null,
+      pendingActionState,
       inspectionHand: null,
       roundWinner: null,
       winner: null,
@@ -219,6 +226,8 @@ export class UnoFlipAdapter implements GameVariantAdapter {
     let turnDirection: TurnDirection = 'clockwise';
     const startingPlayerIndex = (newDealerIndex + 1) % playerCount;
     let currentPlayerIndex = startingPlayerIndex;
+    let pendingActionState: PendingActionState | null = null;
+    let activeColor: CardColor | null = topDiscard.color;
 
     const initialPlayers: Player[] = state.players.map((p) => ({
       id: p.id,
@@ -255,10 +264,16 @@ export class UnoFlipAdapter implements GameVariantAdapter {
       currentPlayerIndex = newDealerIndex; // Dealer plays first in UNO Flip
     } else if (topDiscard.value === 'skip') {
       currentPlayerIndex = TurnManager.getNextPlayerIndex(startingPlayerIndex, playerCount, turnDirection, 1);
+    } else if (topDiscard.value === 'wild') {
+      // Per GDR44: "Wild — The person to the left of the dealer chooses the color that continues play and plays the first card."
+      activeColor = null;
+      pendingActionState = {
+        type: 'AWAITING_STARTING_WILD_COLOR_SELECTION',
+        designatedPlayerId: initialPlayers[startingPlayerIndex].id,
+      };
+      currentPlayerIndex = startingPlayerIndex;
     }
 
-    const activeColor: CardColor =
-      topDiscard.color ?? (activeSide === 'LIGHT' ? 'blue' : 'pink');
     const timestamp = new Date().toISOString();
 
     return {
@@ -277,7 +292,7 @@ export class UnoFlipAdapter implements GameVariantAdapter {
       turnNumber: 1,
       sequenceNumber: state.sequenceNumber + 1,
       unoVulnerablePlayerId: null,
-      pendingActionState: null,
+      pendingActionState,
       inspectionHand: null,
       roundWinner: null,
       updatedAt: timestamp,

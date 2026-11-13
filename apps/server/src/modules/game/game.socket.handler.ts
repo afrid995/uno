@@ -7,6 +7,7 @@ import {
   SocketData,
   playCardInputSchema,
   challengeUnoInputSchema,
+  CardColor,
 } from '@uno-ultimate/game-protocol';
 import { ERROR_CODES } from '@uno-ultimate/shared';
 import { AppError } from '../../middleware/errorHandler';
@@ -366,7 +367,38 @@ export function registerGameHandlers(
     }
   });
 
-  // 12. Handle game:next-round
+  // 12. Handle game:choose-starting-wild-color & game:choose-color
+  const handleChooseStartingWildColor = async (
+    payload: { chosenColor: CardColor },
+    callback: (response: {
+      success: boolean;
+      data?: { success: boolean; chosenColor?: CardColor };
+      error?: { code: string; message: string };
+    }) => void
+  ) => {
+    try {
+      const guestId = getAuthenticatedGuestId();
+      const roomCode = getActiveRoomCode();
+
+      const { nextState } = await gameService.chooseStartingWildColor(guestId, roomCode, payload.chosenColor);
+
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      callback({
+        success: true,
+        data: { success: true, chosenColor: payload.chosenColor },
+      });
+    } catch (err: unknown) {
+      const message = (err as Error).message || 'Failed to choose starting color';
+      const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      callback({ success: false, error: { code, message } });
+    }
+  };
+
+  socket.on(SOCKET_EVENTS.GAME_CHOOSE_STARTING_WILD_COLOR, handleChooseStartingWildColor);
+  socket.on(SOCKET_EVENTS.GAME_CHOOSE_COLOR, handleChooseStartingWildColor);
+
+  // 13. Handle game:next-round
   socket.on(SOCKET_EVENTS.GAME_NEXT_ROUND, async (_payload, callback) => {
     try {
       const guestId = getAuthenticatedGuestId();

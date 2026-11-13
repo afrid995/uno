@@ -31,40 +31,44 @@ describe('UNO Flip Authoritative Deck (Mattel GDR44)', () => {
       }
     }
 
-    // Action cards: Draw One (8), Reverse (8), Skip (8), Flip (8)
+    // Action cards: Draw One (8, 10pts), Reverse (8, 20pts), Skip (8, 20pts), Flip (8, 20pts)
     const drawOneCards = lightFaces.filter((f) => f.value === 'draw_one');
     expect(drawOneCards).toHaveLength(8);
+    expect(drawOneCards.every((f) => f.scoreValue === 10)).toBe(true);
     for (const color of FLIP_LIGHT_COLORS) {
       expect(drawOneCards.filter((f) => f.color === color)).toHaveLength(2);
     }
 
     const reverseCards = lightFaces.filter((f) => f.value === 'reverse');
     expect(reverseCards).toHaveLength(8);
+    expect(reverseCards.every((f) => f.scoreValue === 20)).toBe(true);
     for (const color of FLIP_LIGHT_COLORS) {
       expect(reverseCards.filter((f) => f.color === color)).toHaveLength(2);
     }
 
     const skipCards = lightFaces.filter((f) => f.value === 'skip');
     expect(skipCards).toHaveLength(8);
+    expect(skipCards.every((f) => f.scoreValue === 20)).toBe(true);
     for (const color of FLIP_LIGHT_COLORS) {
       expect(skipCards.filter((f) => f.color === color)).toHaveLength(2);
     }
 
-    // Reconciled Flip card count: 8 Flip cards (2 per color)
+    // Flip card count: 8 Flip cards (2 per color, 20pts each)
     const flipCards = lightFaces.filter((f) => f.value === 'flip');
     expect(flipCards).toHaveLength(8);
+    expect(flipCards.every((f) => f.scoreValue === 20)).toBe(true);
     for (const color of FLIP_LIGHT_COLORS) {
       expect(flipCards.filter((f) => f.color === color)).toHaveLength(2);
     }
 
-    // Wild cards (4) and Wild Draw Two cards (4)
+    // Wild cards (4, 40pts) and Wild Draw Two cards (4, 50pts)
     const wildCards = lightFaces.filter((f) => f.value === 'wild');
     expect(wildCards).toHaveLength(4);
-    expect(wildCards.every((f) => f.color === null && f.scoreValue === UNO_FLIP_RULES.LIGHT_WILD_POINTS)).toBe(true);
+    expect(wildCards.every((f) => f.color === null && f.scoreValue === 40)).toBe(true);
 
     const wildDrawTwoCards = lightFaces.filter((f) => f.value === 'wild_draw_two');
     expect(wildDrawTwoCards).toHaveLength(4);
-    expect(wildDrawTwoCards.every((f) => f.color === null && f.scoreValue === UNO_FLIP_RULES.LIGHT_WILD_DRAW_TWO_POINTS)).toBe(true);
+    expect(wildDrawTwoCards.every((f) => f.color === null && f.scoreValue === 50)).toBe(true);
   });
 
   it('contains exactly 112 Dark Side faces matching Mattel GDR44 specifications', () => {
@@ -84,39 +88,43 @@ describe('UNO Flip Authoritative Deck (Mattel GDR44)', () => {
       }
     }
 
-    // Action cards: Draw Five (8), Reverse (8), Skip Everyone (8), Flip (8)
+    // Action cards: Draw Five (8, 20pts), Reverse (8, 20pts), Skip Everyone (8, 30pts), Flip (8, 20pts)
     const drawFiveCards = darkFaces.filter((f) => f.value === 'draw_five');
     expect(drawFiveCards).toHaveLength(8);
+    expect(drawFiveCards.every((f) => f.scoreValue === 20)).toBe(true);
     for (const color of FLIP_DARK_COLORS) {
       expect(drawFiveCards.filter((f) => f.color === color)).toHaveLength(2);
     }
 
     const reverseCards = darkFaces.filter((f) => f.value === 'reverse');
     expect(reverseCards).toHaveLength(8);
+    expect(reverseCards.every((f) => f.scoreValue === 20)).toBe(true);
     for (const color of FLIP_DARK_COLORS) {
       expect(reverseCards.filter((f) => f.color === color)).toHaveLength(2);
     }
 
     const skipEveryoneCards = darkFaces.filter((f) => f.value === 'skip_everyone');
     expect(skipEveryoneCards).toHaveLength(8);
+    expect(skipEveryoneCards.every((f) => f.scoreValue === 30)).toBe(true);
     for (const color of FLIP_DARK_COLORS) {
       expect(skipEveryoneCards.filter((f) => f.color === color)).toHaveLength(2);
     }
 
     const flipCards = darkFaces.filter((f) => f.value === 'flip');
     expect(flipCards).toHaveLength(8);
+    expect(flipCards.every((f) => f.scoreValue === 20)).toBe(true);
     for (const color of FLIP_DARK_COLORS) {
       expect(flipCards.filter((f) => f.color === color)).toHaveLength(2);
     }
 
-    // Wild cards (4) and Wild Draw Color cards (4)
+    // Wild cards (4, 40pts) and Wild Draw Color cards (4, 60pts)
     const wildCards = darkFaces.filter((f) => f.value === 'wild');
     expect(wildCards).toHaveLength(4);
-    expect(wildCards.every((f) => f.color === null && f.scoreValue === UNO_FLIP_RULES.DARK_WILD_POINTS)).toBe(true);
+    expect(wildCards.every((f) => f.color === null && f.scoreValue === 40)).toBe(true);
 
     const wildDrawColorCards = darkFaces.filter((f) => f.value === 'wild_draw_color');
     expect(wildDrawColorCards).toHaveLength(4);
-    expect(wildDrawColorCards.every((f) => f.color === null && f.scoreValue === UNO_FLIP_RULES.DARK_WILD_DRAW_COLOR_POINTS)).toBe(true);
+    expect(wildDrawColorCards.every((f) => f.color === null && f.scoreValue === 60)).toBe(true);
   });
 
   it('guarantees every physical card has dual faces and flips dynamically', () => {

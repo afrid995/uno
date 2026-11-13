@@ -37,14 +37,8 @@ export interface PhysicalFlipCard extends Card {
 }
 ```
 
-### 2.2 Reconciling the Mattel GDR44 112-Card Inventory
-The English Mattel GDR44 manual states in its component section:
-> *"112 cards as follows: ... 4 Flip cards - 2 each in blue, green, red and yellow"*.
-
-This text contains an internal arithmetic contradiction ($2 \times 4 = 8$, not 4). The Spanish Mattel GDR44 sheet correctly specifies:
-> *"8 cartas de Giro - 2 de cada color en azul, verde, rojo y amarillo"*.
-
-Summing the English components with 4 Flip cards yields 108 cards, while summing with 8 Flip cards yields exactly **112 cards**:
+### 2.2 Authoritative Mattel GDR44 112-Card Inventory
+In the official Mattel GDR44 multi-language instruction sheet, both the English section (*"8 Flip cards - 2 each in blue, green, red and yellow"*) and the Spanish section (*"8 cartas de Giro - 2 de cada color en azul, verde, rojo y amarillo"*) explicitly and consistently specify 8 Flip cards per side (2 per color), totaling exactly **112 cards**:
 - 72 Number cards (1–9 in 4 colors, 2 of each; no 0s)
 - 8 Draw One cards (2 per color)
 - 8 Reverse cards (2 per color)
@@ -54,7 +48,9 @@ Summing the English components with 4 Flip cards yields 108 cards, while summing
 - 4 Wild Draw Two cards
 - **Total: $72 + 8 + 8 + 8 + 8 + 4 + 4 = 112$ cards.**
 
-UNO Ultimate implements the authoritative 112-card deck using 8 Flip cards per side.
+*(Note: Prior Phase 5 documentation mistakenly claimed the English instructions stated "4 Flip cards"; a direct inspection of the official Mattel GDR44 sheet confirms both languages specify 8 Flip cards).*
+
+UNO Ultimate implements the authoritative 112-card deck with 8 Flip cards per side.
 
 ---
 
@@ -85,7 +81,7 @@ The top card of the draw pile is turned over to form the discard pile on the **L
 | **Reverse** | Dealer plays first, and play proceeds to the right (counter-clockwise). |
 | **Skip** | Player to dealer's left is skipped; player to their left begins play. |
 | **Flip** | Dealer immediately flips the entire deck to the **Dark Side**! Play begins with player to dealer's left on the Dark Side. |
-| **Wild** | Player to dealer's left chooses the starting Light color and plays first card. |
+| **Wild** | Player to dealer's left chooses the starting Light color (activeColor starts `null`, normal play and drawing are blocked until color is chosen) and plays the first card. |
 | **Wild Draw Two** | Returned to the draw pile, deck is reshuffled, and a new card is turned over. |
 
 ---
@@ -157,22 +153,22 @@ When a Flip card is played:
 Points are accumulated by the winner of each round from the cards remaining in all opponents' hands.
 Scoring is evaluated according to the side active when the round finishes:
 
-### Light Side Scoring Table
+### Light Side Scoring Table (Official GDR44)
 - Number cards (1–9): Face value (1 to 9 points)
-- Draw One (+1): 20 points
+- Draw One (+1): **10 points** (Mattel GDR44 official value)
 - Reverse: 20 points
 - Skip: 20 points
 - Flip: 20 points
-- Wild: 50 points
+- Wild: **40 points** (Mattel GDR44 official value)
 - Wild Draw Two: 50 points
 
-### Dark Side Scoring Table
+### Dark Side Scoring Table (Official GDR44)
 - Number cards (1–9): Face value (1 to 9 points)
 - Draw Five (+5): 20 points
 - Reverse: 20 points
-- Skip Everyone: 20 points
+- Skip Everyone: **30 points** (Mattel GDR44 official value)
 - Flip: 20 points
-- Wild: 50 points
+- Wild: **40 points** (Mattel GDR44 official value)
 - Wild Draw Color: 60 points
 
 **Target Score**: The first player to accumulate **500 points** wins the match.

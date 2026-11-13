@@ -23,15 +23,19 @@ export const UNO_FLIP_RULES = {
   TARGET_WIN_SCORE: 500,
   MISSED_UNO_PENALTY_CARDS: 2, // Official Mattel GDR44: 2 cards (differs from Classic 4-card rule)
 
-  // Light Side point values
-  LIGHT_ACTION_POINTS: 20,
+  // Light Side point values (Official Mattel GDR44 Scoring Table)
+  LIGHT_DRAW_ONE_POINTS: 10,
+  LIGHT_REVERSE_POINTS: 20,
+  LIGHT_SKIP_POINTS: 20,
   LIGHT_FLIP_POINTS: 20,
-  LIGHT_WILD_POINTS: 50,
+  LIGHT_WILD_POINTS: 40,
   LIGHT_WILD_DRAW_TWO_POINTS: 50,
 
-  // Dark Side point values
-  DARK_ACTION_POINTS: 20,
+  // Dark Side point values (Official Mattel GDR44 Scoring Table)
+  DARK_DRAW_FIVE_POINTS: 20,
+  DARK_REVERSE_POINTS: 20,
+  DARK_SKIP_EVERYONE_POINTS: 30,
   DARK_FLIP_POINTS: 20,
-  DARK_WILD_POINTS: 50,
-  DARK_WILD_DRAW_COLOR_POINTS: 60, // Official English Mattel GDR44 scoring table
+  DARK_WILD_POINTS: 40,
+  DARK_WILD_DRAW_COLOR_POINTS: 60,
 } as const;

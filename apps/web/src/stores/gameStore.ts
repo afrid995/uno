@@ -32,6 +32,7 @@ interface GameStateStore {
   acceptWildDrawTwo: () => Promise<boolean>;
   challengeWildDrawColor: () => Promise<boolean>;
   acceptWildDrawColor: () => Promise<boolean>;
+  chooseStartingWildColor: (chosenColor: CardColor) => Promise<boolean>;
   startNextRound: () => Promise<boolean>;
 
   openWildColorPicker: (card: Card) => void;
@@ -247,6 +248,23 @@ export const useGameStore = create<GameStateStore>((set) => ({
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to accept Wild Draw Color' });
+          resolve(false);
+        }
+      });
+    });
+  },
+
+  chooseStartingWildColor: async (chosenColor: CardColor) => {
+    set({ isActionLoading: true, error: null });
+    const socket = socketManager.getSocket();
+
+    return new Promise<boolean>((resolve) => {
+      socket.emit(SOCKET_EVENTS.GAME_CHOOSE_STARTING_WILD_COLOR, { chosenColor }, (res) => {
+        set({ isActionLoading: false });
+        if (res.success) {
+          resolve(true);
+        } else {
+          set({ error: res.error?.message || 'Failed to choose starting color' });
           resolve(false);
         }
       });

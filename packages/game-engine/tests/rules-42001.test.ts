@@ -148,7 +148,8 @@ describe('Mattel 42001 Official Rules Verification', () => {
     expect(round2State.players[0].score).toBe(120); // Alice's cumulative score is preserved!
     expect(round2State.players[0].hand).toHaveLength(7);
     expect(round2State.players[1].hand).toHaveLength(7);
-    expect(round2State.players[2].hand).toHaveLength(7);
+    const expectedP2HandLength = round2State.topDiscardCard.value === 'draw_two' ? 9 : 7;
+    expect(round2State.players[2].hand).toHaveLength(expectedP2HandLength);
     expect(events.some((e) => e.type === 'ROUND_STARTED')).toBe(true);
   });
 

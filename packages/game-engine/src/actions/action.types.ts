@@ -73,6 +73,12 @@ export interface AcceptWildDrawColorAction {
   readonly playerId: string;
 }
 
+export interface ChooseStartingWildColorAction {
+  readonly type: 'CHOOSE_STARTING_WILD_COLOR';
+  readonly playerId: string;
+  readonly chosenColor: CardColor;
+}
+
 export interface StartNextRoundAction {
   readonly type: 'START_NEXT_ROUND';
   readonly triggeredByPlayerId: string;
@@ -90,6 +96,7 @@ export type GameAction =
   | AcceptWildDrawTwoAction
   | ChallengeWildDrawColorAction
   | AcceptWildDrawColorAction
+  | ChooseStartingWildColorAction
   | StartNextRoundAction;
 
 export interface GameEventRecord {

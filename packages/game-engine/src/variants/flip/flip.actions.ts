@@ -195,7 +195,7 @@ export class FlipActionProcessor {
             : p
         );
 
-        let newActiveColor: CardColor = cardToPlay.color ?? state.activeColor;
+        let newActiveColor: CardColor = (cardToPlay.color ?? state.activeColor ?? 'blue') as CardColor;
         let newActiveSide: FlipSide = activeSide;
         let newDrawPile = [...state.drawPile];
         let newDiscardPile = [...state.discardPile, cardToPlay];
@@ -1046,6 +1046,32 @@ export class FlipActionProcessor {
           status: newStatus,
           roundWinner,
           winner: matchWinner,
+          updatedAt: timestamp,
+        };
+        break;
+      }
+
+      case 'CHOOSE_STARTING_WILD_COLOR': {
+        const pending = state.pendingActionState;
+        if (!pending || pending.type !== 'AWAITING_STARTING_WILD_COLOR_SELECTION') {
+          throw new Error('No pending starting Wild color selection to choose.');
+        }
+
+        if (pending.designatedPlayerId !== action.playerId) {
+          throw new Error('Only the designated player can choose the starting Wild color.');
+        }
+
+        generatedEvents.push({
+          type: 'STARTING_WILD_COLOR_CHOSEN',
+          playerId: action.playerId,
+          payload: { chosenColor: action.chosenColor },
+          timestamp,
+        });
+
+        intermediateState = {
+          ...state,
+          activeColor: action.chosenColor,
+          pendingActionState: null,
           updatedAt: timestamp,
         };
         break;

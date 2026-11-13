@@ -20,7 +20,10 @@ export type EngineErrorCode =
   | 'INVALID_UNO_CALL'
   | 'TARGET_NOT_VULNERABLE'
   | 'CANNOT_CHALLENGE_SELF'
-  | 'NO_PENDING_CHALLENGE';
+  | 'NO_PENDING_CHALLENGE'
+  | 'NO_STARTING_WILD_PENDING'
+  | 'UNAUTHORIZED_CHOOSER'
+  | 'INVALID_CHOSEN_COLOR';
 
 export interface ValidationSuccess {
   readonly valid: true;
@@ -126,14 +129,14 @@ export class MoveValidator {
   /**
    * Asserts whether a card matches the active discard pile top and active color.
    */
-  static isCardMatch(card: Card, activeColor: CardColor, topDiscard: Card): boolean {
+  static isCardMatch(card: Card, activeColor: CardColor | null, topDiscard: Card): boolean {
     // Wild cards can be played on any card
     if (isWildCard(card)) {
       return true;
     }
 
     // Color match
-    if (card.color === activeColor) {
+    if (activeColor !== null && card.color === activeColor) {
       return true;
     }
 

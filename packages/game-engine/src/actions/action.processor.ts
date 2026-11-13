@@ -133,13 +133,13 @@ export class ActionProcessor {
     // Track whether playing Wild Draw Four was officially legal:
     // A player may only play Wild Draw 4 if they do NOT hold any card of the active color!
     const wasWildDrawFourLegal = removedCard.value === 'wild_draw_four'
-      ? !HandManager.hasMatchingColor(player.hand, state.activeColor)
+      ? !HandManager.hasMatchingColor(player.hand, state.activeColor ?? 'red')
       : true;
 
     // Determine active color for next play
     const newActiveColor: CardColor = isWildCard(removedCard)
       ? chosenColor!
-      : (removedCard.color ?? state.activeColor);
+      : (removedCard.color ?? state.activeColor ?? 'red');
 
     const newDiscardPile = DeckManager.discardCard(state.discardPile, removedCard);
 
@@ -523,7 +523,10 @@ export class ActionProcessor {
     seq: number,
     rng: RandomNumberGenerator
   ): GameState {
-    const pending = state.pendingActionState!;
+    const pending = state.pendingActionState;
+    if (!pending || pending.type !== 'AWAITING_WILD_DRAW_FOUR_RESOLUTION') {
+      throw new Error('No pending Wild Draw Four resolution to accept.');
+    }
     const playerIndex = state.players.findIndex((p) => p.id === playerId);
     const player = state.players[playerIndex];
 
@@ -547,7 +550,7 @@ export class ActionProcessor {
         drawResult.newDrawPile,
         drawResult.newDiscardPile,
         state.topDiscardCard,
-        state.activeColor,
+        state.activeColor ?? 'red',
         addEvent,
         seq
       );
@@ -583,7 +586,10 @@ export class ActionProcessor {
     seq: number,
     rng: RandomNumberGenerator
   ): GameState {
-    const pending = state.pendingActionState!;
+    const pending = state.pendingActionState;
+    if (!pending || pending.type !== 'AWAITING_WILD_DRAW_FOUR_RESOLUTION') {
+      throw new Error('No pending Wild Draw Four resolution to challenge.');
+    }
     const offenderIndex = state.players.findIndex((p) => p.id === pending.playedByPlayerId);
     const challengerIndex = state.players.findIndex((p) => p.id === challengerId);
 
@@ -658,7 +664,7 @@ export class ActionProcessor {
           currentDrawPile,
           currentDiscardPile,
           state.topDiscardCard,
-          state.activeColor,
+          state.activeColor ?? 'red',
           addEvent,
           seq
         );

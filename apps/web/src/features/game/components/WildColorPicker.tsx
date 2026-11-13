@@ -6,6 +6,8 @@ import { X } from 'lucide-react';
 export interface WildColorPickerProps {
   isOpen: boolean;
   activeSide?: 'LIGHT' | 'DARK';
+  title?: string;
+  subtitle?: string;
   onSelectColor: (color: CardColor) => void;
   onClose: () => void;
 }
@@ -13,6 +15,8 @@ export interface WildColorPickerProps {
 export const WildColorPicker: React.FC<WildColorPickerProps> = ({
   isOpen,
   activeSide = 'LIGHT',
+  title = 'Choose Active Color',
+  subtitle = 'Select the color to set for the discard pile',
   onSelectColor,
   onClose,
 }) => {
@@ -55,10 +59,10 @@ export const WildColorPicker: React.FC<WildColorPickerProps> = ({
 
           <div className="space-y-1">
             <h3 className="text-lg font-display font-black text-white tracking-wide">
-              Choose Active Color
+              {title}
             </h3>
             <p className="text-xs text-slate-400">
-              Select the color to set for the discard pile
+              {subtitle}
             </p>
           </div>
 

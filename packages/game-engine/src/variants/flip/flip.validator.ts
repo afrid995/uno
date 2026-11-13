@@ -10,14 +10,14 @@ export class FlipMoveValidator {
   /**
    * Asserts whether a card matches the active discard pile top and active color on the active side.
    */
-  static isCardMatch(card: Card, activeColor: CardColor, topDiscard: Card): boolean {
+  static isCardMatch(card: Card, activeColor: CardColor | null, topDiscard: Card): boolean {
     // Wild cards (Wild, Wild Draw Two, Wild Draw Color) match any card
     if (isWildCard(card)) {
       return true;
     }
 
     // Color match
-    if (card.color === activeColor) {
+    if (activeColor !== null && card.color === activeColor) {
       return true;
     }
 
@@ -100,6 +100,14 @@ export class FlipMoveValidator {
             message: 'Must resolve pending Wild Draw Color challenge or accept before continuing gameplay.',
           };
         }
+      } else if (pending.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION') {
+        if (action.type !== 'CHOOSE_STARTING_WILD_COLOR') {
+          return {
+            valid: false,
+            code: 'PENDING_ACTION_REQUIRED',
+            message: 'Must choose starting Wild color before continuing gameplay.',
+          };
+        }
       }
     }
 
@@ -126,6 +134,9 @@ export class FlipMoveValidator {
       case 'CHALLENGE_WILD_DRAW_COLOR':
       case 'ACCEPT_WILD_DRAW_COLOR':
         return this.validateWildDrawColorResolution(state, player.id);
+
+      case 'CHOOSE_STARTING_WILD_COLOR':
+        return this.validateChooseStartingWildColor(state, player.id, action.chosenColor);
 
       default:
         return { valid: false, code: 'MATCH_NOT_ACTIVE', message: 'Unknown action type.' };
@@ -322,6 +333,41 @@ export class FlipMoveValidator {
         valid: false,
         code: 'NOT_YOUR_TURN',
         message: 'Only the targeted victim may challenge or accept Wild Draw Color.',
+      };
+    }
+
+    return { valid: true };
+  }
+
+  private static validateChooseStartingWildColor(
+    state: GameState,
+    playerId: string,
+    chosenColor: CardColor
+  ): ValidationResult {
+    if (
+      !state.pendingActionState ||
+      state.pendingActionState.type !== 'AWAITING_STARTING_WILD_COLOR_SELECTION'
+    ) {
+      return {
+        valid: false,
+        code: 'NO_STARTING_WILD_PENDING',
+        message: 'No starting Wild color selection is pending.',
+      };
+    }
+
+    if (state.pendingActionState.designatedPlayerId !== playerId) {
+      return {
+        valid: false,
+        code: 'UNAUTHORIZED_CHOOSER',
+        message: 'Only the designated player (to the left of the dealer) can choose the starting Wild color.',
+      };
+    }
+
+    if (!this.isValidChosenColor(chosenColor, 'LIGHT')) {
+      return {
+        valid: false,
+        code: 'INVALID_CHOSEN_COLOR',
+        message: `Color ${chosenColor} is not a valid Light Side color (must be blue, green, red, or yellow).`,
       };
     }
 

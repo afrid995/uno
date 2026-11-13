@@ -26,9 +26,10 @@ export const ChallengePanel: React.FC = () => {
   const isTargeted = isTargetedByFour || isTargetedByTwo || isTargetedByColor;
 
   // Find offender name
-  const offender = pendingActionState
-    ? gameState.players.find((p) => p.id === pendingActionState.playedByPlayerId)
-    : null;
+  const offender =
+    pendingActionState && 'playedByPlayerId' in pendingActionState
+      ? gameState.players.find((p) => p.id === pendingActionState.playedByPlayerId)
+      : null;
   const offenderName = offender?.username || 'Opponent';
 
   const getActionTitle = () => {

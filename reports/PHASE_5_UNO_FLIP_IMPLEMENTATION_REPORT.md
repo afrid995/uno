@@ -344,3 +344,43 @@ The architecture established in Phase 5 provides the exact extension points need
 ## 32. CONCLUSION & SIGN-OFF
 
 Phase 5 has been completed successfully and verified end-to-end. The codebase is clean, fully tested, documented, and ready for publication.
+
+---
+
+## PHASE 5.1 CORRECTION ADDENDUM
+
+**Audit Date:** November 14, 2026  
+**Baseline Commit:** `84da02977544be7eccd358bc0d7c6c575f782e02`  
+**Scope:** Hardening, official Mattel GDR44 rule alignment, scoring corrections, starting Wild color selection, and browser E2E validation.
+
+### 1. Correction to GDR44 English Card Inventory Statement
+- **Phase 5 Statement:** Claimed that the English GDR44 instruction sheet contained a defect listing only "4 Flip cards", requiring reconciliation with the Spanish sheet.
+- **Phase 5.1 Finding & Correction:** Direct inspection of the official Mattel GDR44 multi-language PDF (`GDR44 UNO Flip [English_French_German_Spanish_Portuguese][5LG].pdf`) confirms that both the English and Spanish sections explicitly and accurately specify **8 Flip cards per side (2 per color)**, totaling exactly **112 cards**:
+  - $72 \text{ Number cards} + 8 \text{ Draw One} + 8 \text{ Reverse} + 8 \text{ Skip} + 8 \text{ Flip} + 4 \text{ Wild} + 4 \text{ Wild Draw Two} = 112 \text{ cards}$.
+  - The previous statement regarding an English textual defect was mistaken and has been officially corrected in documentation.
+
+### 2. Correction to Official Mattel GDR44 Scoring Table
+- **Scoring Discrepancies Corrected:**
+  - **Light Side Draw One**: Corrected from 20 points to **10 points** per GDR44 scoring table.
+  - **Light Side Wild**: Corrected from 50 points to **40 points** per GDR44 scoring table.
+  - **Dark Side Skip Everyone**: Corrected from 20 points to **30 points** per GDR44 scoring table.
+  - **Dark Side Wild**: Corrected from 50 points to **40 points** per GDR44 scoring table.
+  - Preserved official values: Light Reverse/Skip/Flip (20), Light Wild Draw Two (50), Dark Draw Five/Reverse/Flip (20), Dark Wild Draw Color (60), Numbers (1–9 face value).
+- All engine constants, deck face definitions, and test suites updated and verified.
+
+### 3. Implementation of Starting Wild Color Selection Flow
+- When the opening card turned up is a Wild card on the Light Side:
+  - `activeColor` is initialized to `null`.
+  - `pendingActionState` is set to `{ type: 'AWAITING_STARTING_WILD_COLOR_SELECTION', designatedPlayerId }` (player to dealer's left).
+  - All normal card play and draw actions are strictly blocked until the designated player chooses a valid Light color.
+  - Unauthorized players and invalid colors are rejected with descriptive engine codes.
+  - Socket events `GAME_CHOOSE_STARTING_WILD_COLOR` and `GAME_CHOOSE_COLOR` wired to handler, with client projections displaying the color picker to the designated player and a waiting banner to opponents.
+  - Fully resilient to server crash/restart recovery.
+
+### 4. Deterministic Opening Card Test Fixtures
+- Replaced weak conditional assertions (`if (topDiscardCard.value === 'reverse')`) with 100% deterministic Fisher-Yates PRNG fixtures.
+- Validated opening Reverse across 2, 3, and 4 players, subsequent rounds (`startNextRound`), opening Draw One, opening Skip, opening Flip, and opening Wild Draw Two (reshuffled per GDR44).
+
+### 5. Multi-Browser Playwright E2E Test Suite Hardening
+- Added end-to-end multi-context browser tests executing actual Light-to-Dark Flip card play, Dark Side UI and card face sync across 2 browser contexts, Dark-to-Light Flip transition, page reload restoration, and interactive starting Wild color selection.
+

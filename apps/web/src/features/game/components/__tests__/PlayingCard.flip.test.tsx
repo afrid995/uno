@@ -29,7 +29,7 @@ describe('PlayingCard Component — UNO Flip Extensions', () => {
       color: 'teal',
       value: 'skip_everyone',
       type: 'action',
-      scoreValue: 20,
+      scoreValue: 30,
       variant: 'uno_flip',
       currentSide: 'DARK',
     };
@@ -72,7 +72,7 @@ describe('PlayingCard Component — UNO Flip Extensions', () => {
       color: 'red',
       value: 'draw_one',
       type: 'action',
-      scoreValue: 20,
+      scoreValue: 10,
       variant: 'uno_flip',
       currentSide: 'LIGHT',
     };

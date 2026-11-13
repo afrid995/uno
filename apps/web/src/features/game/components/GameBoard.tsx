@@ -27,6 +27,7 @@ export const GameBoard: React.FC = () => {
     passTurn,
     callUno,
     challengeUno,
+    chooseStartingWildColor,
     clearError,
   } = useGameStore();
 
@@ -147,6 +148,13 @@ export const GameBoard: React.FC = () => {
 
       {/* Center Table Area (Discard Pile, Draw Pile & Challenge Banner) */}
       <div className="my-auto py-4 flex flex-col items-center justify-center space-y-4">
+        {/* Starting Wild banner if waiting for designated player */}
+        {self.isAwaitingStartingColor && !self.canChooseStartingColor && (
+          <div data-testid="starting-wild-waiting-banner" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-400/40 text-amber-300 text-xs font-semibold animate-pulse shadow-md">
+            <span>🎨 Starting Wild Card: Waiting for {currentTurnPlayer?.username} to choose the starting color...</span>
+          </div>
+        )}
+
         {/* Wild Draw Four challenge or inspected hand banner */}
         <ChallengePanel />
 
@@ -221,6 +229,18 @@ export const GameBoard: React.FC = () => {
           }
         }}
         onClose={closeWildColorPicker}
+      />
+
+      {/* Starting Wild Color Picker */}
+      <WildColorPicker
+        isOpen={!!self.canChooseStartingColor}
+        activeSide="LIGHT"
+        title="Starting Wild Card"
+        subtitle="You are to the dealer's left! Choose the color that continues play."
+        onSelectColor={(color) => {
+          chooseStartingWildColor(color);
+        }}
+        onClose={() => {}}
       />
 
       <RoundResultModal />

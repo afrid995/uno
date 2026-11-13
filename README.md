@@ -1,8 +1,8 @@
-# UNO Ultimate — Phase 5: Variant Architecture & Complete UNO Flip Implementation
+# UNO Ultimate — Phase 5.1: UNO Flip Corrections, Starting Wild & Browser E2E Validation
 
 UNO Ultimate is an online, private multiplayer card game crafted specifically for groups of friends. It does not provide public matchmaking, open player lobbies, or social networking features.
 
-Phase 5 establishes an extensible, decoupled **Variant Architecture** and implements the first official variant: **UNO Flip!**, strictly following the official **Mattel UNO Flip GDR44** rules sheet (English and Spanish editions), while maintaining 100% backward compatibility and test stability for **Classic UNO** (Mattel 42001).
+Phase 5.1 performs a focused correctness, evidence-hardening, and rule-alignment phase on the UNO Flip implementation, strictly following the official **Mattel UNO Flip GDR44** rules sheet, while maintaining 100% backward compatibility and test stability for **Classic UNO** (Mattel 42001).
 
 ---
 
@@ -29,15 +29,15 @@ Phase 5 establishes an extensible, decoupled **Variant Architecture** and implem
   - `GameVariantAdapter` interface isolating rules, deck factory, dealer selection, starting cards, moves, actions, and scoring.
   - `VariantRegistry` supporting runtime variant resolution (`classic` and `uno_flip`).
 - **Complete Playable UNO Flip! (Mattel GDR44)**:
-  - **Authoritative 112 Double-Sided Deck**: Physical card model where every card preserves identity and dual faces (`lightFace` and `darkFace`).
-  - **Reconciled Inventory**: Adopts 8 Flip cards per side (2 per color) to resolve the English manual arithmetic discrepancy and match the 112-card total affirmed by the Spanish edition.
-  - **Light Side Mechanics**: Red, Yellow, Green, Blue. Draw One (+1), Reverse, Skip, Flip, Wild, Wild Draw Two (+2, challengeable).
-  - **Dark Side Mechanics**: Pink, Teal, Orange, Purple. Draw Five (+5), Reverse, Skip Everyone, Flip, Wild, Wild Draw Color (draws until chosen color, challengeable, infinite-draw safe).
+  - **Authoritative 112-Card Inventory**: 8 Flip cards per side (2 per color) as explicitly specified in the official Mattel GDR44 instruction sheet across all languages.
+  - **Starting Wild Color Selection**: Left-of-dealer designated chooser flow where active color starts null and play/draw are blocked until selected.
+  - **Light Side Mechanics**: Red, Yellow, Green, Blue. Draw One (+1, 10 pts), Reverse, Skip, Flip, Wild (40 pts), Wild Draw Two (+2, 50 pts, challengeable).
+  - **Dark Side Mechanics**: Pink, Teal, Orange, Purple. Draw Five (+5, 20 pts), Reverse, Skip Everyone (30 pts), Flip, Wild (40 pts), Wild Draw Color (60 pts, draws until chosen color, challengeable, infinite-draw safe).
   - **Atomic Flip Transition Protocol**: Flips active side, inverts and flips discard pile (placing played Flip card at bottom, underneath card becomes new top discard on opposite face), flips draw pile, and flips all hands in real time.
   - **Mattel GDR44 Dealer Selection**: Highest number 1–9 on Light side deals, symbol cards count as 0, candidate redraws, safety ceiling of 20 rounds with lowest-seat fallback.
-  - **Mattel GDR44 Opening Starting Cards**: Reverse causes dealer to play first counter-clockwise; Flip immediately flips deck to Dark side; Draw One causes victim to draw 1 and lose turn; Wild Draw Two returned and reshuffled.
+  - **Mattel GDR44 Opening Starting Cards**: Reverse causes dealer to play first counter-clockwise; Flip immediately flips deck to Dark side; Draw One causes victim to draw 1 and lose turn; Wild causes player to left of dealer to choose color; Wild Draw Two returned and reshuffled.
   - **Mattel GDR44 Missed UNO Penalty**: 2 cards (differs from Classic UNO's 4-card rule).
-  - **Side-Specific Scoring to 500 Points**: Light Side face values / 20 action / 50 wild; Dark Side face values / 20 action / 50 wild / 60 Wild Draw Color. First to 500 points wins match.
+  - **Exact Mattel GDR44 Scoring to 500 Points**: Light Side face values / Draw One 10 / Action 20 / Wild 40 / Wild Draw Two 50; Dark Side face values / Draw Five 20 / Action 20 / Skip Everyone 30 / Wild 40 / Wild Draw Color 60. First to 500 points wins match.
 - **Playable Classic UNO (Mattel 42001)**:
   - Preserved 108-card single-sided deck, 4-card missed UNO penalty, Wild Draw Four challenge lifecycle, and classic scoring.
 - **Multi-Context Browser E2E Testing**:

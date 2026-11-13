@@ -33,19 +33,19 @@ export class FlipDeckFactory {
 
     // 2. Action cards (Draw One, Reverse, Skip, Flip - two of each per color)
     for (const color of FLIP_LIGHT_COLORS) {
-      // Draw One (2 cards per color)
-      faces.push({ color, value: 'draw_one', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_ACTION_POINTS });
-      faces.push({ color, value: 'draw_one', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_ACTION_POINTS });
+      // Draw One (2 cards per color - 10 points per official GDR44)
+      faces.push({ color, value: 'draw_one', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_DRAW_ONE_POINTS });
+      faces.push({ color, value: 'draw_one', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_DRAW_ONE_POINTS });
 
-      // Reverse (2 cards per color)
-      faces.push({ color, value: 'reverse', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_ACTION_POINTS });
-      faces.push({ color, value: 'reverse', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_ACTION_POINTS });
+      // Reverse (2 cards per color - 20 points per official GDR44)
+      faces.push({ color, value: 'reverse', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_REVERSE_POINTS });
+      faces.push({ color, value: 'reverse', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_REVERSE_POINTS });
 
-      // Skip (2 cards per color)
-      faces.push({ color, value: 'skip', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_ACTION_POINTS });
-      faces.push({ color, value: 'skip', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_ACTION_POINTS });
+      // Skip (2 cards per color - 20 points per official GDR44)
+      faces.push({ color, value: 'skip', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_SKIP_POINTS });
+      faces.push({ color, value: 'skip', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_SKIP_POINTS });
 
-      // Flip (2 cards per color = 8 total)
+      // Flip (2 cards per color = 8 total - 20 points per official GDR44)
       faces.push({ color, value: 'flip', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_FLIP_POINTS });
       faces.push({ color, value: 'flip', type: 'action', scoreValue: UNO_FLIP_RULES.LIGHT_FLIP_POINTS });
     }
@@ -93,19 +93,29 @@ export class FlipDeckFactory {
 
     // 2. Action cards (Draw Five, Reverse, Skip Everyone, Flip - two of each per color)
     for (const color of FLIP_DARK_COLORS) {
-      // Draw Five (2 cards per color)
-      faces.push({ color, value: 'draw_five', type: 'action', scoreValue: UNO_FLIP_RULES.DARK_ACTION_POINTS });
-      faces.push({ color, value: 'draw_five', type: 'action', scoreValue: UNO_FLIP_RULES.DARK_ACTION_POINTS });
+      // Draw Five (2 cards per color - 20 points per official GDR44)
+      faces.push({ color, value: 'draw_five', type: 'action', scoreValue: UNO_FLIP_RULES.DARK_DRAW_FIVE_POINTS });
+      faces.push({ color, value: 'draw_five', type: 'action', scoreValue: UNO_FLIP_RULES.DARK_DRAW_FIVE_POINTS });
 
-      // Reverse (2 cards per color)
-      faces.push({ color, value: 'reverse', type: 'action', scoreValue: UNO_FLIP_RULES.DARK_ACTION_POINTS });
-      faces.push({ color, value: 'reverse', type: 'action', scoreValue: UNO_FLIP_RULES.DARK_ACTION_POINTS });
+      // Reverse (2 cards per color - 20 points per official GDR44)
+      faces.push({ color, value: 'reverse', type: 'action', scoreValue: UNO_FLIP_RULES.DARK_REVERSE_POINTS });
+      faces.push({ color, value: 'reverse', type: 'action', scoreValue: UNO_FLIP_RULES.DARK_REVERSE_POINTS });
 
-      // Skip Everyone (2 cards per color)
-      faces.push({ color, value: 'skip_everyone', type: 'action', scoreValue: UNO_FLIP_RULES.DARK_ACTION_POINTS });
-      faces.push({ color, value: 'skip_everyone', type: 'action', scoreValue: UNO_FLIP_RULES.DARK_ACTION_POINTS });
+      // Skip Everyone (2 cards per color - 30 points per official GDR44)
+      faces.push({
+        color,
+        value: 'skip_everyone',
+        type: 'action',
+        scoreValue: UNO_FLIP_RULES.DARK_SKIP_EVERYONE_POINTS,
+      });
+      faces.push({
+        color,
+        value: 'skip_everyone',
+        type: 'action',
+        scoreValue: UNO_FLIP_RULES.DARK_SKIP_EVERYONE_POINTS,
+      });
 
-      // Flip (2 cards per color = 8 total)
+      // Flip (2 cards per color = 8 total - 20 points per official GDR44)
       faces.push({ color, value: 'flip', type: 'action', scoreValue: UNO_FLIP_RULES.DARK_FLIP_POINTS });
       faces.push({ color, value: 'flip', type: 'action', scoreValue: UNO_FLIP_RULES.DARK_FLIP_POINTS });
     }

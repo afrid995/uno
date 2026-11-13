@@ -19,7 +19,7 @@ test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
     await contextBob.close();
   });
 
-  test('E2E: Host selects UNO Flip variant, both players see variant in lobby, 7 cards dealt, side badge active, and state recovered on refresh', async () => {
+  test('E2E: Host selects UNO Flip variant, plays Flip card to transition to Dark Side, verifies Dark Side UI on both screens, plays Flip card back to Light Side, and verifies page refresh', async () => {
     // -------------------------------------------------------------
     // Step 1: Alice creates private room with UNO Flip variant
     // -------------------------------------------------------------
@@ -86,20 +86,15 @@ test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
     await startButton.click();
 
     // -------------------------------------------------------------
-    // Step 4: Verify countdown banner & transition to Game Board
+    // Step 4: Verify transition to Game Board & Initial Light Side
     // -------------------------------------------------------------
-    const countdownBanner = pageAlice.locator('[data-testid="starting-countdown-banner"]');
-    await expect(countdownBanner).toBeVisible();
-
-    // Wait for game start navigation on both screens
     await expect(pageAlice).toHaveURL(`/game/${roomCode}`, { timeout: 15000 });
     await expect(pageBob).toHaveURL(`/game/${roomCode}`, { timeout: 15000 });
 
-    // Verify Game Board renders on both screens
     await expect(pageAlice.locator('[data-testid="game-board"]')).toBeVisible();
     await expect(pageBob.locator('[data-testid="game-board"]')).toBeVisible();
 
-    // Verify UNO Flip Active Side Badge is visible on game board (initially LIGHT SIDE)
+    // Both players see LIGHT SIDE badge
     const aliceSideBadge = pageAlice.locator('[data-testid="active-side-badge"]');
     const bobSideBadge = pageBob.locator('[data-testid="active-side-badge"]');
     await expect(aliceSideBadge).toBeVisible();
@@ -107,64 +102,152 @@ test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
     await expect(aliceSideBadge).toContainText('LIGHT SIDE');
     await expect(bobSideBadge).toContainText('LIGHT SIDE');
 
-    // Verify 7 cards dealt to both players per official Mattel GDR44 rules
-    const aliceHandCards = pageAlice.locator('[data-testid="player-hand"] [data-testid="playing-card"]');
-    const bobHandCards = pageBob.locator('[data-testid="player-hand"] [data-testid="playing-card"]');
-    await expect(aliceHandCards).toHaveCount(7);
-    await expect(bobHandCards).toHaveCount(7);
-
-    // Verify Discard Pile and Draw Pile are rendered
-    await expect(pageAlice.locator('[data-testid="discard-pile"]')).toBeVisible();
-    await expect(pageAlice.locator('[data-testid="draw-pile-btn"]')).toBeVisible();
+    // Verify 7 cards dealt to each
+    const aliceHand = pageAlice.locator('[data-testid="player-hand"] [data-testid="playing-card"]');
+    const bobHand = pageBob.locator('[data-testid="player-hand"] [data-testid="playing-card"]');
+    await expect(aliceHand).toHaveCount(7);
+    await expect(bobHand).toHaveCount(7);
 
     // -------------------------------------------------------------
-    // Step 5: Turn-taking on Light Side
+    // Step 5: Inject and Play Light Flip Card -> Flips to Dark Side
     // -------------------------------------------------------------
+    const injectFlipRes = await fetch('http://localhost:4000/api/test/inject-flip-card', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomCode }),
+    });
+    expect(injectFlipRes.ok).toBe(true);
+
+    // Determine which page currently has the turn
     const isAliceTurn = await pageAlice.locator('text=YOUR TURN').isVisible();
     const activePage = isAliceTurn ? pageAlice : pageBob;
-    const waitingPage = isAliceTurn ? pageBob : pageAlice;
 
-    const playableCards = activePage.locator('[data-testid="player-hand"] [data-is-playable="true"]');
-    const playableCount = await playableCards.count();
+    // Active player finds and clicks the injected Flip card
+    const flipCard = activePage.locator('[data-testid="player-hand"] [data-card-value="flip"]').first();
+    await expect(flipCard).toBeVisible({ timeout: 5000 });
+    await flipCard.click();
 
-    if (playableCount > 0) {
-      const firstPlayable = playableCards.first();
-      const cardValue = await firstPlayable.getAttribute('data-card-value');
-      const isWild = cardValue === 'wild' || cardValue === 'wild_draw_two';
+    // Both players' screens must now transition to DARK SIDE!
+    await expect(aliceSideBadge).toContainText('DARK SIDE', { timeout: 10000 });
+    await expect(bobSideBadge).toContainText('DARK SIDE', { timeout: 10000 });
 
-      await firstPlayable.click();
-
-      if (isWild) {
-        const redChoice = activePage.locator('[data-testid="wild-color-red"]');
-        if (await redChoice.isVisible()) {
-          await redChoice.click();
-        }
-      }
-
-      const activeHand = activePage.locator('[data-testid="player-hand"] [data-testid="playing-card"]');
-      await expect(activeHand).toHaveCount(6, { timeout: 5000 });
-    } else {
-      await activePage.locator('[data-testid="draw-pile-btn"]').click();
-      const activeHand = activePage.locator('[data-testid="player-hand"] [data-testid="playing-card"]');
-      await expect(activeHand).toHaveCount(8, { timeout: 5000 });
-
-      const passBtn = activePage.locator('button:has-text("Pass Turn")');
-      if (await passBtn.isVisible()) {
-        await passBtn.click();
-      }
-    }
-
-    await expect(waitingPage.locator('[data-testid="game-board"]')).toBeVisible();
+    // Verify cards in hand now expose DARK side
+    await expect(pageAlice.locator('[data-testid="player-hand"] [data-card-side="DARK"]').first()).toBeVisible();
+    await expect(pageBob.locator('[data-testid="player-hand"] [data-card-side="DARK"]').first()).toBeVisible();
 
     // -------------------------------------------------------------
-    // Step 6: Server reconnection & state restoration
+    // Step 6: Inject and Play Dark Flip Card -> Flips Back to Light Side
+    // -------------------------------------------------------------
+    const injectDarkFlipRes = await fetch('http://localhost:4000/api/test/inject-flip-card', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomCode }),
+    });
+    expect(injectDarkFlipRes.ok).toBe(true);
+
+    const isAliceDarkTurn = await pageAlice.locator('text=YOUR TURN').isVisible();
+    const darkActivePage = isAliceDarkTurn ? pageAlice : pageBob;
+
+    const darkFlipCard = darkActivePage.locator('[data-testid="player-hand"] [data-card-value="flip"]').first();
+    await expect(darkFlipCard).toBeVisible({ timeout: 5000 });
+    await darkFlipCard.click();
+
+    // Both players' screens transition back to LIGHT SIDE!
+    await expect(aliceSideBadge).toContainText('LIGHT SIDE', { timeout: 10000 });
+    await expect(bobSideBadge).toContainText('LIGHT SIDE', { timeout: 10000 });
+
+    // -------------------------------------------------------------
+    // Step 7: Page refresh recovery
     // -------------------------------------------------------------
     await pageBob.reload();
     await expect(pageBob.locator('[data-testid="game-board"]')).toBeVisible({ timeout: 15000 });
-    const bobRestoredSide = pageBob.locator('[data-testid="active-side-badge"]');
-    await expect(bobRestoredSide).toBeVisible();
+    await expect(pageBob.locator('[data-testid="active-side-badge"]')).toContainText('LIGHT SIDE');
     const bobRestoredCards = pageBob.locator('[data-testid="player-hand"] [data-testid="playing-card"]');
     const count = await bobRestoredCards.count();
     expect(count).toBeGreaterThanOrEqual(6);
+  });
+
+  test('E2E: Starting Wild card prompts designated player for color, displays waiting banner to opponent, broadcasts color upon selection, and unblocks gameplay', async () => {
+    // -------------------------------------------------------------
+    // Step 1: Alice creates private room with UNO Flip variant
+    // -------------------------------------------------------------
+    await pageAlice.goto('/');
+    await pageAlice.fill('#username-input', 'AliceWild');
+    await pageAlice.click('button[type="submit"]');
+
+    await expect(pageAlice).toHaveURL(/\/dashboard/);
+    await pageAlice.click('[data-testid="create-room-btn"]');
+
+    const flipVariantBtn = pageAlice.locator('[data-testid="variant-select-uno-flip"]');
+    await expect(flipVariantBtn).toBeVisible();
+    await flipVariantBtn.click();
+
+    await pageAlice.click('[data-testid="confirm-create-room-btn"]');
+
+    await expect(pageAlice).toHaveURL(/\/room\/[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6}/);
+    const roomCodeElement = pageAlice.locator('[data-testid="room-code-display"]');
+    await expect(roomCodeElement).toBeVisible();
+    const rawRoomCode = await roomCodeElement.textContent();
+    const roomCode = rawRoomCode!.trim();
+
+    // -------------------------------------------------------------
+    // Step 2: Bob joins and readies, Alice starts match
+    // -------------------------------------------------------------
+    await pageBob.goto('/');
+    await pageBob.fill('#username-input', 'BobWild');
+    await pageBob.click('button[type="submit"]');
+
+    await expect(pageBob).toHaveURL(/\/dashboard/);
+    await pageBob.click('[data-testid="join-room-btn"]');
+    await pageBob.fill('#room-code-input', roomCode);
+    await pageBob.click('[data-testid="confirm-join-room-btn"]');
+
+    await expect(pageBob).toHaveURL(`/room/${roomCode}`);
+    await pageBob.click('[data-testid="ready-toggle-btn"]');
+
+    const startButton = pageAlice.locator('[data-testid="start-game-btn"]');
+    await expect(startButton).toBeEnabled();
+    await startButton.click();
+
+    await expect(pageAlice).toHaveURL(`/game/${roomCode}`, { timeout: 15000 });
+    await expect(pageBob).toHaveURL(`/game/${roomCode}`, { timeout: 15000 });
+
+    await expect(pageAlice.locator('[data-testid="game-board"]')).toBeVisible();
+    await expect(pageBob.locator('[data-testid="game-board"]')).toBeVisible();
+
+    // -------------------------------------------------------------
+    // Step 3: Inject Starting Wild State
+    // -------------------------------------------------------------
+    const injectWildRes = await fetch('http://localhost:4000/api/test/inject-starting-wild', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomCode }),
+    });
+    expect(injectWildRes.ok).toBe(true);
+
+    // Identify which player is designated chooser
+    const aliceHasPicker = await pageAlice.locator('[data-testid="wild-color-green"]').isVisible();
+    const designatedPage = aliceHasPicker ? pageAlice : pageBob;
+    const waitingPage = aliceHasPicker ? pageBob : pageAlice;
+
+    // Designated player sees Starting Wild color picker modal
+    await expect(designatedPage.locator('text=Starting Wild Card')).toBeVisible();
+    await expect(designatedPage.locator('[data-testid="wild-color-green"]')).toBeVisible();
+
+    // Non-designated player sees waiting banner
+    await expect(waitingPage.locator('[data-testid="starting-wild-waiting-banner"]')).toBeVisible();
+
+    // -------------------------------------------------------------
+    // Step 4: Designated player chooses Green
+    // -------------------------------------------------------------
+    await designatedPage.locator('[data-testid="wild-color-green"]').click();
+
+    // Both players see active color update to Green on discard pile
+    await expect(designatedPage.locator('[data-testid="discard-pile"]').getByText('Green')).toBeVisible({ timeout: 5000 });
+    await expect(waitingPage.locator('[data-testid="discard-pile"]').getByText('Green')).toBeVisible({ timeout: 5000 });
+
+    // Modal and waiting banner close
+    await expect(designatedPage.locator('text=Starting Wild Card')).not.toBeVisible();
+    await expect(waitingPage.locator('[data-testid="starting-wild-waiting-banner"]')).not.toBeVisible();
   });
 });

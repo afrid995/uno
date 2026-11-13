@@ -226,6 +226,18 @@ export class GameService {
     });
   }
 
+  async chooseStartingWildColor(
+    guestId: string,
+    roomCode: string,
+    chosenColor: CardColor
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'CHOOSE_STARTING_WILD_COLOR',
+      playerId: guestId,
+      chosenColor,
+    });
+  }
+
   async startNextRound(
     guestId: string,
     roomCode: string
