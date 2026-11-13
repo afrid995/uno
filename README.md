@@ -1,8 +1,8 @@
-# UNO Ultimate — Phase 4.2: Final Rules Test, Integrity Verification & End-to-End Validation
+# UNO Ultimate — Phase 4.3: Official Rule Source Alignment & Verification Evidence Audit
 
 UNO Ultimate is an online, private multiplayer card game crafted specifically for groups of friends. It does not provide public matchmaking, open player lobbies, or social networking features.
 
-Phase 4.2 completes a thorough correctness and reliability audit of the Classic UNO implementation: verified real-engine opening Reverse initialization, bounded and deterministic dealer tie resolution, full-round end-to-end integration testing, multi-round match progression up to the official 500-point threshold, countdown timer cancellation and enforcement, and ACID persistence failure rollback testing.
+Phase 4.3 completes a rigorous rule source alignment and verification evidence audit: aligning dealer-determination and deck composition documentation with the official Mattel 42001 instruction sheet, distinguishing official Mattel rules from application-level design policies (such as tie-breaking redraws and fallbacks), accurately categorizing test tiers (57 server integration tests including full-round playout vs 2 multi-context Playwright browser E2E tests), verifying in-process session-loss recovery within a single-instance architecture, and validating real PostgreSQL transaction rollback under injected database failures.
 
 ---
 
@@ -14,11 +14,11 @@ Phase 4.2 completes a thorough correctness and reliability audit of the Classic 
 - **Backend**: Node.js, Express, TypeScript, Socket.IO, Zod validation, Helmet, CORS, Cookie-Parser, Express-Rate-Limit (`@uno-ultimate/server`)
 - **Database**: PostgreSQL 16, Prisma ORM (`@uno-ultimate/database`)
 - **Monorepo**: pnpm workspaces
-- **Testing**: Vitest, React Testing Library, Supertest, Playwright E2E (comprehensive test suites across engine, server, and web)
+- **Testing**: Vitest, React Testing Library, Supertest, Playwright E2E (180 unit and integration tests across monorepo + 2 browser Playwright E2E tests)
 
 ---
 
-## Core Features (Phases 1, 2, 3, 4, 4.1 & 4.2)
+## Core Features (Phases 1, 2, 3, 4, 4.1, 4.2 & 4.3)
 
 - **Zero Sign-Up Guest Identity**: Instant play with a username. Server-generated UUID guest ID and temporary session token with HttpOnly cookie support and resumption validation.
 - **Private Room Creation**: Server generates unique, unambiguous 6-character room codes (`23456789ABCDEFGHJKLMNPQRSTUVWXYZ`).
@@ -28,21 +28,21 @@ Phase 4.2 completes a thorough correctness and reliability audit of the Classic 
 - **Deterministic Host Transfer**: Seamless host handover to the earliest eligible member (`joinedAt ASC`) if the host disconnects or leaves.
 - **30-Second Reconnection Grace Period**: Transient network disconnections retain room slot and state without aborting the lobby.
 - **Playable Real-Time Classic UNO (Mattel 42001)**:
-  - **Authoritative 108-Card Playable Deck**: 76 number cards, 24 action cards, 8 wild cards (no blank cards).
+  - **Authoritative 108-Card Playable Deck**: The official Mattel 42001 instruction sheet lists 112 physical cards in the box (including 4 customizable Blank Cards). For digital gameplay, UNO Ultimate implements the canonical 108 non-blank card deck (76 number cards, 24 action cards, 8 wild cards), intentionally omitting the optional Blank Cards.
   - **Hardened Opening Reverse Rule**: Tested against real `createGame` and `startNextRound` methods with deterministic card fixtures. When Reverse is turned up at the beginning of play, play proceeds counter-clockwise and the player to the dealer's right plays first (e.g. for dealer 0 with 4 players, player 3; with 3 players, player 2; with 2 players, player 1).
-  - **Bounded Dealer Tie-Breaking Policy**: Players draw from the shuffled 108-card deck using official Mattel 42001 point values (0–9 face value, 20 for action cards, 50 for wild cards). Ties are resolved through candidate redraws up to `maxTieRounds = 20`, with a deterministic fallback (`Math.min(...candidates)`) to guarantee termination with zero infinite loops.
+  - **Canonical Dealer Determination & Application Tie-Breaking Policy**: Follows official Mattel 42001 Setup and Scoring tables: each player draws a card from the shuffled 108-card deck, and the highest point value deals (0–9 face value, 20 for action cards, 50 for wild cards). Ties are resolved through an explicit application-level policy (not specified by Mattel): tied candidates redraw cards up to a safety ceiling of 20 rounds, with a deterministic fallback (`Math.min(...candidates)`) to guarantee termination with zero infinite loops.
   - **Starting Wild Discard Resolution**: Adopts official Setup Section precedence—an opening Wild or Wild Draw Four card is returned to the deck and reshuffled until a non-Wild card is revealed.
   - **Monotonic Event Sequencing Invariant**: Ensures `nextState.sequenceNumber === (events.at(-1)?.sequenceNumber ?? state.sequenceNumber)` across all multi-event actions, preventing database unique constraint collisions.
-  - **Atomic Transactional Persistence & Rollback**: Every game action batch (Match status, MatchPlayer standings, GameEvents, and GameSnapshot) commits in a single atomic Prisma `$transaction`. In-memory state advances only on database commit success; failed database writes cleanly abort without corrupting sequence numbers or player hands.
-  - **Cold Server-Crash Recovery**: Reconnection via `room:resume` deserializes the latest PostgreSQL GameSnapshot, validates membership, and restores the player's private hand and active table state seamlessly.
+  - **Atomic Transactional Persistence & Rollback**: Every game action batch (Match status, MatchPlayer standings, GameEvents, and GameSnapshot) commits in a single atomic Prisma `$transaction`. In-memory state advances only on database commit success. Verified through unit and integration tests injecting mid-transaction database failures to prove PostgreSQL ACID rollback of all partial writes without orphaned records or sequence gaps.
+  - **In-Process Session-Loss Recovery**: Reconnection via `room:resume` deserializes the latest PostgreSQL GameSnapshot, validates membership, and restores the player's private hand and active table state seamlessly. Verified via in-process session clearing (`clearAllSessionsForTesting()`) within the single-instance server architecture.
   - **Active Countdown Tracking & Cancellation**: Production 5-second countdown is tracked in `activeCountdownTimers` and cleanly cancelled if any player unreadies, leaves, or disconnects.
   - **Information Hiding Security**: Players only ever receive their own private 7-card hand. Opponents receive only card counts; draw pile order is completely hidden.
   - **Wild Draw Four Challenge Lifecycle**: Suspected illegal plays can be challenged by the victim. The server securely reveals the offender's hand *only* to the challenger. If guilty: offender draws 4 cards; if innocent: challenger draws 6 cards and loses turn.
   - **UNO Shouting & 4-Card Penalty**: Players holding 1 card who fail to declare UNO can be caught by opponents before the next player's move, receiving a strict 4-card penalty per Mattel 42001 rules.
   - **Multi-Round Match Scoring & 500-Point Target**: Opponent cards scored at round conclusion (0-9 face value, 20 for action cards, 50 for wilds) accumulating towards the official 500-point match target. Match transitions to COMPLETED when cumulative score hits 500 points.
-  - **Full Round & Multi-Round Integration Tests**: Complete round playouts down to zero cards, dealer rotation, score accumulation, and game completion validated through Socket.IO and PostgreSQL integration tests.
+  - **Full Round & Multi-Round Socket/Database Integration Tests**: Complete round playouts down to zero cards, dealer rotation, score accumulation, and game completion validated through Socket.IO and PostgreSQL integration tests (`apps/server/tests/integration/game.full-round.test.ts`).
   - **Interactive Responsive Game Board**: SVG/CSS Uno cards with hover/playable glow, fan layouts, opponent seats, draw/discard piles, wild color selector modal, and round/match victory celebration modals.
-  - **Multi-Context Browser E2E Testing**: Automated Playwright test suite exercising 2 independent browser contexts (Alice & Bob) across room creation, joining, countdown, dealing, real-time play, and disconnect recovery.
+  - **Multi-Context Browser E2E Testing**: Automated Playwright test suite (`apps/web/tests/e2e/multiplayer-game.spec.ts`) exercising 2 independent browser contexts (Alice & Bob in real Google Chrome) across room creation, joining, countdown display, dealing, real-time play, and disconnect recovery.
 
 ---
 
@@ -151,10 +151,10 @@ uno-ultimate/
 ## Quality Assurance & Verification Commands
 
 ```bash
-# Run all unit and integration tests across monorepo (166 tests)
+# Run all unit and integration tests across monorepo (180 tests across 26 test files)
 pnpm test
 
-# Run multi-context browser E2E test suite (Playwright)
+# Run multi-context browser E2E test suite (Playwright - 2 scenarios across 2 browser contexts)
 pnpm --filter @uno-ultimate/web test:e2e
 
 # Run TypeScript typechecks across all workspaces

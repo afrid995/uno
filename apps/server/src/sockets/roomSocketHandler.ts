@@ -29,6 +29,21 @@ export type UnoServer = Server<ClientToServerEvents, ServerToClientEvents, Inter
 // Track active sockets per guest to prevent duplicate connections and handle replacement
 export const guestSockets = new Map<string, UnoSocket>();
 
+// Configurable countdown duration (default 5000ms for production)
+export const PRODUCTION_COUNTDOWN_MS = 5000;
+let configuredCountdownMs = PRODUCTION_COUNTDOWN_MS;
+
+export function setCountdownDurationForTesting(ms: number): void {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('Countdown duration can only be modified in test environment');
+  }
+  configuredCountdownMs = ms;
+}
+
+export function resetCountdownDurationForTesting(): void {
+  configuredCountdownMs = PRODUCTION_COUNTDOWN_MS;
+}
+
 // Track active countdown timers per room for cancellation handling
 export const activeCountdownTimers = new Map<string, NodeJS.Timeout>();
 
@@ -37,6 +52,7 @@ export function cancelAllCountdownTimersForTesting(): void {
     clearTimeout(timer);
   }
   activeCountdownTimers.clear();
+  resetCountdownDurationForTesting();
 }
 
 export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
@@ -363,7 +379,7 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       // Start match after countdown (immediate bypass is strictly restricted to test environment)
       const isTestEnv = process.env.NODE_ENV === 'test';
       const allowImmediate = isTestEnv && (payload as { immediate?: boolean })?.immediate === true;
-      const countdownMs = allowImmediate ? 0 : 5000;
+      const countdownMs = allowImmediate ? 0 : configuredCountdownMs;
       const timer = setTimeout(async () => {
         activeCountdownTimers.delete(room.roomCode);
         try {

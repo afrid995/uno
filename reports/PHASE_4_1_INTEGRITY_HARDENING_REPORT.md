@@ -474,3 +474,38 @@ pnpm build
 The UNO Ultimate Phase 4.1 Rules, Event Integrity & Recovery Hardening phase is complete and certified. All Mattel 42001 edge cases have been resolved, event sequencing guarantees eliminate all database unique constraint collisions, transactional persistence ensures absolute ACID durability, cold-start match recovery seamlessly rehydrates active games from PostgreSQL snapshots, and automated multi-context browser E2E tests validate real-world gameplay from lobby to table.
 
 The codebase is robust, stable, thoroughly documented, and prepared for future variant expansions.
+
+---
+
+## 26. Phase 4.3 Audit Addendum: Official Rule Alignment & Verification Precision
+
+*Added during Phase 4.3 Official Rule Source Alignment & Verification Evidence Audit (Commit verification).*
+
+### 26.1 Official Dealer Selection & Card Point Values
+The Mattel 42001 instruction sheet Setup section states:
+> *"Each player picks a card. The player with the highest point value deals."*
+
+The point values applied during dealer selection (0–9 face value, 20 for action cards [Skip, Reverse, Draw Two], and 50 for wild cards [Wild, Wild Draw Four]) are derived directly from the official Mattel 42001 Scoring table. Historical claims that symbol cards count as zero or that action/wild card values represent modern/tournament additions are inaccurate and are hereby formally retracted.
+
+### 26.2 Application-Level Tie-Resolution Attribution
+Selecting the candidate with the highest point card is the official Mattel rule. However, when two or more players draw cards of equal highest point value, Mattel 42001 does not specify an automated tie-break algorithm. The procedures implemented in `packages/game-engine/src/game/game.factory.ts`—specifically:
+1. Re-drawing between tied candidates,
+2. Enforcing a safety ceiling of `maxTieRounds = 20`, and
+3. Falling back deterministically to `Math.min(...candidates)` if all 20 tie rounds produce draws—
+are explicit **application-level design policies**, not official Mattel rules.
+
+### 26.3 Deck Composition (108 Gameplay vs 112 Box Cards)
+The Mattel 42001 instruction sheet component list specifies 112 physical cards in the product box: 108 standard cards plus 4 Blank Cards for customizable house rules. For digital play, UNO Ultimate implements the canonical 108 non-blank gameplay deck (76 numbers, 24 actions, 8 wilds), intentionally omitting the 4 optional Blank Cards as a digital application design choice.
+
+### 26.4 In-Process Session Loss Simulation & Single-Instance Scope
+The recovery test suite exercises `gameSessionManager.clearAllSessionsForTesting()`. This accurately demonstrates that when in-memory active session state is completely wiped, `room:resume` rehydrates the full `GameState` and private hand projections from PostgreSQL `GameSnapshot`. This test verifies state durability within a single-instance architecture; it does not simulate OS process crashes, external supervisor process restarts, or distributed multi-instance clustering.
+
+### 26.5 Database Transaction Rollback Evidence
+In addition to happy-path transaction persistence, an interactive failure injection test in `apps/server/tests/integration/game.socket.test.ts` proves that when an error occurs midway through `prisma.$transaction` (after modifying `Match` and creating `GameEvent` records), PostgreSQL performs an ACID rollback across all tables, leaving zero uncommitted records or sequence gaps.
+
+### 26.6 Updated Test Counts and Tier Categorization
+The test suite has expanded to **180 automated unit and integration tests** across 26 test files in `pnpm test`:
+- **Game Engine Unit Tier (`packages/game-engine/tests`)**: 79 tests
+- **Server Integration Tier (`apps/server/tests`)**: 57 tests across 9 test files (including `game.full-round.test.ts` Socket.IO/DB integration)
+- **Web Unit Tier (`apps/web/src/**/__tests__`)**: 44 tests across 10 test files
+- **Multi-Context Browser E2E Tier (`apps/web/tests/e2e`)**: 2 Playwright multi-context browser tests executed via `pnpm --filter @uno-ultimate/web test:e2e`

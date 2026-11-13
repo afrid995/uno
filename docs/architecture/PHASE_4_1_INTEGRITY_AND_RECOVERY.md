@@ -39,20 +39,22 @@ Implemented in `packages/game-engine/src/game/game.factory.ts`:
 ## 3. Canonical Dealer Determination & Tie-Resolution Policy (Correction B)
 
 ### 3.1 Mattel 42001 Specification & Point Value System
-Per official Mattel 42001 instructions:
-- Each candidate draws a single card from the canonical 108-card deck.
-- Highest card points deals.
-- Point values:
+Per official Mattel 42001 instructions (Setup and Scoring sections):
+- The physical box contains 112 cards (including 4 customizable Blank Cards). For digital gameplay, UNO Ultimate implements the canonical 108 non-blank cards (76 number, 24 action, 8 wild cards), intentionally omitting the optional Blank Cards.
+- Each player draws a card from the shuffled deck.
+- The player with the highest point value deals.
+- Point values are defined by the official 42001 Scoring table (not a separate tournament convention):
   - **Number cards (0–9)**: Face value (0 to 9 points).
   - **Action cards (Skip, Reverse, Draw Two)**: **20 points** each.
   - **Wild cards (Wild, Wild Draw Four)**: **50 points** each.
+- The rule that action cards count 20 points and wild cards count 50 points derives directly from the 42001 instruction sheet; there is no rule stating symbol cards count as zero.
 
 ### 3.2 Application-Level Tie-Resolution Policy
 The official Mattel 42001 instruction sheet states that the highest point value deals, but does not specify a procedure for automated tie resolution. To avoid unbounded loops or arbitrary silent selections, the engine implements a documented **application-level tie-resolution policy** (distinct from official Mattel text):
 1. **Candidate Redraws**: Tied candidates redraw cards from the deck in sequential tie rounds.
 2. **Bounded Retries**: A safety ceiling of `maxTieRounds = 20` prevents infinite loop scenarios under degenerate RNG fixtures.
 3. **Deterministic Fallback**: If a tie persists after 20 rounds, the candidate with the lowest remaining seat index (`Math.min(...candidates)`) is deterministically chosen, flagging `resolvedByFallback: true`.
-4. Fully exposed and inspected via `GameFactory.determineDealerDetailed()`.
+4. Fully exposed and inspected via `GameFactory.determineDealerDetailed()`. Note: selecting the highest point card is the official Mattel rule; the redraw loop, 20-round ceiling, and seat-index fallback are explicit application-level engineering choices.
 
 ---
 
@@ -110,18 +112,19 @@ To prevent torn state or database-to-memory desynchronization during network fai
 └────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 Failure Invariant
-- If any database operation fails within the transaction, Prisma performs an automatic rollback.
+### 5.2 Failure Invariant & Rollback Verification
+- If any database operation fails within the transaction, Prisma performs an automatic rollback across all statements.
 - In `game.service.ts`, `persistActionBatch` is awaited **prior** to updating in-memory session state:
   ```typescript
   await this.persistenceService.persistActionBatch(matchId, nextState, events);
   activeSession.state = nextState; // Advances ONLY after database commit succeeds
   ```
 - If the persistence transaction fails, an exception is thrown, the in-memory state remains untouched, and no corrupt state is broadcast.
+- **Rollback Test Verification**: Validated in `apps/server/tests/integration/game.socket.test.ts` by intercepting `tx.gameSnapshot.upsert` inside `prisma.$transaction` to throw an error after `tx.match.update`, `tx.matchPlayer.updateMany`, and `tx.gameEvent.create` execute. The test verifies that PostgreSQL performs a complete ACID rollback, leaving zero uncommitted records or sequence number gaps.
 
 ---
 
-## 6. Cold Server-Restart Rehydration & Recovery (Correction E)
+## 6. In-Process Session-Loss Rehydration & Recovery (Correction E)
 
 ### 6.1 Recovery Flow Diagram
 ```mermaid
@@ -134,7 +137,7 @@ sequenceDiagram
     participant GameSvc as GameService
     participant DB as PostgreSQL (Prisma)
 
-    Note over Player, DB: Server crash / cold restart occurs; in-memory sessions lost
+    Note over Player, DB: In-process session loss (clearAllSessionsForTesting) or single-instance restart
     Player->>Web: Re-opens app / browser reload
     Web->>Socket: emit("room:resume", { roomCode })
     Socket->>RoomSvc: getRoomByCode(roomCode)
@@ -155,29 +158,25 @@ sequenceDiagram
 - **Membership Verification**: Prevents unauthorized guests from snooping active matches.
 - **Snapshot Integrity**: The latest `GameSnapshot` is deserialized with intact draw/discard piles, player hands, active color, and turn pointers.
 - **Personalized Projection**: Only the recovering player's own 7 cards are decrypted and sent in `self.hand`; opponent hands remain obscured as counts.
-- **Architecture Boundary**: This mechanism guarantees durability and recovery within a single-process server architecture across restarts. It does not implement multi-instance cluster synchronization (which requires distributed state coordination such as Redis pub/sub).
+- **Architecture Boundary & Test Reality**: In unit/integration tests, this recovery is validated by invoking `clearAllSessionsForTesting()` on `GameSessionManager` to simulate complete in-process memory loss without terminating the Node.js test process. This demonstrates durable snapshot reconstruction within a single-process server architecture. It does not test OS process respawning or multi-instance cluster synchronization (e.g. Redis pub/sub).
 
 ---
 
 ## 7. Production Countdown Bypass Protection & Cancellation (Correction G)
 
 In `apps/server/src/sockets/roomSocketHandler.ts`:
-- In development/production environments, a 5-second countdown notification (`room:starting`) is unconditionally enforced before the game engine initializes.
+- In development/production environments, a 5-second countdown notification (`room:starting`) is unconditionally enforced before the game engine initializes (`PRODUCTION_COUNTDOWN_MS = 5000`).
 - Active timers are tracked in `activeCountdownTimers: Map<string, NodeJS.Timeout>`.
 - If any player toggles ready to `false`, leaves the room, or disconnects during the 5-second countdown, `cancelCountdownIfActive()` immediately aborts the timer and broadcasts `room:starting` with `countdownSeconds: 0`.
-- The `immediate: true` test parameter is strictly guarded:
-  ```typescript
-  const isTestEnv = process.env.NODE_ENV === 'test';
-  const allowImmediate = isTestEnv && payload?.immediate === true;
-  const countdownMs = allowImmediate ? 0 : 5000;
-  ```
-- Any unauthorized payload sending `immediate: true` in non-test environments is ignored, maintaining the 5000ms countdown.
+- The countdown duration is configurable strictly in test environments via `setCountdownDurationForTesting()`, which throws in production environments.
+- Any unauthorized payload sending `immediate: true` in non-test environments is rejected, maintaining the strict 5000ms countdown.
 
 ---
 
 ## 8. Test Tier Stratification (Correction F)
 
-To maintain testing speed and reliability, coverage is stratified across complementary tiers:
-1. **Unit Tier (`packages/game-engine/tests`)**: Pure deterministic rules, action effects, dealer ties, UNO penalties, and projections (79 tests).
-2. **Integration Tier (`apps/server/tests/integration`)**: Real HTTP/WebSocket networking, PostgreSQL transactions, sequence monotonicity, full round playouts, dealer rotation, multi-round 500-point threshold, and state recovery (55 tests across 9 suites).
-3. **Multi-Context Browser E2E Tier (`apps/web/tests/e2e`)**: High-fidelity browser testing in real Google Chrome (`channel: 'chrome'`) across two isolated contexts (`contextAlice` and `contextBob`), verifying lobby joining, countdown display, hand rendering, live turn interaction, and mid-match page reload recovery. Full-round completion down to zero cards and 500-point matches are validated deterministically in the integration tier.
+To maintain testing speed, deterministic repeatability, and multi-layer coverage, testing is stratified across complementary tiers:
+1. **Unit Tier (`packages/game-engine/tests`)**: Pure deterministic rules, action effects, dealer ties, UNO penalties, and projections (79 tests across 7 suites).
+2. **Integration Tier (`apps/server/tests/integration` and `apps/server/tests/unit`)**: Real HTTP/WebSocket networking, PostgreSQL transactions, sequence monotonicity, full round playouts down to 0 cards, dealer rotation, multi-round 500-point threshold, transaction rollbacks, and in-process state recovery (57 tests across 9 suites).
+3. **Frontend Component Unit Tier (`apps/web/src/**/__tests__`)**: React components, stores, card rendering, and player actions (44 tests across 10 suites).
+4. **Multi-Context Browser E2E Tier (`apps/web/tests/e2e`)**: High-fidelity browser testing in real Google Chrome (`channel: 'chrome'`) across two isolated contexts (`contextAlice` and `contextBob`), verifying lobby joining, countdown display, hand rendering, live turn interaction, and mid-match page reload recovery (2 end-to-end scenarios). Full-round completion down to zero cards and 500-point matches are validated deterministically in the integration tier (`apps/server/tests/integration/game.full-round.test.ts`).

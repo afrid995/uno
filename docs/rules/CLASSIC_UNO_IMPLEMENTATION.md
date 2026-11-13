@@ -8,10 +8,12 @@ This document details the exact rule mechanics, card definitions, scoring formul
 
 ## 1. Canonical 108-Card Playable Deck Composition
 
-The official playable deck consists of exactly **108 cards** partitioned across 4 distinct colors (**Red**, **Yellow**, **Green**, **Blue**) and neutral Wild cards. (Note: Some physical 42001 boxes include 4 blank customizable cards; these are omitted from gameplay per official tournament and digital Classic UNO rules).
+The official Mattel 42001 product packaging lists **112 physical cards** in the box: 108 gameplay cards plus 4 Blank Cards. The manual describes Blank Cards as replacement cards or cards that may be used for custom house rules.
+
+In this digital implementation, the default Classic UNO match uses the standard **108 non-blank gameplay cards** (76 number cards, 24 action cards, 8 Wild cards), intentionally excluding the four optional Blank Cards to preserve official rules without custom house rules.
 
 ```
-Total Deck (108 playable cards)
+Total Gameplay Deck (108 playable cards; 4 optional Blank Cards excluded)
 ├── Red (25 cards)
 │   ├── Number 0 (1 card)
 │   ├── Numbers 1–9 (2 of each = 18 cards)
@@ -31,7 +33,7 @@ Total Deck (108 playable cards)
 
 ### Exact Breakdown Table
 
-| Classification | Values / Symbols | Quantities | Points per Card |
+| Classification | Values / Symbols | Quantities | Points per Card (Mattel 42001 Scoring Table) |
 | :--- | :--- | :--- | :--- |
 | **Number 0** | 0 | 1 per color (4 total) | 0 points |
 | **Numbers 1–9** | 1, 2, 3, 4, 5, 6, 7, 8, 9 | 2 per number per color (72 total) | Face value (1–9 points) |
@@ -40,18 +42,25 @@ Total Deck (108 playable cards)
 | **Draw Two** | +2 symbol | 2 per color (8 total) | 20 points |
 | **Wild** | Multi-color symbol | 4 neutral cards | 50 points |
 | **Wild Draw Four** | +4 symbol | 4 neutral cards | 50 points |
-| **Total** | | **108 cards** | |
+| **Total Playable Deck** | | **108 cards** | |
+| *(Physical Box Components)* | *(Includes 4 Blank Cards)* | *(112 physical cards)* | *(Blank Cards omitted from standard gameplay)* |
 
 ---
 
 ## 2. Setup & Initial Discard Pile Resolution (Mattel 42001)
 
 ### Dealer Determination & Dealing
-1. **Dealer Selection (Mattel 42001)**: Prior to Round 1, each player draws a card from the shuffled canonical 108-card deck. The player drawing the highest card points becomes the dealer:
+1. **Dealer Selection (Mattel 42001)**: Prior to Round 1, each player draws a card from the shuffled canonical 108-card deck. Per the Setup section, *"The player with the highest point value deals."* Card point values are defined in the official 42001 Scoring table:
    - **Number cards (0–9)**: Count as face value (0–9 points).
    - **Action cards (Skip, Reverse, Draw Two)**: Count as **20 points** each.
    - **Wild cards (Wild, Wild Draw Four)**: Count as **50 points** each.
-   - **Tie Breaking (Application-Level Policy)**: If two or more players tie for the highest point value, the tied players redraw until a single dealer is determined (up to `maxTieRounds = 20`). If a tie persists after 20 redraw rounds, the candidate with the lowest remaining seat index is chosen deterministically as a fallback (`Math.min(...candidates)`). *Note: This tie-breaking policy is an application-level design decision to guarantee bounded termination, as official Mattel 42001 instructions do not define an automated tie-break procedure.*
+   - *(Note: The 42001 instruction sheet does not state that symbol cards count as zero; action and wild card point values derive directly from its official scoring table).*
+   - **Tie-Breaking Attribution & Application Policy**: The Mattel 42001 instruction sheet establishes that the highest point-value draw deals, but does not define an automated tie-break algorithm when players tie. The following tie-resolution procedure is an explicit **application-level design policy**:
+     - Tied candidates redraw cards in successive tie rounds.
+     - A fresh 108-card deck is shuffled whenever fewer cards remain than tied candidates.
+     - A safety ceiling of `maxTieRounds = 20` bounds the redraw loop against degenerate RNG behavior.
+     - If a tie persists after 20 rounds, the candidate with the lowest remaining seat index is chosen deterministically as a fallback (`Math.min(...candidates)`).
+     - *This redraw procedure, the 20-round bound, and the lowest seat index fallback are application-level policies, not specified in the Mattel text.*
    - **Subsequent Rounds**: Dealer rotates clockwise (`(roundNumber - 1) % playerCount`).
 2. Every player receives **7 cards** face down.
 3. The remaining cards form the **Draw Pile** (face down).

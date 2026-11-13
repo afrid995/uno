@@ -390,3 +390,34 @@ With Classic UNO rules, state persistence, event monotonicity, multi-round progr
   - Extensible variant registry building on `@uno-ultimate/game-engine`.
   - Double-sided cards (Light Side / Dark Side) and Flip card action mechanics.
   - Variant-specific rules, penalty cards (Draw Five, Wild Draw Color), and table rendering.
+
+---
+
+## 24. Phase 4.3 Audit Addendum: Official Rule Alignment & Verification Evidence Precision
+
+*Added during Phase 4.3 Official Rule Source Alignment & Verification Evidence Audit.*
+
+### 24.1 Official Dealer Selection & Card Point Values
+The Mattel 42001 instruction sheet Setup section specifies:
+> *"Each player picks a card. The player with the highest point value deals."*
+
+The point values applied during dealer selection (0–9 face value, 20 for action cards, 50 for wild cards) come directly from the official Mattel 42001 Scoring table. Previous assertions that action/wild cards count as zero or represent modern tournament adaptations are formally retracted.
+
+### 24.2 Tie-Breaking Attribution
+Selecting the card with the highest point value is the official Mattel rule. The candidate redraw procedure, the safety ceiling of `maxTieRounds = 20`, and the deterministic lowest seat index fallback (`Math.min(...candidates)`) are explicit **application-level engineering policies** designed to guarantee termination, not Mattel rules.
+
+### 24.3 108 Non-Blank Gameplay Deck vs 112 Box Cards
+The Mattel 42001 instruction sheet states that 112 cards are included in the box (108 standard cards + 4 customizable Blank Cards). For digital gameplay, UNO Ultimate implements the canonical 108 non-blank cards (76 numbers, 24 actions, 8 wilds), intentionally excluding the optional customizable Blank Cards.
+
+### 24.4 In-Process Session Loss Simulation & Single-Instance Scope
+The recovery test suite in `apps/server/tests/integration/game.socket.test.ts` exercises `gameSessionManager.clearAllSessionsForTesting()`. This accurately verifies that when in-memory active session state is wiped within the running Node.js process, `room:resume` rehydrates the full `GameState` and private hand projections from PostgreSQL `GameSnapshot`. This test verifies state durability within a single-instance architecture; it does not simulate OS process crashes, external supervisor process restarts, or distributed multi-instance clustering.
+
+### 24.5 Database Transaction Rollback Evidence
+In addition to happy-path transaction persistence, an interactive failure injection test in `apps/server/tests/integration/game.socket.test.ts` proves that when an error occurs midway through `prisma.$transaction` (after modifying `Match` and creating `GameEvent` records), PostgreSQL performs an ACID rollback across all tables, leaving zero uncommitted records or sequence gaps.
+
+### 24.6 Updated Test Counts and Tier Categorization
+The automated test suite contains **180 unit and integration tests** across 26 test files in `pnpm test`, plus **2 multi-context browser E2E tests** in Playwright:
+- **Game Engine Unit Tier (`packages/game-engine/tests`)**: 79 tests
+- **Server Integration Tier (`apps/server/tests`)**: 57 tests across 9 test files (including `game.full-round.test.ts` Socket.IO/DB integration)
+- **Web Unit Tier (`apps/web/src/**/__tests__`)**: 44 tests across 10 test files
+- **Multi-Context Browser E2E Tier (`apps/web/tests/e2e`)**: 2 Playwright multi-context browser tests executed via `pnpm --filter @uno-ultimate/web test:e2e`

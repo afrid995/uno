@@ -3,9 +3,15 @@ import { CardFactory } from '../cards/card.factory';
 
 export class DeckFactory {
   /**
-   * Generates the canonical 108-card Classic Mattel UNO deck.
+   * Generates the canonical 108-card Classic Mattel UNO gameplay deck.
    *
-   * Deck breakdown:
+   * Note on Physical Components vs Gameplay Deck:
+   * The official Mattel 42001 instruction sheet lists 112 physical cards in the box,
+   * which includes 4 Blank Cards described as replacement cards or cards for custom rules.
+   * This digital implementation intentionally uses the standard 108 non-blank gameplay
+   * cards, excluding the 4 optional Blank Cards to maintain official rules without house rules.
+   *
+   * 108-Card Gameplay Composition:
    * - 4 Number 0 cards (1 per color: Red, Yellow, Green, Blue) = 4
    * - 72 Number 1-9 cards (2 of each number 1-9 per color) = 72
    * - 8 Skip cards (2 per color) = 8
@@ -14,7 +20,7 @@ export class DeckFactory {
    * - 4 Wild cards = 4
    * - 4 Wild Draw Four (+4) cards = 4
    * -------------------------------------------------------------
-   * TOTAL: 108 cards
+   * TOTAL: 108 playable cards
    */
   static createClassicDeck(variant = 'classic'): Card[] {
     const deck: Card[] = [];

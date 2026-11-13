@@ -35,21 +35,22 @@ export class GameFactory {
    * Official Mattel 42001 dealer determination with documented application-level tie-resolution policy.
    *
    * 1. Official Mattel 42001 rule:
-   *    Each candidate draws a card from the canonical 108-card deck.
-   *    Highest card point value deals:
-   *      - Number cards (0-9): Face value (0-9 points).
-   *      - Action cards (Skip, Reverse, Draw Two): 20 points.
-   *      - Wild cards (Wild, Wild Draw Four): 50 points.
-   *    If two or more candidates tie for the highest score, tied candidates redraw.
+   *    - Setup section: "Each player picks a card. The player with the highest point value deals."
+   *    - Scoring section card values:
+   *        * Number cards (0-9): Face value (0 to 9 points).
+   *        * Action cards (Draw Two, Reverse, Skip): 20 points each.
+   *        * Wild cards (Wild, Wild Draw Four): 50 points each.
+   *    - Note: Mattel 42001 does NOT specify that symbol cards count as zero; the 20-point and
+   *      50-point values are directly from the 42001 instruction sheet's official scoring table.
    *
-   * 2. Application-Level Tie-Resolution Policy (Design Decision):
-   *    - The redraw process iterates while more than one candidate remains tied.
-   *    - A fresh 108-card deck is shuffled whenever fewer cards remain than remaining candidates.
-   *    - To guard against pathological or infinite loops in restricted/mocked RNG environments,
-   *      the loop is safely bounded by maxTieRounds (default 20).
-   *    - If candidates remain tied after maxTieRounds, the tie is deterministically resolved
-   *      by candidate seating order precedence: Math.min(...candidates).
-   *    - This is explicitly an application fallback policy, NOT an official Mattel rule.
+   * 2. Application-Level Tie-Resolution Policy (Explicit Design Decision):
+   *    - The 42001 sheet states that highest point value deals, but does not define an automated
+   *      tie-break procedure when multiple players draw equal maximum scores.
+   *    - Candidate redraws between tied players are an application-level policy.
+   *    - Shuffling a fresh 108-card deck whenever fewer cards remain than candidates is an application policy.
+   *    - The safety ceiling of maxTieRounds (default 20) is an application-level policy to prevent infinite loops.
+   *    - The deterministic fallback selecting the lowest remaining seat index (Math.min(...candidates))
+   *      is an application-level policy, NOT an official Mattel rule.
    */
   static determineDealerDetailed(
     playerCount: number,

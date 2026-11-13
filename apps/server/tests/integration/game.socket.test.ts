@@ -6,7 +6,7 @@ import { initializeSocketServer } from '../../src/sockets/socketServer';
 import { guestService } from '../../src/modules/guest/guest.service';
 import { gameSessionManager } from '../../src/modules/game/game.session.manager';
 import { gamePersistenceService } from '../../src/modules/game/game.persistence.service';
-import { activeCountdownTimers, cancelAllCountdownTimersForTesting } from '../../src/sockets/roomSocketHandler';
+import { activeCountdownTimers, cancelAllCountdownTimersForTesting, PRODUCTION_COUNTDOWN_MS, setCountdownDurationForTesting, resetCountdownDurationForTesting } from '../../src/sockets/roomSocketHandler';
 import { prisma } from '@uno-ultimate/database';
 import { SOCKET_EVENTS, PlayerGameState } from '@uno-ultimate/game-protocol';
 
@@ -235,7 +235,7 @@ describe('Game Socket.IO Multiplayer Integration Tests', () => {
     expect(acceptWdfAck.success).toBe(false);
   });
 
-  it('recovers active match from database snapshot on room:resume after cold server restart', async () => {
+  it('recovers active match from database snapshot on room:resume after in-process session loss', async () => {
     const hostSocket = createClient(hostToken);
     const playerSocket = createClient(playerToken);
 
@@ -267,7 +267,8 @@ describe('Game Socket.IO Multiplayer Integration Tests', () => {
     const initialHostState = await hostStatePromise;
     expect(initialHostState.state.status).toBe('IN_PROGRESS');
 
-    // Simulate COLD SERVER RESTART: clear all in-memory game sessions completely!
+    // Simulate IN-PROCESS SESSION LOSS: clear all in-memory game sessions completely!
+    // This verifies state rehydration from the database snapshot within the single-instance server architecture.
     gameSessionManager.clearAllSessionsForTesting();
     expect(gameSessionManager.getSessionByRoomCode(roomCode)).toBeNull();
 
@@ -480,6 +481,84 @@ describe('Game Socket.IO Multiplayer Integration Tests', () => {
       playerSocket.emit(SOCKET_EVENTS.ROOM_LEAVE, { roomCode }, resolve);
     });
     expect(activeCountdownTimers.has(roomCode)).toBe(false);
+
+    // 4. Player re-joins, re-readies, countdown starts, and player disconnects -> timer cancelled
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve);
+    });
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve);
+    });
+    await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_START, { immediate: false }, resolve);
+    });
+    expect(activeCountdownTimers.has(roomCode)).toBe(true);
+
+    playerSocket.disconnect();
+    // Allow server disconnect event to process
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(activeCountdownTimers.has(roomCode)).toBe(false);
+  });
+
+  it('executes full countdown and starts game after configured duration', async () => {
+    expect(PRODUCTION_COUNTDOWN_MS).toBe(5000);
+
+    // Verify production cannot tamper with countdown duration
+    const prevEnv = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = 'production';
+      expect(() => setCountdownDurationForTesting(100)).toThrow(/test environment/i);
+    } finally {
+      process.env.NODE_ENV = prevEnv;
+    }
+
+    // In test environment, configure deterministic 200ms countdown duration
+    setCountdownDurationForTesting(200);
+
+    const fHost = await guestService.createGuest('FullCountdownHost');
+    const fPlayer = await guestService.createGuest('FullCountdownPlayer');
+    const hostSocket = createClient(fHost.rawSessionToken);
+    const playerSocket = createClient(fPlayer.rawSessionToken);
+
+    await Promise.all([
+      new Promise<void>((resolve) => hostSocket.on('connect', resolve)),
+      new Promise<void>((resolve) => playerSocket.on('connect', resolve)),
+    ]);
+
+    const createAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_CREATE, { maxPlayers: 2 }, resolve);
+    });
+    const roomCode = createAck.data.roomCode;
+
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve);
+    });
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve);
+    });
+
+    const gameStartedPromise = new Promise<{ matchId: string }>((resolve) => {
+      hostSocket.once(SOCKET_EVENTS.GAME_STARTED, resolve);
+    });
+
+    const startAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_START, { immediate: false }, resolve);
+    });
+    expect(startAck.success).toBe(true);
+    expect(activeCountdownTimers.has(roomCode)).toBe(true);
+
+    // Before countdown completes (50ms): game must NOT have started yet!
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(gameSessionManager.getSessionByRoomCode(roomCode)).toBeNull();
+
+    // After countdown completes: game MUST start and broadcast GAME_STARTED!
+    const startedData = await gameStartedPromise;
+    expect(startedData.matchId).toBeDefined();
+    expect(gameSessionManager.getSessionByRoomCode(roomCode)).not.toBeNull();
+    expect(activeCountdownTimers.has(roomCode)).toBe(false);
+
+    // Reset countdown configuration
+    resetCountdownDurationForTesting();
   });
 
   it('rolls back state and does not advance in-memory sequence number when database transaction fails', async () => {
@@ -551,5 +630,95 @@ describe('Game Socket.IO Multiplayer Integration Tests', () => {
     expect(session!.state.sequenceNumber).toBe(initialSeq + 1);
     expect(session!.state.players[activePlayerIndex].hand).toHaveLength(initialHandLength + 1);
     expect(session!.state.players[activePlayerIndex].hasDrawnThisTurn).toBe(true);
+  });
+
+  it('rolls back partially executed database writes inside Prisma $transaction on database error', async () => {
+    const txHost = await guestService.createGuest('TxHost');
+    const txPlayer = await guestService.createGuest('TxPlayer');
+    const hostSocket = createClient(txHost.rawSessionToken);
+    const playerSocket = createClient(txPlayer.rawSessionToken);
+
+    await Promise.all([
+      new Promise<void>((resolve) => hostSocket.on('connect', resolve)),
+      new Promise<void>((resolve) => playerSocket.on('connect', resolve)),
+    ]);
+
+    const createAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_CREATE, { maxPlayers: 2 }, resolve);
+    });
+    const roomCode = createAck.data.roomCode;
+
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve);
+    });
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve);
+    });
+
+    const hostStatePromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      hostSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+
+    await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_START, { immediate: true }, resolve);
+    });
+    await hostStatePromise;
+
+    const session = gameSessionManager.getSessionByRoomCode(roomCode);
+    expect(session).not.toBeNull();
+    const matchId = session!.matchId;
+    const initialSeq = session!.state.sequenceNumber;
+
+    // Check baseline database values before failure
+    const dbMatchBefore = await prisma.match.findUnique({ where: { id: matchId } });
+    const dbEventsBefore = await prisma.gameEvent.findMany({ where: { matchId } });
+    const initialDbSeq = dbMatchBefore!.sequenceNumber;
+    const initialEventCount = dbEventsBefore.length;
+
+    const activePlayerIndex = session!.state.currentPlayerIndex;
+    const activePlayerId = session!.state.players[activePlayerIndex].id;
+    const activeSocket = activePlayerId === txHost.guest.id ? hostSocket : playerSocket;
+
+    // Intercept prisma.$transaction to simulate an error inside the transaction after initial writes occur
+    const originalTransaction = prisma.$transaction.bind(prisma);
+    const txSpy = vi.spyOn(prisma, '$transaction').mockImplementationOnce(async (callback: any) => {
+      return originalTransaction(async (tx: any) => {
+        // Intercept tx.gameSnapshot.upsert to throw an error at the end of the transaction!
+        tx.gameSnapshot.upsert = async () => {
+          throw new Error('Injected failure inside database transaction (after Match and Event writes)');
+        };
+        return callback(tx);
+      });
+    });
+
+    // Attempt gameplay action -> must fail due to error inside transaction
+    const failAck = await new Promise<any>((resolve) => {
+      activeSocket.emit(SOCKET_EVENTS.GAME_DRAW_CARD, {}, resolve);
+    });
+    expect(failAck.success).toBe(false);
+
+    // 1. In-memory session state MUST NOT advance
+    expect(session!.state.sequenceNumber).toBe(initialSeq);
+
+    // 2. PostgreSQL database MUST have completely rolled back to pre-action state!
+    const dbMatchAfter = await prisma.match.findUnique({ where: { id: matchId } });
+    expect(dbMatchAfter!.sequenceNumber).toBe(initialDbSeq);
+
+    const dbEventsAfter = await prisma.gameEvent.findMany({ where: { matchId } });
+    expect(dbEventsAfter.length).toBe(initialEventCount); // No orphaned event inserted!
+
+    // 3. Restore transaction and execute valid action -> succeeds and commits cleanly
+    txSpy.mockRestore();
+
+    const successAck = await new Promise<any>((resolve) => {
+      activeSocket.emit(SOCKET_EVENTS.GAME_DRAW_CARD, {}, resolve);
+    });
+    expect(successAck.success).toBe(true);
+
+    const dbMatchCommitted = await prisma.match.findUnique({ where: { id: matchId } });
+    expect(dbMatchCommitted!.sequenceNumber).toBe(initialDbSeq + 1);
+
+    const dbEventsCommitted = await prisma.gameEvent.findMany({ where: { matchId } });
+    expect(dbEventsCommitted.length).toBe(initialEventCount + 1);
   });
 });
