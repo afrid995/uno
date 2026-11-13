@@ -1,10 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { createServer } from 'http';
 import { io as ioClient, Socket as ClientSocket } from 'socket.io-client';
 import { createApp } from '../../src/app';
 import { initializeSocketServer } from '../../src/sockets/socketServer';
 import { guestService } from '../../src/modules/guest/guest.service';
 import { gameSessionManager } from '../../src/modules/game/game.session.manager';
+import { gamePersistenceService } from '../../src/modules/game/game.persistence.service';
+import { activeCountdownTimers, cancelAllCountdownTimersForTesting } from '../../src/sockets/roomSocketHandler';
 import { prisma } from '@uno-ultimate/database';
 import { SOCKET_EVENTS, PlayerGameState } from '@uno-ultimate/game-protocol';
 
@@ -44,6 +46,10 @@ describe('Game Socket.IO Multiplayer Integration Tests', () => {
       if (client.connected) client.disconnect();
     }
     await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+  });
+
+  afterEach(() => {
+    cancelAllCountdownTimersForTesting();
   });
 
   const createClient = (token?: string): ClientSocket => {
@@ -387,7 +393,7 @@ describe('Game Socket.IO Multiplayer Integration Tests', () => {
 
     // Active player plays or draws
     const activePlayerId = session!.state.players[session!.state.currentPlayerIndex].id;
-    const activeSocket = activePlayerId === hostGuestId ? hostSocket : playerSocket;
+    const activeSocket = activePlayerId === seqHost.guest.id ? hostSocket : playerSocket;
 
     const drawAck = await new Promise<any>((resolve) => {
       activeSocket.emit(SOCKET_EVENTS.GAME_DRAW_CARD, {}, resolve);
@@ -405,5 +411,145 @@ describe('Game Socket.IO Multiplayer Integration Tests', () => {
     for (let i = 0; i < events.length; i++) {
       expect(events[i].sequenceNumber).toBe(i + 1);
     }
+  });
+
+  it('cancels match start countdown when player unreadies or leaves before timer fires', async () => {
+    const cHost = await guestService.createGuest('CancelHost');
+    const cPlayer = await guestService.createGuest('CancelPlayer');
+    const hostSocket = createClient(cHost.rawSessionToken);
+    const playerSocket = createClient(cPlayer.rawSessionToken);
+
+    await Promise.all([
+      new Promise<void>((resolve) => hostSocket.on('connect', resolve)),
+      new Promise<void>((resolve) => playerSocket.on('connect', resolve)),
+    ]);
+
+    const createAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_CREATE, { maxPlayers: 2 }, resolve);
+    });
+    const roomCode = createAck.data.roomCode;
+
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve);
+    });
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve);
+    });
+
+    // 1. Host triggers start with 5-second countdown (immediate: false)
+    const hostStartingPromise = new Promise<{ countdownSeconds: number }>((resolve) => {
+      hostSocket.once(SOCKET_EVENTS.ROOM_STARTING, resolve);
+    });
+
+    const startAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_START, { immediate: false }, resolve);
+    });
+    expect(startAck.success).toBe(true);
+
+    const startingPayload = await hostStartingPromise;
+    expect(startingPayload.countdownSeconds).toBe(5);
+    expect(activeCountdownTimers.has(roomCode)).toBe(true);
+
+    // 2. Player unreadies before timer fires
+    const cancelStartingPromise = new Promise<{ countdownSeconds: number }>((resolve) => {
+      hostSocket.once(SOCKET_EVENTS.ROOM_STARTING, resolve);
+    });
+
+    const unreadyAck = await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: false }, resolve);
+    });
+    expect(unreadyAck.success).toBe(true);
+
+    const cancelPayload = await cancelStartingPromise;
+    expect(cancelPayload.countdownSeconds).toBe(0);
+    // Active timer must be deleted!
+    expect(activeCountdownTimers.has(roomCode)).toBe(false);
+
+    // 3. Player re-readies and host starts again, but player leaves room
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve);
+    });
+
+    await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_START, { immediate: false }, resolve);
+    });
+    expect(activeCountdownTimers.has(roomCode)).toBe(true);
+
+    // Player leaves room -> timer cancelled
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_LEAVE, { roomCode }, resolve);
+    });
+    expect(activeCountdownTimers.has(roomCode)).toBe(false);
+  });
+
+  it('rolls back state and does not advance in-memory sequence number when database transaction fails', async () => {
+    const rbHost = await guestService.createGuest('RollbackHost');
+    const rbPlayer = await guestService.createGuest('RollbackPlayer');
+    const hostSocket = createClient(rbHost.rawSessionToken);
+    const playerSocket = createClient(rbPlayer.rawSessionToken);
+
+    await Promise.all([
+      new Promise<void>((resolve) => hostSocket.on('connect', resolve)),
+      new Promise<void>((resolve) => playerSocket.on('connect', resolve)),
+    ]);
+
+    const createAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_CREATE, { maxPlayers: 2 }, resolve);
+    });
+    const roomCode = createAck.data.roomCode;
+
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve);
+    });
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve);
+    });
+
+    const hostStatePromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      hostSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+
+    const startAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_START, { immediate: true }, resolve);
+    });
+    expect(startAck.success).toBe(true);
+    await hostStatePromise;
+
+    const session = gameSessionManager.getSessionByRoomCode(roomCode);
+    expect(session).not.toBeNull();
+    const initialSeq = session!.state.sequenceNumber;
+    const activePlayerIndex = session!.state.currentPlayerIndex;
+    const activePlayerId = session!.state.players[activePlayerIndex].id;
+    const initialHandLength = session!.state.players[activePlayerIndex].hand.length;
+    const activeSocket = activePlayerId === rbHost.guest.id ? hostSocket : playerSocket;
+
+    // Simulate database transaction failure during action persistence
+    const spy = vi
+      .spyOn(gamePersistenceService, 'persistActionBatch')
+      .mockRejectedValueOnce(new Error('Simulated database write error / connection drop'));
+
+    // Attempt action -> must fail
+    const failedDrawAck = await new Promise<any>((resolve) => {
+      activeSocket.emit(SOCKET_EVENTS.GAME_DRAW_CARD, {}, resolve);
+    });
+    expect(failedDrawAck.success).toBe(false);
+
+    // CRITICAL: In-memory state MUST NOT have advanced!
+    expect(session!.state.sequenceNumber).toBe(initialSeq);
+    expect(session!.state.players[activePlayerIndex].hand).toHaveLength(initialHandLength);
+    expect(session!.state.players[activePlayerIndex].hasDrawnThisTurn).toBe(false);
+
+    // Restore persistence service and retry action -> must succeed cleanly
+    spy.mockRestore();
+
+    const successDrawAck = await new Promise<any>((resolve) => {
+      activeSocket.emit(SOCKET_EVENTS.GAME_DRAW_CARD, {}, resolve);
+    });
+    expect(successDrawAck.success).toBe(true);
+
+    // Now state advances cleanly
+    expect(session!.state.sequenceNumber).toBe(initialSeq + 1);
+    expect(session!.state.players[activePlayerIndex].hand).toHaveLength(initialHandLength + 1);
+    expect(session!.state.players[activePlayerIndex].hasDrawnThisTurn).toBe(true);
   });
 });

@@ -51,7 +51,7 @@ Total Deck (108 playable cards)
    - **Number cards (0–9)**: Count as face value (0–9 points).
    - **Action cards (Skip, Reverse, Draw Two)**: Count as **20 points** each.
    - **Wild cards (Wild, Wild Draw Four)**: Count as **50 points** each.
-   - **Tie Breaking**: If two or more players tie for the highest point value, the tied players redraw until a single dealer is determined.
+   - **Tie Breaking (Application-Level Policy)**: If two or more players tie for the highest point value, the tied players redraw until a single dealer is determined (up to `maxTieRounds = 20`). If a tie persists after 20 redraw rounds, the candidate with the lowest remaining seat index is chosen deterministically as a fallback (`Math.min(...candidates)`). *Note: This tie-breaking policy is an application-level design decision to guarantee bounded termination, as official Mattel 42001 instructions do not define an automated tie-break procedure.*
    - **Subsequent Rounds**: Dealer rotates clockwise (`(roundNumber - 1) % playerCount`).
 2. Every player receives **7 cards** face down.
 3. The remaining cards form the **Draw Pile** (face down).
@@ -62,7 +62,7 @@ When the top card of the draw pile is turned face up to start the discard pile:
 - **Wild Draw Four**: *Illegal start card*. Returned to the draw pile, the deck is reshuffled, and another card is turned over.
 - **Wild**: *Illegal start card per Setup Section*. Returned to the draw pile, the deck is reshuffled, and another card is turned over until a non-Wild card is revealed (see detailed ambiguity resolution below).
 - **Draw Two**: The player to the left of the dealer must draw **2 cards** and loses their turn. Play proceeds to the next player.
-- **Reverse**: Play direction reverses to **counter-clockwise**. The player to the dealer's right takes the first turn (e.g. for dealer 0 with 4 players, player 3; with 3 players, player 2; with 2 players, player 1). Play continues counter-clockwise.
+- **Reverse**: Per official Mattel 42001 instructions (*"If this card is turned up at the start of play, the player to the dealer's right plays first, and play proceeds to the right instead of the left"*): play direction reverses to **counter-clockwise**. The player to the dealer's right takes the first turn (e.g. for dealer 0 with 4 players, player 3; with 3 players, player 2; with 2 players, player 1). Play continues counter-clockwise.
 - **Skip**: The player to the left of the dealer is skipped. The next player begins play.
 - **Number Card (0–9)**: Standard play begins with the player to the left of the dealer matching the card by number, color, or symbol.
 

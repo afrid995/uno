@@ -217,8 +217,8 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
     const handleRoomStarting = (payload: { countdownSeconds: number }) => {
       set({
-        isStarting: true,
-        startingCountdown: payload.countdownSeconds,
+        isStarting: payload.countdownSeconds > 0,
+        startingCountdown: Math.max(0, payload.countdownSeconds),
       });
     };
 

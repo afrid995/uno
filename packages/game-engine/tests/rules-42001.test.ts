@@ -170,37 +170,53 @@ describe('Mattel 42001 Official Rules Verification', () => {
       expect(reverseState.currentPlayerIndex).toBe(2); // Charlie plays first
     });
 
-    it('determines 4-player starting Reverse correctly: dealer 0 -> player 3 plays first', () => {
+    it('real GameFactory.createGame with 4 players: opening Reverse sets counter_clockwise and starts player 3', () => {
       const fourPlayers = [
         { id: 'p0', username: 'P0' },
         { id: 'p1', username: 'P1' },
         { id: 'p2', username: 'P2' },
         { id: 'p3', username: 'P3' },
       ];
-      // Force top card to be Reverse by crafting custom draw pile or checking GameFactory behavior
-      // We can test GameFactory directly by passing a deterministic RNG that pops a reverse
-      let calls = 0;
-      const customRng = () => {
-        calls++;
-        return 0.5; // deterministic
-      };
-      const state = GameFactory.createGame({ roomId: 'r1', players: fourPlayers, dealerIndex: 0 }, customRng);
-      
-      // Override top discard with Reverse and re-verify TurnManager resolution
-      const rightOfDealer = (0 - 1 + 4) % 4; // Index 3
-      expect(rightOfDealer).toBe(3);
+      // Seed 6 deterministically produces a yellow reverse card as top discard in 4-player game
+      const rng = createSeededRng(6);
+      const state = GameFactory.createGame({ roomId: 'r1', players: fourPlayers, dealerIndex: 0 }, rng);
+
+      expect(state.topDiscardCard.value).toBe('reverse');
+      expect(state.dealerIndex).toBe(0);
+      expect(state.turnDirection).toBe('counter_clockwise');
+      expect(state.currentPlayerIndex).toBe(3); // Player to dealer 0's right
+      expect(state.currentPlayerIndex).not.toBe(state.dealerIndex); // Dealer is NOT first player
     });
 
-    it('determines 2-player starting Reverse correctly: dealer 0 -> player 1 plays first', () => {
+    it('real GameFactory.createGame with 3 players: opening Reverse sets counter_clockwise and starts player 2', () => {
+      // Seed 28 deterministically produces a yellow reverse card as top discard in 3-player game
+      const rng = createSeededRng(28);
+      const state = GameFactory.createGame({ roomId: 'r1', players, dealerIndex: 0 }, rng);
+
+      expect(state.topDiscardCard.value).toBe('reverse');
+      expect(state.dealerIndex).toBe(0);
+      expect(state.turnDirection).toBe('counter_clockwise');
+      expect(state.currentPlayerIndex).toBe(2); // Player to dealer 0's right
+      expect(state.currentPlayerIndex).not.toBe(state.dealerIndex);
+    });
+
+    it('real GameFactory.createGame with 2 players: opening Reverse sets counter_clockwise and starts player 1', () => {
       const twoPlayers = [
         { id: 'p0', username: 'P0' },
         { id: 'p1', username: 'P1' },
       ];
-      const rightOfDealer = (0 - 1 + 2) % 2; // Index 1
-      expect(rightOfDealer).toBe(1);
+      // Seed 23 deterministically produces a red reverse card as top discard in 2-player game
+      const rng = createSeededRng(23);
+      const state = GameFactory.createGame({ roomId: 'r1', players: twoPlayers, dealerIndex: 0 }, rng);
+
+      expect(state.topDiscardCard.value).toBe('reverse');
+      expect(state.dealerIndex).toBe(0);
+      expect(state.turnDirection).toBe('counter_clockwise');
+      expect(state.currentPlayerIndex).toBe(1); // Opponent (non-dealer) plays first
+      expect(state.currentPlayerIndex).not.toBe(state.dealerIndex);
     });
 
-    it('subsequent round opening Reverse starts with player to the right of new dealer', () => {
+    it('real GameFactory.startNextRound with opening Reverse starts with player to right of new dealer', () => {
       const baseState = GameFactory.createGame({ roomId: 'r1', players, dealerIndex: 0 });
       const roundOverState = {
         ...baseState,
@@ -209,27 +225,46 @@ describe('Mattel 42001 Official Rules Verification', () => {
         dealerIndex: 0,
       };
 
-      // Mock RNG where start card is Reverse
-      const cReverse = CardFactory.createActionCard('green', 'reverse', 1);
-      // In 3 players, new dealer will be 1 (Bob).
-      // Player to dealer 1's right is (1 - 1 + 3) % 3 = 0 (Alice).
-      const expectedFirstPlayer = (1 - 1 + 3) % 3;
-      expect(expectedFirstPlayer).toBe(0);
+      // Seed 28 produces Reverse for 3 players in startNextRound
+      const rng = createSeededRng(28);
+      const nextRound = GameFactory.startNextRound(roundOverState, rng);
+
+      expect(nextRound.topDiscardCard.value).toBe('reverse');
+      expect(nextRound.roundNumber).toBe(2);
+      expect(nextRound.dealerIndex).toBe(1); // Rotated to Bob (index 1)
+      expect(nextRound.turnDirection).toBe('counter_clockwise');
+      expect(nextRound.currentPlayerIndex).toBe(0); // Alice (index 0) is to Bob's right
+      expect(nextRound.currentPlayerIndex).not.toBe(nextRound.dealerIndex); // Dealer 1 is NOT first player
     });
 
-    it('starting Skip and Draw Two behavior remains unchanged', () => {
-      // In 3 players with dealer 0:
-      // Player to left of dealer is 1.
-      // Skip: player 1 skipped -> player 2 plays first
-      const skipNext = (1 + 1) % 3;
-      expect(skipNext).toBe(2);
+    it('starting Skip and Draw Two behavior in real GameFactory.createGame', () => {
+      // Find seeds for Skip and Draw Two
+      let skipSeed = 0;
+      let drawTwoSeed = 0;
+      for (let s = 1; s < 500; s++) {
+        const rng = createSeededRng(s);
+        const g = GameFactory.createGame({ roomId: 'r1', players, dealerIndex: 0 }, rng);
+        if (!skipSeed && g.topDiscardCard.value === 'skip') skipSeed = s;
+        if (!drawTwoSeed && g.topDiscardCard.value === 'draw_two') drawTwoSeed = s;
+        if (skipSeed && drawTwoSeed) break;
+      }
 
-      // Draw Two: player 1 draws 2 cards and is skipped -> player 2 plays first
-      expect(skipNext).toBe(2);
+      // Skip: Player 1 (left of dealer 0) is skipped -> Player 2 starts
+      const skipState = GameFactory.createGame({ roomId: 'r1', players, dealerIndex: 0 }, createSeededRng(skipSeed));
+      expect(skipState.topDiscardCard.value).toBe('skip');
+      expect(skipState.currentPlayerIndex).toBe(2);
+      expect(skipState.turnDirection).toBe('clockwise');
+
+      // Draw Two: Player 1 draws 2 cards and is skipped -> Player 2 starts
+      const dtState = GameFactory.createGame({ roomId: 'r1', players, dealerIndex: 0 }, createSeededRng(drawTwoSeed));
+      expect(dtState.topDiscardCard.value).toBe('draw_two');
+      expect(dtState.currentPlayerIndex).toBe(2);
+      expect(dtState.turnDirection).toBe('clockwise');
+      expect(dtState.players[1].hand).toHaveLength(9); // 7 initial + 2 drawn
     });
   });
 
-  describe('Dealer Determination Accuracy (Mattel 42001)', () => {
+  describe('Dealer Determination Accuracy & Tie-Resolution Policy (Fix 2)', () => {
     it('returns a valid dealer index within player count bounds', () => {
       for (let count = 2; count <= 10; count++) {
         const rng = createSeededRng(100 + count);
@@ -243,13 +278,14 @@ describe('Mattel 42001 Official Rules Verification', () => {
       const rng1 = createSeededRng(12345);
       const rng2 = createSeededRng(12345);
 
-      const dealer1 = GameFactory.determineDealer(4, rng1);
-      const dealer2 = GameFactory.determineDealer(4, rng2);
-      expect(dealer1).toBe(dealer2);
+      const res1 = GameFactory.determineDealerDetailed(4, rng1);
+      const res2 = GameFactory.determineDealerDetailed(4, rng2);
+      expect(res1.dealerIndex).toBe(res2.dealerIndex);
+      expect(res1.tieRounds).toBe(res2.tieRounds);
+      expect(res1.roundHistory.length).toBe(res2.roundHistory.length);
     });
 
-    it('uses canonical card point values including 20 for action and 50 for wild', () => {
-      // Verify point values used:
+    it('correctly awards dealer to highest card points (Wild 50 > Action 20 > Number 0-9)', () => {
       const cNum = CardFactory.createNumberCard('red', '7', 1);
       const cAction = CardFactory.createActionCard('blue', 'skip', 1);
       const cWild = CardFactory.createWildCard('wild', 1);
@@ -259,6 +295,50 @@ describe('Mattel 42001 Official Rules Verification', () => {
       expect(cWild.scoreValue).toBe(50);
       expect(cWild.scoreValue).toBeGreaterThan(cAction.scoreValue);
       expect(cAction.scoreValue).toBeGreaterThan(cNum.scoreValue);
+    });
+
+    it('resolves equal-value ties by redrawing only between tied candidates until unique winner emerges', () => {
+      // Run across 20 different seeds and verify roundHistory records tied candidates
+      for (let s = 1; s <= 20; s++) {
+        const rng = createSeededRng(s * 31);
+        const result = GameFactory.determineDealerDetailed(4, rng);
+        expect(result.dealerIndex).toBeGreaterThanOrEqual(0);
+        expect(result.dealerIndex).toBeLessThan(4);
+        expect(result.tieRounds).toBeGreaterThanOrEqual(1);
+
+        // Every round in history must have correct structure
+        for (const r of result.roundHistory) {
+          expect(r.draws.length).toBeGreaterThanOrEqual(1);
+          expect(r.remainingCandidates.length).toBeGreaterThanOrEqual(1);
+          expect(r.highestScore).toBeGreaterThanOrEqual(0);
+        }
+
+        // Final round must narrow down to 1 winner unless fallback was invoked
+        const finalRound = result.roundHistory[result.roundHistory.length - 1];
+        if (!result.resolvedByFallback) {
+          expect(finalRound.remainingCandidates).toHaveLength(1);
+          expect(finalRound.remainingCandidates[0]).toBe(result.dealerIndex);
+        }
+      }
+    });
+
+    it('invokes documented application fallback (Math.min) when maxTieRounds limit is reached', () => {
+      // Mock RNG that always returns 0 (pops identical cards repeatedly, simulating pathological RNG)
+      const zeroRng = () => 0;
+      const result = GameFactory.determineDealerDetailed(3, zeroRng, 3);
+
+      expect(result.tieRounds).toBe(3);
+      expect(result.resolvedByFallback).toBe(true);
+      // Candidates tied in final round -> fallback selects lowest index among remaining candidates
+      const remainingAtEnd = result.roundHistory[result.roundHistory.length - 1].remainingCandidates;
+      expect(result.dealerIndex).toBe(Math.min(...remainingAtEnd));
+    });
+
+    it('dealer determination handles 1 player gracefully', () => {
+      const res = GameFactory.determineDealerDetailed(1);
+      expect(res.dealerIndex).toBe(0);
+      expect(res.tieRounds).toBe(0);
+      expect(res.resolvedByFallback).toBe(false);
     });
   });
 
@@ -297,6 +377,8 @@ describe('Mattel 42001 Official Rules Verification', () => {
       const baseState = GameFactory.createGame({ roomId: 'r1', players, dealerIndex: 2 });
       let currentState = {
         ...baseState,
+        topDiscardCard: CardFactory.createNumberCard('red', '5', 1),
+        turnDirection: 'clockwise' as const,
         sequenceNumber: 0,
         currentPlayerIndex: 0,
       };

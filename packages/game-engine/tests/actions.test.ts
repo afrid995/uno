@@ -317,6 +317,119 @@ describe('Card Action Effects and State Transitions', () => {
     expect(events.some((e) => e.type === 'ROUND_COMPLETED')).toBe(true);
   });
 
+  it('playing Reverse in a 2-player game acts as a Skip (current player takes another turn)', () => {
+    const twoPlayerState: GameState = {
+      ...createInitialState(),
+      players: [
+        {
+          id: 'p1',
+          username: 'P1',
+          hand: [cRedReverse, cRed5],
+          hasDeclaredUno: false,
+          hasDrawnThisTurn: false,
+          drawnCardId: null,
+          score: 0,
+        },
+        {
+          id: 'p2',
+          username: 'P2',
+          hand: [cBlue5, cGreen9],
+          hasDeclaredUno: false,
+          hasDrawnThisTurn: false,
+          drawnCardId: null,
+          score: 0,
+        },
+      ],
+      playerOrder: ['p1', 'p2'],
+      currentPlayerIndex: 0,
+    };
+
+    const { nextState, events } = ActionProcessor.process(twoPlayerState, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: cRedReverse.id,
+    });
+
+    // In 2 players, Reverse grants P1 another turn (currentPlayerIndex remains 0)
+    expect(nextState.currentPlayerIndex).toBe(0);
+    expect(events.some((e) => e.type === 'PLAYER_SKIPPED' || e.type === 'DIRECTION_REVERSED')).toBe(true);
+  });
+
+  it('self-rescue: player vulnerable to UNO can call UNO before being caught to clear vulnerability', () => {
+    // P1 down to 1 card without UNO call
+    const state = createInitialState([cRed5, cBlue5]);
+    const { nextState: vulnerableState } = ActionProcessor.process(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: cRed5.id,
+    });
+    expect(vulnerableState.unoVulnerablePlayerId).toBe('p1');
+
+    // P1 calls UNO before P2 catches them -> self rescue!
+    const { nextState: rescuedState, events } = ActionProcessor.process(vulnerableState, {
+      type: 'CALL_UNO',
+      playerId: 'p1',
+    });
+
+    expect(rescuedState.unoVulnerablePlayerId).toBeNull();
+    expect(rescuedState.players[0].hasDeclaredUno).toBe(true);
+    expect(events.some((e) => e.type === 'UNO_CALLED')).toBe(true);
+  });
+
+  it('UNO immunity window: once next player acts, missed UNO can no longer be challenged', () => {
+    // P1 down to 1 card without UNO call
+    const state = createInitialState([cRed5, cBlue5]);
+    const { nextState: vulnerableState } = ActionProcessor.process(state, {
+      type: 'PLAY_CARD',
+      playerId: 'p1',
+      cardId: cRed5.id,
+    });
+    expect(vulnerableState.unoVulnerablePlayerId).toBe('p1');
+    expect(vulnerableState.currentPlayerIndex).toBe(1); // P2's turn
+
+    // P2 draws a card instead of catching P1
+    const { nextState: p2DrawnState } = ActionProcessor.process(vulnerableState, {
+      type: 'DRAW_CARD',
+      playerId: 'p2',
+    });
+
+    // P1's vulnerability is now expired per Mattel 42001
+    expect(p2DrawnState.unoVulnerablePlayerId).toBeNull();
+
+    // Now P3 tries to challenge P1 -> rejected!
+    expect(() => {
+      ActionProcessor.process(p2DrawnState, {
+        type: 'CHALLENGE_UNO_FAILURE',
+        challengerPlayerId: 'p3',
+        targetPlayerId: 'p1',
+      });
+    }).toThrow(/TARGET_NOT_VULNERABLE/i);
+  });
+
+  it('after drawing, player cannot play an older hand card (only the drawn card or pass)', () => {
+    const cOldRed = CardFactory.createNumberCard('red', '7', 1);
+    const cOldBlue = CardFactory.createNumberCard('blue', '3', 1);
+    const state = createInitialState([cOldRed, cOldBlue]);
+
+    // Active color is red. P1 draws a card (drawn card is yellow 5, not red)
+    const { nextState: drawnState } = ActionProcessor.process(state, {
+      type: 'DRAW_CARD',
+      playerId: 'p1',
+    });
+
+    expect(drawnState.players[0].hasDrawnThisTurn).toBe(true);
+    const drawnCardId = drawnState.players[0].drawnCardId;
+
+    // Trying to play the older card cOldRed (even though matching color!) must be rejected
+    expect(() => {
+      ActionProcessor.process(drawnState, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: cOldRed.id,
+      });
+    }).toThrow(/INVALID_CARD_MATCH/i);
+  });
+
   it('reaches COMPLETED status when cumulative score hits target score 500', () => {
     const baseState = createInitialState([cRed5]);
     // Set P1 already at 490 points, so winning round pushes them over 500

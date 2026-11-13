@@ -29,7 +29,30 @@ export type UnoServer = Server<ClientToServerEvents, ServerToClientEvents, Inter
 // Track active sockets per guest to prevent duplicate connections and handle replacement
 export const guestSockets = new Map<string, UnoSocket>();
 
+// Track active countdown timers per room for cancellation handling
+export const activeCountdownTimers = new Map<string, NodeJS.Timeout>();
+
+export function cancelAllCountdownTimersForTesting(): void {
+  for (const timer of activeCountdownTimers.values()) {
+    clearTimeout(timer);
+  }
+  activeCountdownTimers.clear();
+}
+
 export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
+  const cancelCountdownIfActive = (roomCode: string, reason?: string) => {
+    const timer = activeCountdownTimers.get(roomCode);
+    if (timer) {
+      clearTimeout(timer);
+      activeCountdownTimers.delete(roomCode);
+      logger.info('Match start countdown cancelled', { roomCode, reason });
+      io.to(roomCode).emit(SOCKET_EVENTS.ROOM_STARTING, {
+        countdownSeconds: 0,
+        version: -1,
+      });
+    }
+  };
+
   const getAuthenticatedGuestId = (): string => {
     if (!socket.data.isAuthenticated || !socket.data.guestId) {
       throw new AppError(HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.UNAUTHORIZED, 'Authentication required');
@@ -205,6 +228,8 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
         return;
       }
 
+      cancelCountdownIfActive(roomCode, 'Player left room');
+
       const result = await roomService.leaveRoom(guestId);
 
       socket.leave(roomCode);
@@ -244,6 +269,10 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       const validated = await readyStatusSchema.parseAsync(payload);
 
       const room = await roomService.setReadyStatus(guestId, validated.isReady);
+
+      if (!validated.isReady) {
+        cancelCountdownIfActive(room.roomCode, 'Player toggled unready');
+      }
 
       io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_PLAYER_READY, {
         guestId,
@@ -320,6 +349,9 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
         return;
       }
 
+      // Cancel any active countdown for this room first
+      cancelCountdownIfActive(room.roomCode, 'New countdown initiated');
+
       // Broadcast room:starting with 5-second countdown notification
       io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STARTING, {
         countdownSeconds: 5,
@@ -332,10 +364,19 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       const isTestEnv = process.env.NODE_ENV === 'test';
       const allowImmediate = isTestEnv && (payload as { immediate?: boolean })?.immediate === true;
       const countdownMs = allowImmediate ? 0 : 5000;
-      setTimeout(async () => {
+      const timer = setTimeout(async () => {
+        activeCountdownTimers.delete(room.roomCode);
         try {
           const currentRoom = await roomService.getRoomByCode(room.roomCode);
           if (!currentRoom || currentRoom.members.length < 2 || currentRoom.status === 'IN_GAME') {
+            return;
+          }
+
+          // Verify non-host members are still all ready
+          const nonHostMembers = currentRoom.members.filter((m) => m.guestId !== currentRoom.hostGuestId);
+          const allReady = nonHostMembers.every((m) => m.readyStatus);
+          if (!allReady) {
+            logger.info('Aborting match start: not all non-host players are ready', { roomCode: room.roomCode });
             return;
           }
 
@@ -366,6 +407,10 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
           logger.error('Failed to initialize match after countdown', { error: String(err), roomCode: room.roomCode });
         }
       }, countdownMs);
+
+      if (countdownMs > 0) {
+        activeCountdownTimers.set(room.roomCode, timer);
+      }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to start game';
       const code = (err as { code?: string }).code || ERROR_CODES.INTERNAL_ERROR;
@@ -380,6 +425,10 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       if (guestId) {
         if (guestSockets.get(guestId)?.id === socket.id) {
           guestSockets.delete(guestId);
+        }
+
+        if (socket.data.currentRoomCode) {
+          cancelCountdownIfActive(socket.data.currentRoomCode, 'Player disconnected during countdown');
         }
 
         await roomService.markDisconnected(guestId, {

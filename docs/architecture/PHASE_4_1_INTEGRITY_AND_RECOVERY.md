@@ -10,8 +10,8 @@ The core objective of this phase is to harden game-engine mechanics against offi
 ## 2. Opening Reverse Mechanics (Correction A)
 
 ### 2.1 The Mattel 42001 Specification
-Under official Mattel 42001 instructions:
-> *"Reverse: If this card is turned up to begin play, the dealer plays first, then play moves to the right instead of the left (counter-clockwise)."*
+Under official Mattel 42001 instructions (Action Cards / Reverse):
+> *"Reverse — If this card is turned up at the start of play, the player to the dealer's right plays first, and play proceeds to the right instead of the left."*
 
 In circular seating with dealer index $D$ and $N$ players, moving counter-clockwise (to the right of the dealer) designates the first active player index as:
 
@@ -36,9 +36,9 @@ Implemented in `packages/game-engine/src/game/game.factory.ts`:
 
 ---
 
-## 3. Canonical Dealer Determination (Correction B)
+## 3. Canonical Dealer Determination & Tie-Resolution Policy (Correction B)
 
-### 3.1 Point Value System
+### 3.1 Mattel 42001 Specification & Point Value System
 Per official Mattel 42001 instructions:
 - Each candidate draws a single card from the canonical 108-card deck.
 - Highest card points deals.
@@ -47,13 +47,12 @@ Per official Mattel 42001 instructions:
   - **Action cards (Skip, Reverse, Draw Two)**: **20 points** each.
   - **Wild cards (Wild, Wild Draw Four)**: **50 points** each.
 
-### 3.2 Tie-Breaking Algorithm
-If multiple players tie for the highest point value (e.g. two players draw Wild cards or 20-point Action cards):
-1. Non-tied candidates are eliminated.
-2. The remaining tied players redraw cards until a single unique winner emerges.
-3. Shuffled using the engine's deterministic, injectable `RandomNumberGenerator`.
-
-Implemented in `packages/game-engine/src/game/game.factory.ts` (`determineDealer()`).
+### 3.2 Application-Level Tie-Resolution Policy
+The official Mattel 42001 instruction sheet states that the highest point value deals, but does not specify a procedure for automated tie resolution. To avoid unbounded loops or arbitrary silent selections, the engine implements a documented **application-level tie-resolution policy** (distinct from official Mattel text):
+1. **Candidate Redraws**: Tied candidates redraw cards from the deck in sequential tie rounds.
+2. **Bounded Retries**: A safety ceiling of `maxTieRounds = 20` prevents infinite loop scenarios under degenerate RNG fixtures.
+3. **Deterministic Fallback**: If a tie persists after 20 rounds, the candidate with the lowest remaining seat index (`Math.min(...candidates)`) is deterministically chosen, flagging `resolvedByFallback: true`.
+4. Fully exposed and inspected via `GameFactory.determineDealerDetailed()`.
 
 ---
 
@@ -152,17 +151,20 @@ sequenceDiagram
     Web->>Player: Renders private hand and active table
 ```
 
-### 6.2 Key Verification Gates
+### 6.2 Key Verification Gates & Architecture Boundary
 - **Membership Verification**: Prevents unauthorized guests from snooping active matches.
 - **Snapshot Integrity**: The latest `GameSnapshot` is deserialized with intact draw/discard piles, player hands, active color, and turn pointers.
 - **Personalized Projection**: Only the recovering player's own 7 cards are decrypted and sent in `self.hand`; opponent hands remain obscured as counts.
+- **Architecture Boundary**: This mechanism guarantees durability and recovery within a single-process server architecture across restarts. It does not implement multi-instance cluster synchronization (which requires distributed state coordination such as Redis pub/sub).
 
 ---
 
-## 7. Production Countdown Bypass Protection (Correction G)
+## 7. Production Countdown Bypass Protection & Cancellation (Correction G)
 
 In `apps/server/src/sockets/roomSocketHandler.ts`:
 - In development/production environments, a 5-second countdown notification (`room:starting`) is unconditionally enforced before the game engine initializes.
+- Active timers are tracked in `activeCountdownTimers: Map<string, NodeJS.Timeout>`.
+- If any player toggles ready to `false`, leaves the room, or disconnects during the 5-second countdown, `cancelCountdownIfActive()` immediately aborts the timer and broadcasts `room:starting` with `countdownSeconds: 0`.
 - The `immediate: true` test parameter is strictly guarded:
   ```typescript
   const isTestEnv = process.env.NODE_ENV === 'test';
@@ -173,16 +175,9 @@ In `apps/server/src/sockets/roomSocketHandler.ts`:
 
 ---
 
-## 8. Multi-Context Browser E2E Suite with Playwright (Correction F)
+## 8. Test Tier Stratification (Correction F)
 
-Located in `apps/web/tests/e2e/multiplayer-game.spec.ts`:
-- Utilizes Google Chrome via Playwright (`channel: 'chrome'`).
-- Runs two completely isolated browser contexts (`contextAlice` and `contextBob`), simulating real devices on separate networks.
-- Automates:
-  1. Room creation and 6-character code extraction.
-  2. Room joining via code and direct invitation URL (`/join/:roomCode`).
-  3. Ready toggling and host game start.
-  4. 5-second starting countdown banner presentation.
-  5. Dealing 7 cards to both participants.
-  6. Real-time turn progression, card play, and discard pile synchronization.
-  7. Active match disconnection and browser reload recovery.
+To maintain testing speed and reliability, coverage is stratified across complementary tiers:
+1. **Unit Tier (`packages/game-engine/tests`)**: Pure deterministic rules, action effects, dealer ties, UNO penalties, and projections (79 tests).
+2. **Integration Tier (`apps/server/tests/integration`)**: Real HTTP/WebSocket networking, PostgreSQL transactions, sequence monotonicity, full round playouts, dealer rotation, multi-round 500-point threshold, and state recovery (55 tests across 9 suites).
+3. **Multi-Context Browser E2E Tier (`apps/web/tests/e2e`)**: High-fidelity browser testing in real Google Chrome (`channel: 'chrome'`) across two isolated contexts (`contextAlice` and `contextBob`), verifying lobby joining, countdown display, hand rendering, live turn interaction, and mid-match page reload recovery. Full-round completion down to zero cards and 500-point matches are validated deterministically in the integration tier.

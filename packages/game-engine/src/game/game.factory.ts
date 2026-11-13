@@ -8,51 +8,121 @@ import { RandomNumberGenerator, defaultCryptoRng, shuffleDeck } from '../deck/de
 import { TurnDirection } from '../turns/turn.direction';
 import { TurnManager } from '../turns/turn.manager';
 
+export interface DealerDrawRecord {
+  readonly candidateIndex: number;
+  readonly card: Card;
+  readonly score: number;
+}
+
+export interface DealerDeterminationRound {
+  readonly round: number;
+  readonly draws: readonly DealerDrawRecord[];
+  readonly highestScore: number;
+  readonly remainingCandidates: readonly number[];
+}
+
+export interface DealerDeterminationResult {
+  readonly dealerIndex: number;
+  readonly tieRounds: number;
+  readonly resolvedByFallback: boolean;
+  readonly roundHistory: readonly DealerDeterminationRound[];
+}
+
 export class GameFactory {
+  static readonly DEFAULT_MAX_TIE_ROUNDS = 20;
+
   /**
-   * Official Mattel 42001 dealer determination:
-   * Every player draws a card from the canonical 108-card deck.
-   * The player with the highest point value becomes dealer.
-   * Number cards count as face value (0-9).
-   * Action cards (Skip, Reverse, Draw Two) count as 20 points.
-   * Wild cards (Wild, Wild Draw Four) count as 50 points.
-   * In the event of a tie for the highest card, tied players draw again.
+   * Official Mattel 42001 dealer determination with documented application-level tie-resolution policy.
+   *
+   * 1. Official Mattel 42001 rule:
+   *    Each candidate draws a card from the canonical 108-card deck.
+   *    Highest card point value deals:
+   *      - Number cards (0-9): Face value (0-9 points).
+   *      - Action cards (Skip, Reverse, Draw Two): 20 points.
+   *      - Wild cards (Wild, Wild Draw Four): 50 points.
+   *    If two or more candidates tie for the highest score, tied candidates redraw.
+   *
+   * 2. Application-Level Tie-Resolution Policy (Design Decision):
+   *    - The redraw process iterates while more than one candidate remains tied.
+   *    - A fresh 108-card deck is shuffled whenever fewer cards remain than remaining candidates.
+   *    - To guard against pathological or infinite loops in restricted/mocked RNG environments,
+   *      the loop is safely bounded by maxTieRounds (default 20).
+   *    - If candidates remain tied after maxTieRounds, the tie is deterministically resolved
+   *      by candidate seating order precedence: Math.min(...candidates).
+   *    - This is explicitly an application fallback policy, NOT an official Mattel rule.
    */
-  static determineDealer(playerCount: number, rng: RandomNumberGenerator = defaultCryptoRng): number {
-    if (playerCount <= 1) return 0;
+  static determineDealerDetailed(
+    playerCount: number,
+    rng: RandomNumberGenerator = defaultCryptoRng,
+    maxTieRounds: number = GameFactory.DEFAULT_MAX_TIE_ROUNDS
+  ): DealerDeterminationResult {
+    if (playerCount <= 1) {
+      return {
+        dealerIndex: 0,
+        tieRounds: 0,
+        resolvedByFallback: false,
+        roundHistory: [],
+      };
+    }
 
     let candidates = Array.from({ length: playerCount }, (_, i) => i);
     let deck: Card[] = [];
-    const maxTiesAllowed = 50;
-    let tieCount = 0;
+    let tieRounds = 0;
+    const roundHistory: DealerDeterminationRound[] = [];
 
-    while (candidates.length > 1 && tieCount < maxTiesAllowed) {
-      tieCount++;
+    while (candidates.length > 1 && tieRounds < maxTieRounds) {
+      tieRounds++;
+
       // Ensure we have enough cards in the draw pile for all remaining candidates
       if (deck.length < candidates.length) {
         deck = shuffleDeck(DeckFactory.createClassicDeck('classic'), rng);
       }
 
       // Draw one card for each candidate
-      const roundDrawnValues: { candidateIndex: number; score: number }[] = [];
+      const draws: DealerDrawRecord[] = [];
       for (const candidate of candidates) {
         const card = deck.pop()!;
-        roundDrawnValues.push({
+        draws.push({
           candidateIndex: candidate,
+          card,
           score: card.scoreValue,
         });
       }
 
       // Find the highest score drawn this round
-      const maxScore = Math.max(...roundDrawnValues.map((d) => d.score));
+      const highestScore = Math.max(...draws.map((d) => d.score));
 
       // Filter candidates to only those who tied for highest score
-      candidates = roundDrawnValues
-        .filter((d) => d.score === maxScore)
+      candidates = draws
+        .filter((d) => d.score === highestScore)
         .map((d) => d.candidateIndex);
+
+      roundHistory.push({
+        round: tieRounds,
+        draws,
+        highestScore,
+        remainingCandidates: [...candidates],
+      });
     }
 
-    return candidates[0];
+    const resolvedByFallback = candidates.length > 1;
+    // Deterministic application-level tie-breaker: lowest seat index among remaining tied candidates
+    const dealerIndex = resolvedByFallback ? Math.min(...candidates) : candidates[0];
+
+    return {
+      dealerIndex,
+      tieRounds,
+      resolvedByFallback,
+      roundHistory,
+    };
+  }
+
+  static determineDealer(
+    playerCount: number,
+    rng: RandomNumberGenerator = defaultCryptoRng,
+    maxTieRounds: number = GameFactory.DEFAULT_MAX_TIE_ROUNDS
+  ): number {
+    return this.determineDealerDetailed(playerCount, rng, maxTieRounds).dealerIndex;
   }
 
   /**
