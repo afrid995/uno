@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 import { DashboardView } from './components/DashboardView';
 import { useGuestStore } from '../../stores/guestStore';
 
@@ -20,41 +21,43 @@ describe('DashboardView Component', () => {
     });
   });
 
+  const renderDashboard = () =>
+    render(
+      <BrowserRouter>
+        <DashboardView />
+      </BrowserRouter>
+    );
+
   it('renders welcome message with guest username', () => {
-    render(<DashboardView />);
+    renderDashboard();
 
     expect(screen.getByText(/welcome,/i)).toBeInTheDocument();
     expect(screen.getByText(/LegendPlayer/i)).toBeInTheDocument();
   });
 
   it('displays active guest session indicator and formatted guest ID', () => {
-    render(<DashboardView />);
+    renderDashboard();
 
     expect(screen.getByText(/guest session active/i)).toBeInTheDocument();
     expect(screen.getByText(mockGuest.id)).toBeInTheDocument();
   });
 
-  it('renders disabled Phase 2 placeholders for Room Creation and Join', () => {
-    render(<DashboardView />);
-
-    // Check badges
-    const phase2Badges = screen.getAllByText(/coming in phase 2/i);
-    expect(phase2Badges.length).toBeGreaterThanOrEqual(2);
+  it('renders active Phase 2 buttons for Room Creation and Join', () => {
+    renderDashboard();
 
     // Check headings
     expect(screen.getByText(/create private room/i)).toBeInTheDocument();
     expect(screen.getByText(/join private room/i)).toBeInTheDocument();
 
-    // Check disabled buttons
-    const disabledButtons = screen.getAllByRole('button', { name: /phase 2/i });
-    expect(disabledButtons.length).toBe(2);
-    disabledButtons.forEach((btn) => {
-      expect(btn).toBeDisabled();
-    });
+    // Check active buttons
+    const createBtn = screen.getByRole('button', { name: /create room/i });
+    const joinBtn = screen.getByRole('button', { name: /join room/i });
+    expect(createBtn).toBeEnabled();
+    expect(joinBtn).toBeEnabled();
   });
 
   it('displays server-authoritative fair play notice', () => {
-    render(<DashboardView />);
+    renderDashboard();
 
     expect(screen.getByText(/server-authoritative fair play foundation/i)).toBeInTheDocument();
   });

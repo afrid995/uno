@@ -10,11 +10,24 @@ import {
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { guestService } from '../modules/guest/guest.service';
+import { registerRoomHandlers } from './roomSocketHandler';
+
+function parseCookieHeader(cookieHeader: string): Record<string, string> {
+  const list: Record<string, string> = {};
+  cookieHeader.split(';').forEach((cookie) => {
+    const parts = cookie.split('=');
+    const name = parts.shift()?.trim();
+    if (name) {
+      list[name] = decodeURIComponent(parts.join('='));
+    }
+  });
+  return list;
+}
 
 export function initializeSocketServer(httpServer: HttpServer): Server {
   const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
     cors: {
-      origin: env.CORS_ORIGIN,
+      origin: [env.CORS_ORIGIN, 'http://localhost:5173', 'http://127.0.0.1:5173'],
       methods: ['GET', 'POST'],
       credentials: true,
     },
@@ -23,10 +36,23 @@ export function initializeSocketServer(httpServer: HttpServer): Server {
   });
 
   io.use(async (socket: Socket, next) => {
-    // Initial handshake auth check (optional in Phase 1, ready for Phase 2 room joins)
-    const token = socket.handshake.auth?.token;
-    if (token && typeof token === 'string') {
-      try {
+    try {
+      let token: string | undefined;
+
+      // 1. Check handshake auth payload
+      if (socket.handshake.auth?.token && typeof socket.handshake.auth.token === 'string') {
+        token = socket.handshake.auth.token;
+      }
+
+      // 2. Fallback to handshake cookie
+      if (!token && socket.handshake.headers.cookie) {
+        const parsedCookies = parseCookieHeader(socket.handshake.headers.cookie);
+        if (parsedCookies[env.COOKIE_NAME]) {
+          token = parsedCookies[env.COOKIE_NAME];
+        }
+      }
+
+      if (token) {
         const guest = await guestService.validateTokenForSocket(token);
         if (guest) {
           socket.data = {
@@ -40,9 +66,9 @@ export function initializeSocketServer(httpServer: HttpServer): Server {
             username: guest.username,
           });
         }
-      } catch (err) {
-        logger.warn('Socket token validation failed', { socketId: socket.id, error: String(err) });
       }
+    } catch (err) {
+      logger.warn('Socket handshake authentication error', { socketId: socket.id, error: String(err) });
     }
 
     if (!socket.data) {
@@ -63,13 +89,16 @@ export function initializeSocketServer(httpServer: HttpServer): Server {
     socket.on(SOCKET_EVENTS.AUTH_AUTHENTICATE, async (payload, callback) => {
       try {
         if (!payload?.sessionToken) {
-          callback({ success: false, error: 'Session token required.' });
+          callback({ success: false, error: { code: 'SESSION_INVALID', message: 'Session token required.' } });
           return;
         }
 
         const guest = await guestService.validateTokenForSocket(payload.sessionToken);
         if (!guest) {
-          callback({ success: false, error: 'Invalid or expired session token.' });
+          callback({
+            success: false,
+            error: { code: 'SESSION_INVALID', message: 'Invalid or expired session token.' },
+          });
           return;
         }
 
@@ -82,12 +111,15 @@ export function initializeSocketServer(httpServer: HttpServer): Server {
           username: guest.username,
         });
 
-        callback({ success: true });
+        callback({ success: true, data: { guestId: guest.id, username: guest.username } });
       } catch (error) {
         logger.error('Socket authentication error', { error: String(error) });
-        callback({ success: false, error: 'Internal authentication error.' });
+        callback({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Internal authentication error.' } });
       }
     });
+
+    // Register Room Event Handlers
+    registerRoomHandlers(io, socket);
 
     // Ping / Pong heartbeat test
     socket.on(SOCKET_EVENTS.PING, () => {

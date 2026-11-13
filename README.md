@@ -1,18 +1,31 @@
-# UNO Ultimate — Phase 1: Project Foundation
+# UNO Ultimate — Phase 2: Private Rooms & Real-Time Presence
 
 UNO Ultimate is an online, private multiplayer card game crafted specifically for groups of friends. It does not provide public matchmaking, open player lobbies, or social networking features.
 
-Phase 1 provides the foundational monorepo architecture, cryptographically secure guest session lifecycle, PostgreSQL schema and migrations, REST API, responsive frontend interface, and automated test suite.
+Phase 2 builds upon the Phase 1 guest identity foundation to deliver a robust, server-authoritative private multiplayer room system with real-time lobby presence, player readiness, deterministic host transfer, and connection resilience.
 
 ---
 
 ## Tech Stack
 
-- **Frontend**: React 18, Vite, TypeScript, Tailwind CSS, React Router v7, Zustand, Framer Motion, Howler.js, Zod
-- **Backend**: Node.js, Express, TypeScript, Socket.IO (handshake ready), Zod validation, Helmet, CORS, Cookie-Parser, Express-Rate-Limit
+- **Frontend**: React 18, Vite, TypeScript, Tailwind CSS, React Router v7, Zustand, Socket.IO Client, Framer Motion, Howler.js, Zod
+- **Backend**: Node.js, Express, TypeScript, Socket.IO, Zod validation, Helmet, CORS, Cookie-Parser, Express-Rate-Limit
 - **Database**: PostgreSQL 16, Prisma ORM
 - **Monorepo**: pnpm workspaces
 - **Testing**: Vitest, React Testing Library, Supertest
+
+---
+
+## Core Features (Phase 1 & Phase 2)
+
+- **Zero Sign-Up Guest Identity**: Instant play with a username. Server-generated UUID guest ID and temporary session token with HttpOnly cookie support and resumption validation.
+- **Private Room Creation**: Server generates unique, unambiguous 6-character room codes (`23456789ABCDEFGHJKLMNPQRSTUVWXYZ`).
+- **Direct Invitation Links**: Shareable `/join/:roomCode` URLs with pre-flight metadata checks.
+- **Real-Time Lobby Presence**: Live member lists, player avatar badges, online/reconnecting indicators, and optimistic state versioning.
+- **Player Readiness & Host Controls**: Ready status toggling, host capacity management (2–10 players), and match initiation with countdown.
+- **Deterministic Host Transfer**: Seamless host handover to the earliest eligible member (`joinedAt ASC`) if the host disconnects or leaves.
+- **30-Second Reconnection Grace Period**: Transient network disconnections retain room slot and state without aborting the lobby.
+- **Server-Authoritative Security**: All room mutations are guarded by Zod validation, session authentication, and transactional integrity.
 
 ---
 
@@ -23,12 +36,14 @@ uno-ultimate/
 ├── apps/
 │   ├── web/                     # React + Vite frontend application
 │   │   ├── src/
-│   │   │   ├── app/             # Application entry and routing
+│   │   │   ├── app/             # Application entry and routing (/join/:roomCode, /room/:roomCode)
 │   │   │   ├── components/      # Common UI components (UnoCardVisual, Header, Footer)
-│   │   │   ├── features/guest/  # Guest login form & dashboard view
-│   │   │   ├── pages/           # LandingPage and DashboardPage
-│   │   │   ├── services/        # HTTP API client and guest API services
-│   │   │   ├── stores/          # Zustand guest session store
+│   │   │   ├── features/
+│   │   │   │   ├── guest/       # Guest login form & dashboard view
+│   │   │   │   └── room/        # CreateRoomModal, JoinRoomModal, PlayerCard, InviteLinkCard
+│   │   │   ├── pages/           # LandingPage, DashboardPage, LobbyPage, JoinInvitePage
+│   │   │   ├── services/        # HTTP API client and Socket.IO client manager
+│   │   │   ├── stores/          # Zustand guestStore and roomStore
 │   │   │   ├── styles/          # Tailwind globals and theme styling
 │   │   │   └── main.tsx         # DOM mount
 │   │   └── ...
@@ -36,9 +51,11 @@ uno-ultimate/
 │       ├── src/
 │       │   ├── config/          # Zod-validated environment config
 │       │   ├── middleware/      # Error handler, request validator, rate limiter
-│       │   ├── modules/guest/   # Guest session controller, service, routes
-│       │   ├── routes/          # Health check and root API router
-│       │   ├── sockets/         # Socket.IO handshake authentication server
+│       │   ├── modules/
+│       │   │   ├── guest/       # Guest session controller, service, routes
+│       │   │   └── room/        # Room service, code generator, routes
+│       │   ├── routes/          # Health, guest, and room routes
+│       │   ├── sockets/         # SocketServer auth middleware & roomSocketHandler
 │       │   ├── utils/           # Structured logger & crypto utilities
 │       │   ├── app.ts           # Express app instance for tests
 │       │   └── server.ts        # Server bootstrap and graceful shutdown
@@ -49,9 +66,9 @@ uno-ultimate/
 ├── database/                    # Prisma schema, migrations, and database client
 ├── infrastructure/              # PostgreSQL startup scripts & container configs
 ├── docs/
-│   ├── architecture/            # PHASE_1_ARCHITECTURE.md
+│   ├── architecture/            # PHASE_1_ARCHITECTURE.md, PHASE_2_ROOM_ARCHITECTURE.md, PHASE_2_SOCKET_EVENTS.md
 │   └── rules/                   # UNO_CORE_SPECIFICATION.md
-├── reports/                     # PHASE_1_PROJECT_FOUNDATION_REPORT.md
+├── reports/                     # PHASE_1_PROJECT_FOUNDATION_REPORT.md, PHASE_2_PRIVATE_ROOMS_REPORT.md
 ├── docker-compose.yml           # Local PostgreSQL service definition
 ├── package.json                 # Monorepo scripts
 ├── pnpm-workspace.yaml          # Monorepo workspace configuration
@@ -108,7 +125,7 @@ docker compose up -d
 
 ### 4. Run Prisma Database Migrations
 
-Generate the Prisma Client and deploy the migration:
+Generate the Prisma Client and deploy migrations:
 
 ```bash
 pnpm db:generate
@@ -135,7 +152,7 @@ Alternatively, run each service independently:
 | :--- | :--- |
 | `pnpm dev` | Starts backend and frontend development servers concurrently |
 | `pnpm build` | Compiles all packages (`@uno-ultimate/shared`, `@uno-ultimate/game-protocol`, `@uno-ultimate/database`, `@uno-ultimate/server`, `@uno-ultimate/web`) |
-| `pnpm test` | Runs the full Vitest suite (36 unit, integration, and UI tests) |
+| `pnpm test` | Runs the full Vitest suite (72 unit, integration, and UI tests across packages) |
 | `pnpm lint` | Runs ESLint across all workspaces |
 | `pnpm typecheck` | Validates TypeScript types across all workspaces with `tsc --noEmit` |
 | `pnpm db:generate` | Generates the typed Prisma Client |
@@ -143,11 +160,20 @@ Alternatively, run each service independently:
 
 ---
 
-## API Endpoints
+## API & Socket.IO Specification
 
+### REST Endpoints
 - `GET /api/health`: Health check and database latency ping
 - `POST /api/guest`: Creates a guest session with username validation (sets `uno_session` HttpOnly cookie)
 - `POST /api/guest/resume`: Resumes a session using cookie or Bearer token; prevents ID spoofing
+- `GET /api/rooms/:roomCode`: Read-only pre-flight metadata for invitation links
+- `GET /api/rooms/:roomCode/state`: Authenticated room state for room members
+
+### Socket.IO Events
+- **Client to Server**: `room:create`, `room:join`, `room:join-link`, `room:leave`, `room:ready`, `room:update-settings`, `room:start`, `room:resume`
+- **Server to Client**: `room:created`, `room:joined`, `room:state`, `room:player-joined`, `room:player-left`, `room:player-ready`, `room:host-changed`, `room:starting`, `room:closed`, `room:error`
+
+See [PHASE_2_SOCKET_EVENTS.md](file:///d:/uno/docs/architecture/PHASE_2_SOCKET_EVENTS.md) and [PHASE_2_ROOM_ARCHITECTURE.md](file:///d:/uno/docs/architecture/PHASE_2_ROOM_ARCHITECTURE.md) for complete specifications.
 
 ---
 

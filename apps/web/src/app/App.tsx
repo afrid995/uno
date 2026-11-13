@@ -5,6 +5,8 @@ import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
 import { LandingPage } from '../pages/LandingPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { LobbyPage } from '../pages/LobbyPage';
+import { JoinInvitePage } from '../pages/JoinInvitePage';
 
 export const App: React.FC = () => {
   const { resumeSession, guest, isResuming } = useGuestStore();
@@ -33,6 +35,14 @@ export const App: React.FC = () => {
             <Route
               path="/dashboard"
               element={<DashboardPage />}
+            />
+            <Route
+              path="/room/:roomCode"
+              element={<LobbyPage />}
+            />
+            <Route
+              path="/join/:roomCode"
+              element={<JoinInvitePage />}
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

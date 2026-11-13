@@ -7,6 +7,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum RoomStatus {
+  WAITING
+  STARTING
+  IN_GAME
+  FINISHED
+}
+
+enum RoomMemberRole {
+  HOST
+  PLAYER
+}
+
+enum ConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+}
+
 model GuestSession {
   id         String   @id @default(uuid()) @db.Uuid
   username   String   @db.VarChar(50)
@@ -15,7 +32,53 @@ model GuestSession {
   expiresAt  DateTime @db.Timestamptz(6)
   lastSeenAt DateTime @default(now()) @db.Timestamptz(6)
 
+  // Relations
+  hostedRooms Room[]       @relation("HostGuest")
+  memberships RoomMember[]
+
   @@index([tokenHash], map: "idx_guest_sessions_token_hash")
   @@index([expiresAt], map: "idx_guest_sessions_expires_at")
   @@map("guest_sessions")
+}
+
+model Room {
+  id          String     @id @default(uuid()) @db.Uuid
+  roomCode    String     @unique @db.VarChar(10)
+  hostGuestId String     @db.Uuid
+  status      RoomStatus @default(WAITING)
+  maxPlayers  Int        @default(6)
+  settings    Json       @default("{}")
+  version     Int        @default(1)
+  createdAt   DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @db.Timestamptz(6)
+  expiresAt   DateTime   @db.Timestamptz(6)
+
+  // Relations
+  host    GuestSession @relation("HostGuest", fields: [hostGuestId], references: [id], onDelete: Cascade)
+  members RoomMember[]
+
+  @@index([roomCode], map: "idx_rooms_room_code")
+  @@index([status], map: "idx_rooms_status")
+  @@index([expiresAt], map: "idx_rooms_expires_at")
+  @@map("rooms")
+}
+
+model RoomMember {
+  id               String           @id @default(uuid()) @db.Uuid
+  roomId           String           @db.Uuid
+  guestId          String           @db.Uuid
+  role             RoomMemberRole   @default(PLAYER)
+  readyStatus      Boolean          @default(false)
+  connectionStatus ConnectionStatus @default(CONNECTED)
+  joinedAt         DateTime         @default(now()) @db.Timestamptz(6)
+  lastSeenAt       DateTime         @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  room  Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  guest GuestSession @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, guestId], map: "unique_room_guest_membership")
+  @@index([roomId], map: "idx_room_members_room_id")
+  @@index([guestId], map: "idx_room_members_guest_id")
+  @@map("room_members")
 }
