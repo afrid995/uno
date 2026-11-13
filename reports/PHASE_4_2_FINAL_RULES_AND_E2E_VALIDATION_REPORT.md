@@ -372,10 +372,12 @@ Executed in `apps/server/tests/integration/game.socket.test.ts`:
 ## 22. Git Commit Hash and GitHub Publication Status
 
 - **Baseline Commit:** `89f778ac3636f372b3fc1776d436e6fb0498bd83`
+- **Pushed Commit SHA:** `70206c2e0b674b663991663481c3e757446c70f5`
+- **Commit Message:** `fix(phase-4.2): final rules integrity verification and e2e validation`
 - **Target Branch:** `main`
 - **Remote:** `origin` (`https://github.com/afrid995/uno.git`)
-- **Staged Files:** All modified engine, server, web, test, documentation, and report files.
-- **Commit Message:** `fix(phase-4.2): final rules integrity verification and e2e validation`
+- **Remote Verification:** Verified via `git ls-remote origin refs/heads/main` -> `70206c2e0b674b663991663481c3e757446c70f5`
+- **Publication Status:** Successfully committed and published to GitHub.
 
 ---
 
