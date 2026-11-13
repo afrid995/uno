@@ -1,0 +1,25 @@
+{
+  "name": "uno-ultimate-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "UNO Ultimate - Private multiplayer online card game for friends",
+  "scripts": {
+    "dev": "concurrently -n \"SERVER,WEB\" -c \"cyan,magenta\" \"pnpm --filter @uno-ultimate/server dev\" \"pnpm --filter @uno-ultimate/web dev\"",
+    "build": "pnpm --filter @uno-ultimate/shared build && pnpm --filter @uno-ultimate/game-protocol build && pnpm --filter @uno-ultimate/database build && pnpm --filter @uno-ultimate/server build && pnpm --filter @uno-ultimate/web build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @uno-ultimate/database db:generate",
+    "db:migrate": "pnpm --filter @uno-ultimate/database db:migrate",
+    "db:deploy": "pnpm --filter @uno-ultimate/database db:deploy"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "concurrently": "^9.1.2",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.7.3"
+  },
+  "packageManager": "pnpm@12.18.0"
+}

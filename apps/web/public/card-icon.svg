@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect x="8" y="10" width="32" height="46" rx="6" fill="#3B82F6" transform="rotate(-10 8 10)" stroke="#1E293B" stroke-width="2"/>
+  <rect x="24" y="8" width="32" height="46" rx="6" fill="#EF4444" stroke="#1E293B" stroke-width="2"/>
+  <circle cx="40" cy="31" r="11" fill="white" fill-opacity="0.2"/>
+  <text x="40" y="36" font-family="system-ui, sans-serif" font-weight="900" font-size="16" fill="white" text-anchor="middle">U</text>
+</svg>

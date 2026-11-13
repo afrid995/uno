@@ -1,0 +1,48 @@
+import { describe, it, expect } from 'vitest';
+import { generateSessionToken, hashSessionToken, timingSafeCompare } from '../../src/utils/crypto';
+
+describe('Crypto Utilities', () => {
+  it('generates a 64-character hexadecimal session token with 256 bits of entropy', () => {
+    const token = generateSessionToken();
+    expect(token).toBeDefined();
+    expect(typeof token).toBe('string');
+    expect(token).toHaveLength(64);
+    expect(/^[0-9a-f]{64}$/.test(token)).toBe(true);
+  });
+
+  it('generates distinct random tokens on subsequent calls', () => {
+    const token1 = generateSessionToken();
+    const token2 = generateSessionToken();
+    expect(token1).not.toBe(token2);
+  });
+
+  it('generates a deterministic SHA-256 HMAC hash for the same raw token', () => {
+    const token = generateSessionToken();
+    const hash1 = hashSessionToken(token);
+    const hash2 = hashSessionToken(token);
+    expect(hash1).toBe(hash2);
+    expect(hash1).toHaveLength(64);
+  });
+
+  it('generates different hashes for different tokens', () => {
+    const token1 = generateSessionToken();
+    const token2 = generateSessionToken();
+    expect(hashSessionToken(token1)).not.toBe(hashSessionToken(token2));
+  });
+
+  it('safely compares matching strings in constant time', () => {
+    const token = generateSessionToken();
+    const hash = hashSessionToken(token);
+    expect(timingSafeCompare(hash, hash)).toBe(true);
+  });
+
+  it('returns false for mismatched strings', () => {
+    const token1 = generateSessionToken();
+    const token2 = generateSessionToken();
+    expect(timingSafeCompare(token1, token2)).toBe(false);
+  });
+
+  it('returns false when string lengths differ without throwing', () => {
+    expect(timingSafeCompare('short', 'much_longer_string')).toBe(false);
+  });
+});
