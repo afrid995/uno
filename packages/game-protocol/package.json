@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@uno-ultimate/game-engine": "workspace:*",
     "@uno-ultimate/shared": "workspace:*",
     "zod": "^3.24.2"
   },

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@uno-ultimate/database": "workspace:*",
+    "@uno-ultimate/game-engine": "workspace:*",
     "@uno-ultimate/game-protocol": "workspace:*",
     "@uno-ultimate/shared": "workspace:*",
     "cookie-parser": "^1.4.7",

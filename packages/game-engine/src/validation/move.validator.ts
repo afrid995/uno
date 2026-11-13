@@ -1,0 +1,263 @@
+import { GameState } from '../game/game.types';
+import { GameAction } from '../actions/action.types';
+import { Card, CardColor } from '../cards/card.types';
+import { isWildCard } from '../cards/card.validation';
+import { HandManager } from '../players/hand.manager';
+
+export type EngineErrorCode =
+  | 'MATCH_NOT_ACTIVE'
+  | 'NOT_YOUR_TURN'
+  | 'INVALID_PLAYER'
+  | 'CARD_NOT_IN_HAND'
+  | 'INVALID_CARD_MATCH'
+  | 'MUST_CHOOSE_COLOR'
+  | 'INVALID_WILD_DRAW_FOUR'
+  | 'INVALID_PASS'
+  | 'ALREADY_DRAWN'
+  | 'INVALID_UNO_CALL'
+  | 'TARGET_NOT_VULNERABLE'
+  | 'NO_PENDING_CHALLENGE';
+
+export interface ValidationSuccess {
+  readonly valid: true;
+}
+
+export interface ValidationFailure {
+  readonly valid: false;
+  readonly code: EngineErrorCode;
+  readonly message: string;
+}
+
+export type ValidationResult = ValidationSuccess | ValidationFailure;
+
+export class MoveValidator {
+  /**
+   * Pure validation function asserting whether an action is legal given the current game state.
+   */
+  static validate(state: GameState, action: GameAction): ValidationResult {
+    // 1. General match status check
+    if (state.status !== 'IN_PROGRESS') {
+      return {
+        valid: false,
+        code: 'MATCH_NOT_ACTIVE',
+        message: 'Actions can only be executed while the match is in progress.',
+      };
+    }
+
+    // 2. Validate player existence
+    const player = state.players.find((p) => p.id === ('playerId' in action ? action.playerId : 'challengerPlayerId' in action ? action.challengerPlayerId : ''));
+    if (!player) {
+      return {
+        valid: false,
+        code: 'INVALID_PLAYER',
+        message: 'Player is not registered in this match.',
+      };
+    }
+
+    switch (action.type) {
+      case 'PLAY_CARD':
+        return this.validatePlayCard(state, player.id, action.cardId, action.chosenColor);
+
+      case 'DRAW_CARD':
+        return this.validateDrawCard(state, player.id);
+
+      case 'PASS_TURN':
+        return this.validatePassTurn(state, player.id);
+
+      case 'CALL_UNO':
+        return this.validateCallUno(state, player.id);
+
+      case 'CHALLENGE_UNO_FAILURE':
+        return this.validateChallengeUno(state, action.challengerPlayerId, action.targetPlayerId);
+
+      case 'CHALLENGE_WILD_DRAW_FOUR':
+      case 'ACCEPT_WILD_DRAW_FOUR':
+        return this.validateWildDrawFourResolution(state, player.id);
+
+      default:
+        return { valid: false, code: 'MATCH_NOT_ACTIVE', message: 'Unknown action type.' };
+    }
+  }
+
+  /**
+   * Asserts whether a card matches the active discard pile top and active color.
+   */
+  static isCardMatch(card: Card, activeColor: CardColor, topDiscard: Card): boolean {
+    // Wild cards can be played on any card
+    if (isWildCard(card)) {
+      return true;
+    }
+
+    // Color match
+    if (card.color === activeColor) {
+      return true;
+    }
+
+    // Value / symbol match (e.g. Red 5 on Blue 5, or Green Skip on Yellow Skip)
+    if (card.value === topDiscard.value) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private static validatePlayCard(
+    state: GameState,
+    playerId: string,
+    cardId: string,
+    chosenColor?: CardColor
+  ): ValidationResult {
+    const currentPlayer = state.players[state.currentPlayerIndex];
+    if (currentPlayer.id !== playerId) {
+      return {
+        valid: false,
+        code: 'NOT_YOUR_TURN',
+        message: `It is not player ${playerId}'s turn. Current turn: ${currentPlayer.id}`,
+      };
+    }
+
+    // Check card in hand
+    const card = HandManager.findCard(currentPlayer.hand, cardId);
+    if (!card) {
+      return {
+        valid: false,
+        code: 'CARD_NOT_IN_HAND',
+        message: `Card ${cardId} is not in player's hand.`,
+      };
+    }
+
+    // If player already drew this turn, official Mattel rule says they can only play the drawn card!
+    if (currentPlayer.hasDrawnThisTurn) {
+      if (currentPlayer.drawnCardId !== cardId) {
+        return {
+          valid: false,
+          code: 'INVALID_CARD_MATCH',
+          message: 'After drawing, you may only play the card that was just drawn.',
+        };
+      }
+    }
+
+    // Check color choice for wild cards
+    if (isWildCard(card) && !chosenColor) {
+      return {
+        valid: false,
+        code: 'MUST_CHOOSE_COLOR',
+        message: 'Must specify chosenColor when playing a Wild or Wild Draw Four card.',
+      };
+    }
+
+    // Check card match legality against top discard
+    if (!this.isCardMatch(card, state.activeColor, state.topDiscardCard)) {
+      return {
+        valid: false,
+        code: 'INVALID_CARD_MATCH',
+        message: `Card ${card.color ?? 'wild'} ${card.value} does not match active color ${state.activeColor} or top card ${state.topDiscardCard.value}.`,
+      };
+    }
+
+    return { valid: true };
+  }
+
+  private static validateDrawCard(state: GameState, playerId: string): ValidationResult {
+    const currentPlayer = state.players[state.currentPlayerIndex];
+    if (currentPlayer.id !== playerId) {
+      return {
+        valid: false,
+        code: 'NOT_YOUR_TURN',
+        message: 'You can only draw a card on your turn.',
+      };
+    }
+
+    if (currentPlayer.hasDrawnThisTurn) {
+      return {
+        valid: false,
+        code: 'ALREADY_DRAWN',
+        message: 'You have already drawn a card this turn. You must either play it or pass.',
+      };
+    }
+
+    return { valid: true };
+  }
+
+  private static validatePassTurn(state: GameState, playerId: string): ValidationResult {
+    const currentPlayer = state.players[state.currentPlayerIndex];
+    if (currentPlayer.id !== playerId) {
+      return {
+        valid: false,
+        code: 'NOT_YOUR_TURN',
+        message: 'You can only pass on your turn.',
+      };
+    }
+
+    // Official Mattel rule: player can only pass IF they have drawn a card this turn
+    if (!currentPlayer.hasDrawnThisTurn) {
+      return {
+        valid: false,
+        code: 'INVALID_PASS',
+        message: 'You must draw a card before you can pass your turn.',
+      };
+    }
+
+    return { valid: true };
+  }
+
+  private static validateCallUno(state: GameState, playerId: string): ValidationResult {
+    const player = state.players.find((p) => p.id === playerId);
+    if (!player) {
+      return { valid: false, code: 'INVALID_PLAYER', message: 'Player not found.' };
+    }
+
+    // Calling UNO is valid when holding 1 card or about to play the 2nd-to-last card (2 cards in hand)
+    if (player.hand.length > 2) {
+      return {
+        valid: false,
+        code: 'INVALID_UNO_CALL',
+        message: 'You can only call UNO when you have 1 or 2 cards remaining.',
+      };
+    }
+
+    return { valid: true };
+  }
+
+  private static validateChallengeUno(
+    state: GameState,
+    _challengerId: string,
+    targetPlayerId: string
+  ): ValidationResult {
+    const target = state.players.find((p) => p.id === targetPlayerId);
+    if (!target) {
+      return { valid: false, code: 'INVALID_PLAYER', message: 'Target player not found.' };
+    }
+
+    // A player is vulnerable to UNO challenge only if they have exactly 1 card AND have not declared UNO
+    if (target.hand.length !== 1 || target.hasDeclaredUno) {
+      return {
+        valid: false,
+        code: 'TARGET_NOT_VULNERABLE',
+        message: 'Player is not vulnerable to an UNO failure challenge.',
+      };
+    }
+
+    return { valid: true };
+  }
+
+  private static validateWildDrawFourResolution(state: GameState, playerId: string): ValidationResult {
+    if (!state.pendingActionState || state.pendingActionState.type !== 'AWAITING_WILD_DRAW_FOUR_RESOLUTION') {
+      return {
+        valid: false,
+        code: 'NO_PENDING_CHALLENGE',
+        message: 'There is no pending Wild Draw Four to challenge or accept.',
+      };
+    }
+
+    if (state.pendingActionState.victimPlayerId !== playerId) {
+      return {
+        valid: false,
+        code: 'INVALID_PLAYER',
+        message: 'Only the targeted victim of the Wild Draw Four can resolve this action.',
+      };
+    }
+
+    return { valid: true };
+  }
+}

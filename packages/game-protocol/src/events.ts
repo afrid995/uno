@@ -51,11 +51,12 @@ export const SOCKET_EVENTS = {
 
   // Phase 3+ Gameplay Actions
   GAME_START: 'game:start',
-  GAME_PLAY_CARD: 'game:play_card',
-  GAME_DRAW_CARD: 'game:draw_card',
-  GAME_CALL_UNO: 'game:call_uno',
-  GAME_STATE_SYNC: 'game:state_sync',
-  GAME_OVER: 'game:over',
+  GAME_PLAY_CARD: 'game:play-card',
+  GAME_DRAW_CARD: 'game:draw-card',
+  GAME_CHOOSE_COLOR: 'game:choose-color',
+  GAME_UNO: 'game:uno',
+  GAME_STATE: 'game:state',
+  GAME_FINISHED: 'game:finished',
 } as const;
 
 export type SocketEventName = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];
@@ -103,6 +104,23 @@ export interface ClientToServerEvents {
     payload: JoinRoomInput,
     callback: (response: SocketAck<RoomPublicDto>) => void
   ) => void;
+  // Gameplay operations
+  [SOCKET_EVENTS.GAME_PLAY_CARD]: (
+    payload: { cardId: string; chosenColor?: string },
+    callback: (response: SocketAck<{ success: boolean }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_DRAW_CARD]: (
+    payload: Record<string, never> | undefined,
+    callback: (response: SocketAck<{ cardDrawn: boolean }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_CHOOSE_COLOR]: (
+    payload: { chosenColor: string },
+    callback: (response: SocketAck<{ success: boolean }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_UNO]: (
+    payload: { action?: 'call' | 'catch'; targetPlayerId?: string } | undefined,
+    callback: (response: SocketAck<{ success: boolean }>) => void
+  ) => void;
 }
 
 /**
@@ -124,6 +142,10 @@ export interface ServerToClientEvents {
   [SOCKET_EVENTS.ROOM_ERROR]: (payload: { code: string; message: string }) => void;
   [SOCKET_EVENTS.ROOM_CLOSED]: (payload: { reason: string }) => void;
   [SOCKET_EVENTS.ROOM_STARTING]: (payload: { countdownSeconds: number; version: number }) => void;
+
+  // Gameplay broadcasts
+  [SOCKET_EVENTS.GAME_STATE]: (payload: { state: unknown }) => void;
+  [SOCKET_EVENTS.GAME_FINISHED]: (payload: { winner: unknown; finalScores?: Record<string, number> }) => void;
 }
 
 export interface InterServerEvents {

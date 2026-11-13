@@ -5,7 +5,7 @@
   "description": "UNO Ultimate - Private multiplayer online card game for friends",
   "scripts": {
     "dev": "concurrently -n \"SERVER,WEB\" -c \"cyan,magenta\" \"pnpm --filter @uno-ultimate/server dev\" \"pnpm --filter @uno-ultimate/web dev\"",
-    "build": "pnpm --filter @uno-ultimate/shared build && pnpm --filter @uno-ultimate/game-protocol build && pnpm --filter @uno-ultimate/database build && pnpm --filter @uno-ultimate/server build && pnpm --filter @uno-ultimate/web build",
+    "build": "pnpm --filter @uno-ultimate/shared build && pnpm --filter @uno-ultimate/game-engine build && pnpm --filter @uno-ultimate/game-protocol build && pnpm --filter @uno-ultimate/database build && pnpm --filter @uno-ultimate/server build && pnpm --filter @uno-ultimate/web build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",

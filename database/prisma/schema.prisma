@@ -33,8 +33,10 @@ model GuestSession {
   lastSeenAt DateTime @default(now()) @db.Timestamptz(6)
 
   // Relations
-  hostedRooms Room[]       @relation("HostGuest")
-  memberships RoomMember[]
+  hostedRooms  Room[]        @relation("HostGuest")
+  memberships  RoomMember[]
+  wonMatches   Match[]       @relation("MatchWinner")
+  matchPlayers MatchPlayer[]
 
   @@index([tokenHash], map: "idx_guest_sessions_token_hash")
   @@index([expiresAt], map: "idx_guest_sessions_expires_at")
@@ -56,6 +58,7 @@ model Room {
   // Relations
   host    GuestSession @relation("HostGuest", fields: [hostGuestId], references: [id], onDelete: Cascade)
   members RoomMember[]
+  matches Match[]
 
   @@index([roomCode], map: "idx_rooms_room_code")
   @@index([status], map: "idx_rooms_status")
@@ -81,4 +84,88 @@ model RoomMember {
   @@index([roomId], map: "idx_room_members_room_id")
   @@index([guestId], map: "idx_room_members_guest_id")
   @@map("room_members")
+}
+
+enum MatchStatus {
+  INITIALIZING
+  IN_PROGRESS
+  COMPLETED
+  ABORTED
+}
+
+model Match {
+  id             String        @id @default(uuid()) @db.Uuid
+  roomId         String        @db.Uuid
+  variant        String        @default("classic") @db.VarChar(50)
+  status         MatchStatus   @default(INITIALIZING)
+  sequenceNumber Int           @default(0)
+  turnNumber     Int           @default(1)
+  currentVersion Int           @default(1)
+  winnerGuestId  String?       @db.Uuid
+  createdAt      DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  room      Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  winner    GuestSession? @relation("MatchWinner", fields: [winnerGuestId], references: [id], onDelete: SetNull)
+  players   MatchPlayer[]
+  events    GameEvent[]
+  snapshots GameSnapshot[]
+
+  @@index([roomId], map: "idx_matches_room_id")
+  @@index([status], map: "idx_matches_status")
+  @@map("matches")
+}
+
+model MatchPlayer {
+  id          String       @id @default(uuid()) @db.Uuid
+  matchId     String       @db.Uuid
+  guestId     String       @db.Uuid
+  playerIndex Int
+  cardCount   Int          @default(7)
+  isWinner    Boolean      @default(false)
+  score       Int          @default(0)
+  joinedAt    DateTime     @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  match Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  guest GuestSession @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, guestId], map: "unique_match_guest")
+  @@unique([matchId, playerIndex], map: "unique_match_player_index")
+  @@index([matchId], map: "idx_match_players_match_id")
+  @@index([guestId], map: "idx_match_players_guest_id")
+  @@map("match_players")
+}
+
+model GameEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  matchId        String   @db.Uuid
+  sequenceNumber Int
+  eventType      String   @db.VarChar(50)
+  guestId        String?  @db.Uuid
+  payload        Json     @default("{}")
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, sequenceNumber], map: "unique_match_event_sequence")
+  @@index([matchId], map: "idx_game_events_match_id")
+  @@map("game_events")
+}
+
+model GameSnapshot {
+  id             String   @id @default(uuid()) @db.Uuid
+  matchId        String   @db.Uuid
+  sequenceNumber Int
+  state          Json
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, sequenceNumber], map: "unique_match_snapshot_sequence")
+  @@index([matchId], map: "idx_game_snapshots_match_id")
+  @@map("game_snapshots")
 }
