@@ -4,6 +4,8 @@ import { io as ioClient, Socket as ClientSocket } from 'socket.io-client';
 import { createApp } from '../../src/app';
 import { initializeSocketServer } from '../../src/sockets/socketServer';
 import { guestService } from '../../src/modules/guest/guest.service';
+import { gameSessionManager } from '../../src/modules/game/game.session.manager';
+import { prisma } from '@uno-ultimate/database';
 import { SOCKET_EVENTS, PlayerGameState } from '@uno-ultimate/game-protocol';
 
 describe('Game Socket.IO Multiplayer Integration Tests', () => {
@@ -225,5 +227,183 @@ describe('Game Socket.IO Multiplayer Integration Tests', () => {
       playerSocket.emit(SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_FOUR, {}, resolve);
     });
     expect(acceptWdfAck.success).toBe(false);
+  });
+
+  it('recovers active match from database snapshot on room:resume after cold server restart', async () => {
+    const hostSocket = createClient(hostToken);
+    const playerSocket = createClient(playerToken);
+
+    await Promise.all([
+      new Promise<void>((resolve) => hostSocket.on('connect', resolve)),
+      new Promise<void>((resolve) => playerSocket.on('connect', resolve)),
+    ]);
+
+    const createAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_CREATE, { maxPlayers: 2 }, resolve);
+    });
+    const roomCode = createAck.data.roomCode;
+
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve);
+    });
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve);
+    });
+
+    const hostStatePromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      hostSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+
+    await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_START, { immediate: true }, resolve);
+    });
+
+    const initialHostState = await hostStatePromise;
+    expect(initialHostState.state.status).toBe('IN_PROGRESS');
+
+    // Simulate COLD SERVER RESTART: clear all in-memory game sessions completely!
+    gameSessionManager.clearAllSessionsForTesting();
+    expect(gameSessionManager.getSessionByRoomCode(roomCode)).toBeNull();
+
+    // Disconnect host socket and reconnect with fresh client
+    hostSocket.disconnect();
+    const resumedHostSocket = createClient(hostToken);
+    await new Promise<void>((resolve) => resumedHostSocket.on('connect', resolve));
+
+    const recoveredStatePromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      resumedHostSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+
+    const resumeAck = await new Promise<any>((resolve) => {
+      resumedHostSocket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode }, resolve);
+    });
+    expect(resumeAck.success).toBe(true);
+
+    const recoveredState = await recoveredStatePromise;
+    // Verify recovered state matches the database snapshot!
+    expect(recoveredState.state.status).toBe('IN_PROGRESS');
+    expect(recoveredState.state.self.id).toBe(hostGuestId);
+    expect(recoveredState.state.self.hand).toHaveLength(7);
+    expect(recoveredState.state.roundNumber).toBe(1);
+
+    // Verify in-memory session was properly rehydrated
+    expect(gameSessionManager.getSessionByRoomCode(roomCode)).not.toBeNull();
+
+    // Verify non-member cannot recover state
+    const strangerSession = await guestService.createGuest('Stranger');
+    const strangerSocket = createClient(strangerSession.rawSessionToken);
+    await new Promise<void>((resolve) => strangerSocket.on('connect', resolve));
+
+    const strangerResumeAck = await new Promise<any>((resolve) => {
+      strangerSocket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode }, resolve);
+    });
+    expect(strangerResumeAck.success).toBe(false);
+    expect(strangerResumeAck.error.code).toBe('NOT_IN_ROOM');
+  });
+
+  it('enforces 5-second countdown in production mode when immediate is sent', async () => {
+    const prevEnv = process.env.NODE_ENV;
+    try {
+      // Temporarily switch NODE_ENV to production
+      process.env.NODE_ENV = 'production';
+
+      const prodHost = await guestService.createGuest('ProdHost');
+      const prodPlayer = await guestService.createGuest('ProdPlayer');
+      const hostSocket = createClient(prodHost.rawSessionToken);
+      const playerSocket = createClient(prodPlayer.rawSessionToken);
+
+      await Promise.all([
+        new Promise<void>((resolve) => hostSocket.on('connect', resolve)),
+        new Promise<void>((resolve) => playerSocket.on('connect', resolve)),
+      ]);
+
+      const createAck = await new Promise<any>((resolve) => {
+        hostSocket.emit(SOCKET_EVENTS.ROOM_CREATE, { maxPlayers: 2 }, resolve);
+      });
+      const roomCode = createAck.data.roomCode;
+
+      await new Promise<any>((resolve) => {
+        playerSocket.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve);
+      });
+      await new Promise<any>((resolve) => {
+        playerSocket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve);
+      });
+
+      let gameStartedImmediately = false;
+      hostSocket.once(SOCKET_EVENTS.GAME_STARTED, () => {
+        gameStartedImmediately = true;
+      });
+
+      // Attempt immediate bypass in production
+      const startAck = await new Promise<any>((resolve) => {
+        hostSocket.emit(SOCKET_EVENTS.ROOM_START, { immediate: true }, resolve);
+      });
+      expect(startAck.success).toBe(true);
+
+      // Wait 150ms: in production, game must NOT have started immediately (countdown is 5000ms)
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      expect(gameStartedImmediately).toBe(false);
+    } finally {
+      process.env.NODE_ENV = prevEnv;
+    }
+  });
+
+  it('persists strictly increasing, unique sequence numbers in GameEvent table', async () => {
+    const seqHost = await guestService.createGuest('SeqHost');
+    const seqPlayer = await guestService.createGuest('SeqPlayer');
+    const hostSocket = createClient(seqHost.rawSessionToken);
+    const playerSocket = createClient(seqPlayer.rawSessionToken);
+
+    await Promise.all([
+      new Promise<void>((resolve) => hostSocket.on('connect', resolve)),
+      new Promise<void>((resolve) => playerSocket.on('connect', resolve)),
+    ]);
+
+    const createAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_CREATE, { maxPlayers: 2 }, resolve);
+    });
+    const roomCode = createAck.data.roomCode;
+
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve);
+    });
+    await new Promise<any>((resolve) => {
+      playerSocket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve);
+    });
+
+    const hostStatePromise = new Promise<{ state: PlayerGameState }>((resolve) => {
+      hostSocket.once(SOCKET_EVENTS.GAME_STATE, resolve);
+    });
+
+    const startAck = await new Promise<any>((resolve) => {
+      hostSocket.emit(SOCKET_EVENTS.ROOM_START, { immediate: true }, resolve);
+    });
+    expect(startAck.success).toBe(true);
+    await hostStatePromise;
+
+    const session = gameSessionManager.getSessionByRoomCode(roomCode);
+    expect(session).not.toBeNull();
+    const matchId = session!.matchId;
+
+    // Active player plays or draws
+    const activePlayerId = session!.state.players[session!.state.currentPlayerIndex].id;
+    const activeSocket = activePlayerId === hostGuestId ? hostSocket : playerSocket;
+
+    const drawAck = await new Promise<any>((resolve) => {
+      activeSocket.emit(SOCKET_EVENTS.GAME_DRAW_CARD, {}, resolve);
+    });
+    expect(drawAck.success).toBe(true);
+
+    // Query events from PostgreSQL
+    const events = await prisma.gameEvent.findMany({
+      where: { matchId },
+      orderBy: { sequenceNumber: 'asc' },
+    });
+
+    expect(events.length).toBeGreaterThan(0);
+    // Verify sequence numbers are strictly monotonic and unique: 1, 2, ...
+    for (let i = 0; i < events.length; i++) {
+      expect(events[i].sequenceNumber).toBe(i + 1);
+    }
   });
 });

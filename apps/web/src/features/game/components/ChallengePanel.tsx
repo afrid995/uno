@@ -27,6 +27,7 @@ export const ChallengePanel: React.FC = () => {
       {/* Inspected Hand View (Visible only to challenger after challenge) */}
       {inspectedChallengedHand && inspectedChallengedHand.length > 0 && (
         <motion.div
+          data-testid="inspected-hand"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           className="mb-4 p-4 rounded-xl border border-amber-500/50 bg-slate-900/95 shadow-2xl"
@@ -70,6 +71,7 @@ export const ChallengePanel: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
             <button
+              data-testid="accept-wild-draw-four-btn"
               onClick={() => acceptWildDrawFour()}
               disabled={isActionLoading}
               className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-white bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all text-sm shadow-md disabled:opacity-50"
@@ -77,6 +79,7 @@ export const ChallengePanel: React.FC = () => {
               Accept (+4 Cards & Skip)
             </button>
             <button
+              data-testid="challenge-wild-draw-four-btn"
               onClick={() => challengeWildDrawFour()}
               disabled={isActionLoading}
               className="w-full sm:w-auto px-6 py-3 rounded-xl font-black text-white bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 active:scale-95 transition-all text-sm shadow-lg shadow-rose-900/40 ring-2 ring-rose-400 disabled:opacity-50"

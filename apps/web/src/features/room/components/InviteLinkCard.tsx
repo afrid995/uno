@@ -32,7 +32,7 @@ export const InviteLinkCard: React.FC<InviteLinkCardProps> = ({ roomCode }) => {
             Private Room Code
           </span>
           <div className="flex items-center gap-3">
-            <span className="font-mono font-black text-3xl sm:text-4xl text-uno-yellow tracking-[0.2em]">
+            <span data-testid="room-code-display" className="font-mono font-black text-3xl sm:text-4xl text-uno-yellow tracking-[0.2em]">
               {roomCode}
             </span>
             <button

@@ -19,6 +19,8 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
 }) => {
   return (
     <div
+      data-testid="player-seat"
+      data-player-id={player.id}
       className={`flex flex-col items-center p-2.5 rounded-2xl bg-slate-900/80 border transition-all duration-300 ${
         isCurrentTurn
           ? 'border-amber-400/80 ring-2 ring-amber-400/50 shadow-glow-amber bg-slate-800/90 scale-105'
@@ -77,6 +79,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         {/* Catch Missed UNO Button */}
         {isVulnerableToUno && onCatchUno && (
           <button
+            data-testid="catch-uno-btn"
             onClick={onCatchUno}
             className="mt-1 px-2.5 py-1 rounded-lg text-[10px] font-black bg-rose-600 hover:bg-rose-500 text-white flex items-center gap-1 shadow-glow-red animate-bounce cursor-pointer border border-rose-400/40"
           >

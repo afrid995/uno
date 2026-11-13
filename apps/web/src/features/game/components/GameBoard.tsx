@@ -56,7 +56,7 @@ export const GameBoard: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full max-w-7xl mx-auto flex flex-col justify-between min-h-[82vh] px-2 sm:px-4 py-2 select-none">
+    <div data-testid="game-board" className="relative w-full max-w-7xl mx-auto flex flex-col justify-between min-h-[82vh] px-2 sm:px-4 py-2 select-none">
       {/* Top Bar: Turn status & Scoreboard */}
       <div className="flex items-center justify-between gap-2 px-2 py-1">
         {/* Turn indicator badge */}

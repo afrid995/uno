@@ -47,19 +47,37 @@ Total Deck (108 playable cards)
 ## 2. Setup & Initial Discard Pile Resolution (Mattel 42001)
 
 ### Dealer Determination & Dealing
-1. **Dealer Selection**: Prior to Round 1, each player draws a card; highest number card deals (action cards count as 0). Dealer index rotates clockwise by 1 for each subsequent round.
+1. **Dealer Selection (Mattel 42001)**: Prior to Round 1, each player draws a card from the shuffled canonical 108-card deck. The player drawing the highest card points becomes the dealer:
+   - **Number cards (0–9)**: Count as face value (0–9 points).
+   - **Action cards (Skip, Reverse, Draw Two)**: Count as **20 points** each.
+   - **Wild cards (Wild, Wild Draw Four)**: Count as **50 points** each.
+   - **Tie Breaking**: If two or more players tie for the highest point value, the tied players redraw until a single dealer is determined.
+   - **Subsequent Rounds**: Dealer rotates clockwise (`(roundNumber - 1) % playerCount`).
 2. Every player receives **7 cards** face down.
 3. The remaining cards form the **Draw Pile** (face down).
-4. Play begins with the player to the left of the dealer (`(dealerIndex + 1) % playerCount`).
+4. Play begins with the player to the left of the dealer (`(dealerIndex + 1) % playerCount`), unless modified by an opening action card.
 
 ### Starting Card Edge Cases (Mattel 42001)
 When the top card of the draw pile is turned face up to start the discard pile:
-- **Wild Draw Four**: *Illegal start card*. It is returned to the draw pile, the deck is reshuffled, and another card is turned over.
-- **Wild**: *Illegal start card per Mattel 42001*. It is returned to the draw pile, the deck is reshuffled, and another card is turned over until a non-Wild card is revealed.
-- **Draw Two**: Player to the left of the dealer must draw **2 cards** and loses their turn. The next player takes the first turn.
-- **Reverse**: The dealer plays first, and the direction of play reverses counter-clockwise.
+- **Wild Draw Four**: *Illegal start card*. Returned to the draw pile, the deck is reshuffled, and another card is turned over.
+- **Wild**: *Illegal start card per Setup Section*. Returned to the draw pile, the deck is reshuffled, and another card is turned over until a non-Wild card is revealed (see detailed ambiguity resolution below).
+- **Draw Two**: The player to the left of the dealer must draw **2 cards** and loses their turn. Play proceeds to the next player.
+- **Reverse**: Play direction reverses to **counter-clockwise**. The player to the dealer's right takes the first turn (e.g. for dealer 0 with 4 players, player 3; with 3 players, player 2; with 2 players, player 1). Play continues counter-clockwise.
 - **Skip**: The player to the left of the dealer is skipped. The next player begins play.
 - **Number Card (0–9)**: Standard play begins with the player to the left of the dealer matching the card by number, color, or symbol.
+
+### Starting Wild Card Rule Analysis & Conflict Resolution (Correction H)
+The official Mattel 42001 rule sheet contains two differing passages regarding an opening Wild card:
+1. **Setup Section**:
+   > *"If the first card turned up from the DRAW pile is a Wild card, it is returned to the deck and another card is picked."*
+2. **Wild Card Description Section**:
+   > *"If this card is turned up at the beginning of play, the person to the left of the dealer chooses what color begins play and plays the first card."*
+
+**Precedence Choice & Architectural Rationale**:
+`@uno-ultimate/game-engine` strictly adopts the **Setup Section** rule: an opening Wild card is returned to the draw pile, the deck is reshuffled, and another card is drawn until a non-Wild card emerges.
+- **Consistency**: Eliminates edge cases where a match initializes in an ambiguous state without an active color assigned by an actual move.
+- **Authoritative Determinism**: Assures that the discard pile begins on a concrete, color-bearing card, preventing desynchronization between player clients and the engine state.
+- **Test Enforcement**: Strictly verified by regression tests in `packages/game-engine/tests/rules-42001.test.ts`.
 
 ---
 

@@ -11,35 +11,48 @@ import { TurnManager } from '../turns/turn.manager';
 export class GameFactory {
   /**
    * Official Mattel 42001 dealer determination:
-   * Players draw cards. Highest point value becomes dealer. Action/Wild cards count as 0.
+   * Every player draws a card from the canonical 108-card deck.
+   * The player with the highest point value becomes dealer.
+   * Number cards count as face value (0-9).
+   * Action cards (Skip, Reverse, Draw Two) count as 20 points.
+   * Wild cards (Wild, Wild Draw Four) count as 50 points.
+   * In the event of a tie for the highest card, tied players draw again.
    */
   static determineDealer(playerCount: number, rng: RandomNumberGenerator = defaultCryptoRng): number {
-    const cardValues: number[] = [];
-    for (let i = 0; i < playerCount; i++) {
-      // Draw simulated value from 108-card distribution (numbers 0-9 face value, actions/wilds = 0)
-      const roll = Math.floor(rng() * 108);
-      // Roughly 76/108 cards are numbers (0-9)
-      const cardVal = roll < 76 ? Math.floor(rng() * 10) : 0;
-      cardValues.push(cardVal);
-    }
+    if (playerCount <= 1) return 0;
 
-    let highest = -1;
-    let highestIndices: number[] = [];
-    for (let i = 0; i < playerCount; i++) {
-      if (cardValues[i] > highest) {
-        highest = cardValues[i];
-        highestIndices = [i];
-      } else if (cardValues[i] === highest) {
-        highestIndices.push(i);
+    let candidates = Array.from({ length: playerCount }, (_, i) => i);
+    let deck: Card[] = [];
+    const maxTiesAllowed = 50;
+    let tieCount = 0;
+
+    while (candidates.length > 1 && tieCount < maxTiesAllowed) {
+      tieCount++;
+      // Ensure we have enough cards in the draw pile for all remaining candidates
+      if (deck.length < candidates.length) {
+        deck = shuffleDeck(DeckFactory.createClassicDeck('classic'), rng);
       }
+
+      // Draw one card for each candidate
+      const roundDrawnValues: { candidateIndex: number; score: number }[] = [];
+      for (const candidate of candidates) {
+        const card = deck.pop()!;
+        roundDrawnValues.push({
+          candidateIndex: candidate,
+          score: card.scoreValue,
+        });
+      }
+
+      // Find the highest score drawn this round
+      const maxScore = Math.max(...roundDrawnValues.map((d) => d.score));
+
+      // Filter candidates to only those who tied for highest score
+      candidates = roundDrawnValues
+        .filter((d) => d.score === maxScore)
+        .map((d) => d.candidateIndex);
     }
 
-    if (highestIndices.length === 1) {
-      return highestIndices[0];
-    }
-    // Tie-breaker
-    const tiePick = Math.floor(rng() * highestIndices.length);
-    return highestIndices[tiePick];
+    return candidates[0];
   }
 
   /**
@@ -119,15 +132,9 @@ export class GameFactory {
       // Next player starts
       currentPlayerIndex = TurnManager.getNextPlayerIndex(startingPlayerIndex, playerCount, turnDirection, 1);
     } else if (topDiscard.value === 'reverse') {
-      // Play direction begins counter-clockwise
+      // Per Mattel 42001: The player to the dealer's right plays first and play proceeds to the right (counter-clockwise)
       turnDirection = 'counter_clockwise';
-      if (playerCount === 2) {
-        // In 2-player UNO, Reverse acts as a skip, so starting player plays first
-        currentPlayerIndex = startingPlayerIndex;
-      } else {
-        // Play goes to the right (dealer plays first)
-        currentPlayerIndex = dealerIndex;
-      }
+      currentPlayerIndex = TurnManager.getNextPlayerIndex(dealerIndex, playerCount, 'counter_clockwise', 1);
     } else if (topDiscard.value === 'skip') {
       // Person to the left of the dealer is skipped; player to their left begins
       currentPlayerIndex = TurnManager.getNextPlayerIndex(startingPlayerIndex, playerCount, turnDirection, 1);
@@ -227,12 +234,9 @@ export class GameFactory {
       };
       currentPlayerIndex = TurnManager.getNextPlayerIndex(startingPlayerIndex, playerCount, turnDirection, 1);
     } else if (topDiscard.value === 'reverse') {
+      // Per Mattel 42001: The player to the dealer's right plays first and play proceeds to the right (counter-clockwise)
       turnDirection = 'counter_clockwise';
-      if (playerCount === 2) {
-        currentPlayerIndex = startingPlayerIndex;
-      } else {
-        currentPlayerIndex = newDealerIndex;
-      }
+      currentPlayerIndex = TurnManager.getNextPlayerIndex(newDealerIndex, playerCount, 'counter_clockwise', 1);
     } else if (topDiscard.value === 'skip') {
       currentPlayerIndex = TurnManager.getNextPlayerIndex(startingPlayerIndex, playerCount, turnDirection, 1);
     }

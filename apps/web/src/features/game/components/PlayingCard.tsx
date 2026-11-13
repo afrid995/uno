@@ -29,6 +29,7 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
   if (faceDown || !card) {
     return (
       <div
+        data-testid="playing-card-facedown"
         className={`relative select-none border-2 border-slate-700 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 shadow-xl flex items-center justify-center overflow-hidden ${sizeClasses} ${className}`}
       >
         <div className="absolute inset-1.5 rounded-lg border border-slate-700/60 bg-slate-900/90 flex items-center justify-center">
@@ -81,6 +82,11 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
 
   return (
     <motion.div
+      data-testid="playing-card"
+      data-card-id={card.id}
+      data-card-color={card.color ?? 'wild'}
+      data-card-value={card.value}
+      data-is-playable={isPlayable}
       whileHover={isPlayable && onClick ? { scale: 1.08, y: -8 } : {}}
       whileTap={isPlayable && onClick ? { scale: 0.95 } : {}}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}

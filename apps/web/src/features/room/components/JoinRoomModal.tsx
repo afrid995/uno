@@ -114,6 +114,7 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({ isOpen, onClose })
               </button>
               <button
                 type="submit"
+                data-testid="confirm-join-room-btn"
                 disabled={isLoading || roomCode.length !== ROOM_RULES.CODE_LENGTH}
                 className="flex-1 py-3 px-4 rounded-xl text-xs font-bold font-display text-white bg-gradient-to-r from-uno-blue to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-glow-blue disabled:opacity-50 transition-all flex items-center justify-center gap-2"
               >

@@ -110,6 +110,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
               </button>
               <button
                 type="submit"
+                data-testid="confirm-create-room-btn"
                 disabled={isLoading}
                 className="flex-1 py-3 px-4 rounded-xl text-xs font-bold font-display text-white bg-gradient-to-r from-uno-red to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-glow disabled:opacity-50 transition-all flex items-center justify-center gap-2"
               >

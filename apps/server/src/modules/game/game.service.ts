@@ -55,18 +55,16 @@ export class GameService {
       targetScore: 500,
     });
 
-    // 3. Persist Match and MatchPlayers in PostgreSQL
+    // 3. Persist Match, MatchPlayers, and initial sequence 0 snapshot in PostgreSQL
     await gamePersistenceService.createMatch(
       matchId,
       roomId,
       'classic',
-      members.map((m, idx) => ({ guestId: m.guestId, seatIndex: idx }))
+      members.map((m, idx) => ({ guestId: m.guestId, seatIndex: idx })),
+      initialGameState
     );
 
-    // 4. Save initial snapshot (sequence 0)
-    await gamePersistenceService.saveGameSnapshot(matchId, 0, initialGameState);
-
-    // 5. Register in active memory manager
+    // 4. Register in active memory manager
     gameSessionManager.setSession(matchId, roomCode, roomId, initialGameState);
 
     logger.info('Classic UNO match started', {
@@ -109,30 +107,11 @@ export class GameService {
 
       const { nextState, events } = processResult;
 
-      // 2. Update memory state
+      // 2. Durably commit progress, events, and snapshot in a single database transaction
+      await gamePersistenceService.persistActionBatch(activeSession.matchId, nextState, events);
+
+      // 3. ONLY after successful database commit, update in-memory session state!
       activeSession.state = nextState;
-
-      // 3. Persist progress and events asynchronously
-      gamePersistenceService.updateMatchProgress(activeSession.matchId, nextState);
-
-      for (const ev of events) {
-        gamePersistenceService.saveGameEvent(
-          activeSession.matchId,
-          ev.sequenceNumber,
-          ev.type,
-          ev.playerId,
-          ev.payload
-        );
-      }
-
-      // Persist snapshot periodically or on major transitions
-      if (
-        nextState.status === 'ROUND_OVER' ||
-        nextState.status === 'COMPLETED' ||
-        nextState.sequenceNumber % 5 === 0
-      ) {
-        gamePersistenceService.saveGameSnapshot(activeSession.matchId, nextState.sequenceNumber, nextState);
-      }
 
       return processResult;
     });
@@ -213,6 +192,39 @@ export class GameService {
       type: 'START_NEXT_ROUND',
       triggeredByPlayerId: guestId,
     });
+  }
+
+  /**
+   * Retrieves or recovers the secure PlayerGameState projection for a player.
+   * If in-memory session is missing (e.g. server restart), recovers from PostgreSQL snapshot.
+   * Enforces player membership verification.
+   */
+  async getOrRecoverPlayerState(
+    guestId: string,
+    roomId: string,
+    roomCode: string
+  ): Promise<PlayerGameState | null> {
+    let session = gameSessionManager.getSessionByRoomCode(roomCode);
+
+    if (!session) {
+      // Attempt recovery from database snapshot
+      const recoveredState = await this.recoverMatchIfActive(roomId, roomCode);
+      if (!recoveredState) return null;
+      session = gameSessionManager.getSessionByRoomCode(roomCode);
+    }
+
+    if (!session) return null;
+
+    // Verify player is an actual member of this match
+    if (!session.state.players.some((p) => p.id === guestId)) {
+      return null;
+    }
+
+    try {
+      return getPlayerGameState(session.state, guestId);
+    } catch {
+      return null;
+    }
   }
 
   /**

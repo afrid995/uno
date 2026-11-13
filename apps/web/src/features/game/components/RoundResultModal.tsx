@@ -22,6 +22,7 @@ export const RoundResultModal: React.FC = () => {
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
         <motion.div
+          data-testid="round-result-modal"
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -64,6 +65,7 @@ export const RoundResultModal: React.FC = () => {
           {/* Action buttons */}
           <div className="flex flex-col sm:flex-row gap-3">
             <button
+              data-testid="start-next-round-btn"
               onClick={() => startNextRound()}
               disabled={isActionLoading}
               className="flex-1 py-3 px-4 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 active:scale-95 transition-all text-sm shadow-lg shadow-amber-400/20 disabled:opacity-50"

@@ -111,6 +111,7 @@ export const DashboardView: React.FC = () => {
 
           <div className="mt-8 pt-6 border-t border-slate-800/80">
             <button
+              data-testid="create-room-btn"
               onClick={() => setIsCreateModalOpen(true)}
               className="w-full py-3.5 px-4 rounded-xl font-display font-bold text-sm tracking-wide text-white bg-gradient-to-r from-uno-red to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-glow transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
@@ -150,6 +151,7 @@ export const DashboardView: React.FC = () => {
 
           <div className="mt-8 pt-6 border-t border-slate-800/80">
             <button
+              data-testid="join-room-btn"
               onClick={() => setIsJoinModalOpen(true)}
               className="w-full py-3.5 px-4 rounded-xl font-display font-bold text-sm tracking-wide text-white bg-gradient-to-r from-uno-blue to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-glow-blue transition-all flex items-center justify-center gap-2 cursor-pointer"
             >

@@ -19,7 +19,7 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
   className = '',
 }) => {
   return (
-    <div className={`w-full overflow-x-auto pb-4 pt-2 px-4 no-scrollbar ${className}`}>
+    <div data-testid="player-hand" className={`w-full overflow-x-auto pb-4 pt-2 px-4 no-scrollbar ${className}`}>
       <div className="flex items-center justify-center min-w-max mx-auto -space-x-3 sm:-space-x-5">
         {hand.map((card, index) => {
           const isPlayable = isCurrentTurn && playableCardIds.includes(card.id);

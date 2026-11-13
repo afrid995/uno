@@ -1,16 +1,18 @@
 import { prisma, MatchStatus } from '@uno-ultimate/database';
-import { GameState, GameSerializer } from '@uno-ultimate/game-engine';
+import { GameState, GameSerializer, GameEventRecord } from '@uno-ultimate/game-engine';
 import { logger } from '../../utils/logger';
 
 export class GamePersistenceService {
   /**
-   * Initializes a new Match record and seating order in PostgreSQL.
+   * Initializes a new Match record, seating order, and initial GameSnapshot in PostgreSQL
+   * within a single atomic database transaction.
    */
   async createMatch(
     matchId: string,
     roomId: string,
     variant: string,
-    players: { guestId: string; seatIndex: number }[]
+    players: { guestId: string; seatIndex: number }[],
+    initialState?: GameState
   ): Promise<void> {
     await prisma.$transaction(async (tx) => {
       // 1. Create Match row
@@ -38,97 +40,99 @@ export class GamePersistenceService {
           },
         });
       }
+
+      // 3. Persist initial GameSnapshot at sequenceNumber 0 for crash recovery
+      if (initialState) {
+        const serialized = GameSerializer.serialize(initialState);
+        await tx.gameSnapshot.create({
+          data: {
+            matchId,
+            sequenceNumber: 0,
+            state: JSON.parse(serialized),
+          },
+        });
+      }
     });
 
-    logger.info('Match and players persisted in database', { matchId, roomId, playerCount: players.length });
+    logger.info('Match, players, and initial snapshot persisted in database', {
+      matchId,
+      roomId,
+      playerCount: players.length,
+    });
   }
 
   /**
-   * Saves a GameEvent record.
+   * Durably persists an accepted action batch within a single atomic database transaction.
+   * Updates Match progress, MatchPlayer scores/counts, inserts all GameEvent records,
+   * and saves a complete GameSnapshot for crash/restart recovery.
+   * If any operation fails, the transaction rolls back completely and throws an error.
    */
-  async saveGameEvent(
+  async persistActionBatch(
     matchId: string,
-    sequenceNumber: number,
-    eventType: string,
-    guestId: string | undefined,
-    payload: Record<string, unknown>
+    nextState: GameState,
+    events: readonly GameEventRecord[]
   ): Promise<void> {
-    try {
-      await prisma.gameEvent.create({
+    const isCompleted = nextState.status === 'COMPLETED';
+    const serialized = GameSerializer.serialize(nextState);
+    const parsedSnapshot = JSON.parse(serialized);
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Update Match record
+      await tx.match.update({
+        where: { id: matchId },
         data: {
-          matchId,
-          sequenceNumber,
-          eventType,
-          guestId: guestId ?? null,
-          payload: payload as object,
+          sequenceNumber: nextState.sequenceNumber,
+          turnNumber: nextState.turnNumber,
+          currentVersion: { increment: 1 },
+          status: isCompleted ? MatchStatus.COMPLETED : MatchStatus.IN_PROGRESS,
+          winnerGuestId: nextState.winner?.id ?? null,
+          updatedAt: new Date(),
         },
       });
-    } catch (err: unknown) {
-      logger.error('Failed to persist GameEvent', { matchId, sequenceNumber, eventType, error: (err as Error).message });
-    }
-  }
 
-  /**
-   * Saves a full GameSnapshot record.
-   */
-  async saveGameSnapshot(matchId: string, sequenceNumber: number, state: GameState): Promise<void> {
-    try {
-      const serialized = GameSerializer.serialize(state);
-      await prisma.gameSnapshot.upsert({
+      // 2. Update MatchPlayer rows
+      for (const p of nextState.players) {
+        await tx.matchPlayer.updateMany({
+          where: { matchId, guestId: p.id },
+          data: {
+            cardCount: p.hand.length,
+            score: p.score,
+            isWinner: isCompleted && nextState.winner?.id === p.id,
+          },
+        });
+      }
+
+      // 3. Insert each GameEvent record
+      for (const ev of events) {
+        await tx.gameEvent.create({
+          data: {
+            matchId,
+            sequenceNumber: ev.sequenceNumber,
+            eventType: ev.type,
+            guestId: ev.playerId ?? null,
+            payload: ev.payload as object,
+          },
+        });
+      }
+
+      // 4. Save GameSnapshot for crash/restart recovery
+      await tx.gameSnapshot.upsert({
         where: {
           matchId_sequenceNumber: {
             matchId,
-            sequenceNumber,
+            sequenceNumber: nextState.sequenceNumber,
           },
         },
         create: {
           matchId,
-          sequenceNumber,
-          state: JSON.parse(serialized),
+          sequenceNumber: nextState.sequenceNumber,
+          state: parsedSnapshot,
         },
         update: {
-          state: JSON.parse(serialized),
+          state: parsedSnapshot,
         },
       });
-    } catch (err: unknown) {
-      logger.error('Failed to persist GameSnapshot', { matchId, sequenceNumber, error: (err as Error).message });
-    }
-  }
-
-  /**
-   * Updates match state after an action (updates sequenceNumber, turnNumber, players, and optionally completion).
-   */
-  async updateMatchProgress(matchId: string, state: GameState): Promise<void> {
-    try {
-      const isCompleted = state.status === 'COMPLETED';
-
-      await prisma.$transaction(async (tx) => {
-        await tx.match.update({
-          where: { id: matchId },
-          data: {
-            sequenceNumber: state.sequenceNumber,
-            turnNumber: state.turnNumber,
-            currentVersion: { increment: 1 },
-            status: isCompleted ? MatchStatus.COMPLETED : MatchStatus.IN_PROGRESS,
-            winnerGuestId: state.winner?.id ?? null,
-            updatedAt: new Date(),
-          },
-        });
-
-        for (const p of state.players) {
-          await tx.matchPlayer.updateMany({
-            where: { matchId, guestId: p.id },
-            data: {
-              cardCount: p.hand.length,
-              score: p.score,
-              isWinner: isCompleted && state.winner?.id === p.id,
-            },
-          });
-        }
-      });
-    } catch (err: unknown) {
-      logger.error('Failed to update match progress in database', { matchId, error: (err as Error).message });
-    }
+    });
   }
 
   /**

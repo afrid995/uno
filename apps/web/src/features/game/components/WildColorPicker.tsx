@@ -54,6 +54,7 @@ export const WildColorPicker: React.FC<WildColorPickerProps> = ({
             {colors.map((c) => (
               <motion.button
                 key={c.color}
+                data-testid={`wild-color-${c.color}`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onSelectColor(c.color)}

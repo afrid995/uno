@@ -1,8 +1,8 @@
-# UNO Ultimate — Phase 4: Playable Classic UNO (End-to-End Multiplayer)
+# UNO Ultimate — Phase 4.1: Rules, Event Integrity & Recovery Hardening
 
 UNO Ultimate is an online, private multiplayer card game crafted specifically for groups of friends. It does not provide public matchmaking, open player lobbies, or social networking features.
 
-Phase 4 completes the integration between the private room system and the server-authoritative game engine, delivering a fully playable, real-time multiplayer Classic UNO experience based strictly on Mattel product **42001** official rules.
+Phase 4.1 hardens the entire multiplayer stack with focused audits and architectural corrections: strict Mattel 42001 opening-card and dealer mechanics, strictly monotonic and gapless game event sequencing, atomic ACID transactional persistence, cold server-restart crash recovery, and multi-context Playwright browser end-to-end testing.
 
 ---
 
@@ -14,11 +14,11 @@ Phase 4 completes the integration between the private room system and the server
 - **Backend**: Node.js, Express, TypeScript, Socket.IO, Zod validation, Helmet, CORS, Cookie-Parser, Express-Rate-Limit (`@uno-ultimate/server`)
 - **Database**: PostgreSQL 16, Prisma ORM (`@uno-ultimate/database`)
 - **Monorepo**: pnpm workspaces
-- **Testing**: Vitest, React Testing Library, Supertest (153 automated tests passing across 25 test suites)
+- **Testing**: Vitest, React Testing Library, Supertest, Playwright E2E (168 automated tests passing across 26 test suites)
 
 ---
 
-## Core Features (Phases 1, 2, 3 & 4)
+## Core Features (Phases 1, 2, 3, 4 & 4.1)
 
 - **Zero Sign-Up Guest Identity**: Instant play with a username. Server-generated UUID guest ID and temporary session token with HttpOnly cookie support and resumption validation.
 - **Private Room Creation**: Server generates unique, unambiguous 6-character room codes (`23456789ABCDEFGHJKLMNPQRSTUVWXYZ`).
@@ -29,13 +29,19 @@ Phase 4 completes the integration between the private room system and the server
 - **30-Second Reconnection Grace Period**: Transient network disconnections retain room slot and state without aborting the lobby.
 - **Playable Real-Time Classic UNO (Mattel 42001)**:
   - **Authoritative 108-Card Playable Deck**: 76 number cards, 24 action cards, 8 wild cards (no blank cards).
-  - **Mattel 42001 Start Card Enforcement**: Both Wild and Wild Draw Four cards turned over on setup are returned to the draw pile and reshuffled until a non-Wild card is turned over.
+  - **Hardened Opening Reverse Rule**: When Reverse is turned up at the beginning of play, play proceeds counter-clockwise. The player to the dealer's right plays first (e.g. for dealer 0 with 4 players, player 3; with 3 players, player 2; with 2 players, player 1).
+  - **Canonical Dealer Determination**: Players draw from the shuffled 108-card deck using official Mattel 42001 point values (0–9 face value, 20 for action cards, 50 for wild cards) with recursive tie-breaking.
+  - **Starting Wild Discard Resolution**: Adopts official Setup Section precedence—an opening Wild or Wild Draw Four card is returned to the deck and reshuffled until a non-Wild card is revealed.
+  - **Monotonic Event Sequencing Invariant**: Ensures `nextState.sequenceNumber === (events.at(-1)?.sequenceNumber ?? state.sequenceNumber)` across all multi-event actions, preventing database unique constraint collisions.
+  - **Atomic Transactional Persistence**: Every game action batch (Match status, MatchPlayer standings, GameEvents, and GameSnapshot) commits in a single atomic Prisma `$transaction`. In-memory state advances only on database commit success.
+  - **Cold Server-Crash Recovery**: Reconnection via `room:resume` deserializes the latest PostgreSQL GameSnapshot, validates membership, and restores the player's private hand and active table state seamlessly.
+  - **Production Countdown Protection**: 5-second match start countdown is unconditionally enforced in production environments, ignoring unauthorized test bypass parameters.
   - **Information Hiding Security**: Players only ever receive their own private 7-card hand. Opponents receive only card counts; draw pile order is completely hidden.
   - **Wild Draw Four Challenge Lifecycle**: Suspected illegal plays can be challenged by the victim. The server securely reveals the offender's hand *only* to the challenger. If guilty: offender draws 4 cards; if innocent: challenger draws 6 cards and loses turn.
   - **UNO Shouting & 4-Card Penalty**: Players holding 1 card who fail to declare UNO can be caught by opponents before the next player's move, receiving a strict 4-card penalty per Mattel 42001 rules.
   - **Multi-Round Match Scoring**: Opponent cards scored at round conclusion (0-9 face value, 20 for action cards, 50 for wilds) accumulating towards the official 500-point match target.
-  - **Seamless Active Match Reconnection**: Disconnected players rejoin their active seat and recover their private hand without losing match progress.
   - **Interactive Responsive Game Board**: SVG/CSS Uno cards with hover/playable glow, fan layouts, opponent seats, draw/discard piles, wild color selector modal, and round/match victory celebration modals.
+  - **Multi-Context Browser E2E Testing**: Automated Playwright test suite exercising 2 independent browser contexts (Alice & Bob) across room creation, joining, countdown, dealing, real-time play, and disconnect recovery.
 
 ---
 
@@ -56,6 +62,8 @@ uno-ultimate/
 │   │   │   ├── services/        # HTTP API client and Socket.IO client manager
 │   │   │   ├── stores/          # Zustand guestStore, roomStore, and gameStore
 │   │   │   └── styles/          # Tailwind globals and theme styling
+│   │   ├── tests/
+│   │   │   └── e2e/             # Playwright multi-context browser end-to-end test suite
 │   │   └── ...
 │   └── server/                  # Express + Socket.IO backend service
 │       ├── src/
@@ -87,7 +95,7 @@ uno-ultimate/
 │   ├── shared/                  # Shared constants, error codes, and utilities
 │   └── database/                # Prisma schema, migrations, client exports
 ├── docs/
-│   ├── architecture/            # Phase 1, Phase 2, and Phase 4 gameplay architecture specifications
+│   ├── architecture/            # Architecture specifications (Phases 1, 2, 3, 4 & 4.1 Integrity & Recovery)
 │   └── rules/                   # Mattel 42001 Classic UNO rules implementation specification
 └── reports/                     # Formal verification and phase audit reports
 ```
@@ -101,6 +109,7 @@ uno-ultimate/
 - Node.js >= 20.x
 - pnpm >= 9.x
 - Docker or local PostgreSQL 16
+- Google Chrome (for Playwright E2E browser testing)
 
 ### Local Development Setup
 
@@ -141,8 +150,11 @@ uno-ultimate/
 ## Quality Assurance & Verification Commands
 
 ```bash
-# Run all tests across monorepo (153 tests)
+# Run all unit and integration tests across monorepo (166 tests)
 pnpm test
+
+# Run multi-context browser E2E test suite (Playwright)
+pnpm --filter @uno-ultimate/web test:e2e
 
 # Run TypeScript typechecks across all workspaces
 pnpm typecheck

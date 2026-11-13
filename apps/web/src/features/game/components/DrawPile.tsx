@@ -19,6 +19,7 @@ export const DrawPile: React.FC<DrawPileProps> = ({
   return (
     <div className="flex flex-col items-center space-y-2">
       <motion.div
+        data-testid="draw-pile-btn"
         whileHover={canDraw && !isLoading ? { scale: 1.05 } : {}}
         whileTap={canDraw && !isLoading ? { scale: 0.95 } : {}}
         onClick={canDraw && !isLoading ? onDraw : undefined}

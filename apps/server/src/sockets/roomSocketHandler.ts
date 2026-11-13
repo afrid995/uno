@@ -177,9 +177,9 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       socket.data.currentRoomCode = room.roomCode;
       socket.join(room.roomCode);
 
-      // If room is IN_GAME, restore player state
+      // If room is IN_GAME, restore player state (with durable crash/restart recovery)
       if (room.status === 'IN_GAME') {
-        const playerState = gameService.getActivePlayerState(guestId, room.roomCode);
+        const playerState = await gameService.getOrRecoverPlayerState(guestId, room.id, room.roomCode);
         if (playerState) {
           socket.emit(SOCKET_EVENTS.GAME_STATE, { state: playerState });
         }
@@ -328,8 +328,10 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
 
       callback({ success: true, data: { starting: true } });
 
-      // Start match after countdown (or immediate if requested via test payload)
-      const countdownMs = (payload as { immediate?: boolean })?.immediate ? 0 : 5000;
+      // Start match after countdown (immediate bypass is strictly restricted to test environment)
+      const isTestEnv = process.env.NODE_ENV === 'test';
+      const allowImmediate = isTestEnv && (payload as { immediate?: boolean })?.immediate === true;
+      const countdownMs = allowImmediate ? 0 : 5000;
       setTimeout(async () => {
         try {
           const currentRoom = await roomService.getRoomByCode(room.roomCode);

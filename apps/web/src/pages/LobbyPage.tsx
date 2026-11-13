@@ -137,6 +137,7 @@ export const LobbyPage: React.FC = () => {
       <AnimatePresence>
         {isStarting && (
           <motion.div
+            data-testid="starting-countdown-banner"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
@@ -241,6 +242,7 @@ export const LobbyPage: React.FC = () => {
           {/* Non-host Ready Toggle */}
           {!isCurrentPlayerHost && (
             <button
+              data-testid="ready-toggle-btn"
               onClick={handleReadyToggle}
               className={`py-3.5 px-6 rounded-xl font-display font-bold text-xs tracking-wide transition-all shadow-lg flex items-center justify-center gap-2 w-full sm:w-auto ${
                 isCurrentPlayerReady
@@ -257,6 +259,7 @@ export const LobbyPage: React.FC = () => {
           {isCurrentPlayerHost && (
             <div className="relative group w-full sm:w-auto">
               <button
+                data-testid="start-game-btn"
                 onClick={handleStartGame}
                 disabled={!canStartMatch}
                 className={`py-3.5 px-7 rounded-xl font-display font-bold text-xs tracking-wide transition-all shadow-xl flex items-center justify-center gap-2 w-full sm:w-auto select-none ${

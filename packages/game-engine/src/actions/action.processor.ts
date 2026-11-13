@@ -84,7 +84,18 @@ export class ActionProcessor {
         throw new Error('Unsupported action type');
     }
 
-    return { nextState, events };
+    // Invariant: nextState.sequenceNumber === events.at(-1)?.sequenceNumber ?? state.sequenceNumber
+    const finalSequenceNumber = events.length > 0
+      ? events[events.length - 1].sequenceNumber
+      : state.sequenceNumber;
+
+    const finalState: GameState = {
+      ...nextState,
+      sequenceNumber: finalSequenceNumber,
+      updatedAt: timestamp,
+    };
+
+    return { nextState: finalState, events };
   }
 
   private static processPlayCard(

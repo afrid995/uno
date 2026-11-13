@@ -86,6 +86,15 @@ export class GameSessionManager {
   }
 
   /**
+   * Resets all in-memory game sessions. Used to simulate cold server restart in tests.
+   */
+  clearAllSessionsForTesting(): void {
+    this.sessions.clear();
+    this.roomCodeToMatchId.clear();
+    this.guestToRoomCode.clear();
+  }
+
+  /**
    * Executes an async operation with per-match serialization lock to prevent race conditions.
    */
   async runWithLock<T>(matchId: string, fn: (session: ActiveGameSession) => Promise<T>): Promise<T> {

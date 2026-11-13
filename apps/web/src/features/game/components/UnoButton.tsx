@@ -20,6 +20,7 @@ export const UnoButton: React.FC<UnoButtonProps> = ({
   if (hasDeclaredUno) {
     return (
       <div
+        data-testid="uno-button"
         className={`px-4 py-2.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-display font-black text-xs tracking-wider flex items-center gap-1.5 shadow-sm ${className}`}
       >
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
@@ -30,6 +31,7 @@ export const UnoButton: React.FC<UnoButtonProps> = ({
 
   return (
     <motion.button
+      data-testid="uno-button"
       whileHover={canCallUno && !isLoading ? { scale: 1.05 } : {}}
       whileTap={canCallUno && !isLoading ? { scale: 0.95 } : {}}
       disabled={!canCallUno || isLoading}

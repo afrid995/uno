@@ -258,14 +258,24 @@ export class RoomService {
       });
 
       const now = new Date();
-      await tx.roomMember.create({
-        data: {
+      await tx.roomMember.upsert({
+        where: {
+          roomId_guestId: {
+            roomId: room.id,
+            guestId,
+          },
+        },
+        create: {
           roomId: room.id,
           guestId,
           role: 'PLAYER',
           readyStatus: false,
           connectionStatus: 'CONNECTED',
           joinedAt: now,
+          lastSeenAt: now,
+        },
+        update: {
+          connectionStatus: 'CONNECTED',
           lastSeenAt: now,
         },
       });

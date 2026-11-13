@@ -21,7 +21,7 @@ export const DiscardPile: React.FC<DiscardPileProps> = ({
   }[activeColor] || { bg: 'bg-slate-700', text: activeColor, ring: 'ring-slate-500' };
 
   return (
-    <div className="flex flex-col items-center space-y-2">
+    <div data-testid="discard-pile" className="flex flex-col items-center space-y-2">
       <div className="relative">
         {/* Layered visual under discard card to simulate pile */}
         <div className="absolute inset-0 bg-slate-800 rounded-xl rotate-6 transform translate-y-1 translate-x-1 opacity-70 border border-slate-700 pointer-events-none" />
