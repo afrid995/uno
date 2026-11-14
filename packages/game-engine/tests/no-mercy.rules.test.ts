@@ -8,6 +8,8 @@ import { UNO_NO_MERCY_RULES } from '../src/variants/no-mercy/no-mercy.constants'
 import { NoMercyDealerSelector } from '../src/variants/no-mercy/no-mercy.dealer';
 import { createSeededRng } from '../src/testing/deterministic-random';
 import { Card } from '../src/cards/card.types';
+import { GameState } from '../src/game/game.types';
+import { isWildCard } from '../src/cards/card.validation';
 
 describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)', () => {
   const adapter = VariantRegistry.get('uno_show_em_no_mercy');
@@ -1004,6 +1006,329 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
       expect(result.tieRounds).toBe(0);
       expect(result.resolvedByFallback).toBe(true);
       expect(result.dealerIndex).toBe(0); // lowest candidate
+    });
+  });
+
+  describe('11. Deterministic Wild Color Roulette Invariants, Edge Cases & Card Retention', () => {
+    it('does not count Wild cards as matching color, retains all revealed Wild cards, and terminates only upon drawing non-Wild card of selected color', () => {
+      let state = NoMercyFixtureBuilder.createInitialGameFixture({
+        dealerIndex: 1, // P1 starts
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+        ],
+      });
+
+      // Inject wild_color_roulette to Alice (P1)
+      const { nextState: s1, card: rouletteCard } = NoMercyFixtureBuilder.injectPlayableCard(
+        state,
+        'p1',
+        'wild_color_roulette'
+      );
+
+      // Alice plays Wild Color Roulette targeting Bob (P2)
+      const res1 = NoMercyActionProcessor.process(s1, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: rouletteCard.id,
+      });
+
+      expect(res1.nextState.pendingActionState).toEqual({
+        type: 'AWAITING_COLOR_ROULETTE_SELECTION',
+        victimPlayerId: 'p2',
+        playedByPlayerId: 'p1',
+      });
+
+      // Find specific cards in drawPile to arrange deterministically:
+      // 1. Red number card (color mismatch)
+      // 2. Wild Draw Six (wild -> must NOT match chosen blue, drawing continues!)
+      // 3. Wild Reverse Draw 4 (wild -> must NOT match chosen blue, drawing continues!)
+      // 4. Yellow number card (color mismatch)
+      // 5. Wild Color Roulette (wild -> must NOT match chosen blue, drawing continues!)
+      // 6. Blue number card (non-wild matching chosen blue -> STOPS drawing!)
+      const dp = res1.nextState.drawPile;
+      const cRed = dp.find((c) => c.color === 'red' && c.type === 'number')!;
+      const cWild1 = dp.find((c) => c.value === 'wild_draw_six')!;
+      const cWild2 = dp.find((c) => c.value === 'wild_reverse_draw_four')!;
+      const cYellow = dp.find((c) => c.color === 'yellow' && c.type === 'number')!;
+      const cWild3 = dp.find((c) => c.value === 'wild_color_roulette' && c.id !== rouletteCard.id)!;
+      const cBlueTarget = dp.find((c) => c.color === 'blue' && c.type === 'number')!;
+
+      const selectedIds = new Set([cRed.id, cWild1.id, cWild2.id, cYellow.id, cWild3.id, cBlueTarget.id]);
+      const otherDrawCards = dp.filter((c) => !selectedIds.has(c.id));
+
+      // Array pop() draws from the end. So the drawing order will be:
+      // cRed -> cWild1 -> cWild2 -> cYellow -> cWild3 -> cBlueTarget (stops!)
+      const arrangedDrawPile = [
+        ...otherDrawCards,
+        cBlueTarget,
+        cWild3,
+        cYellow,
+        cWild2,
+        cWild1,
+        cRed,
+      ];
+
+      const deterministicState: GameState = {
+        ...res1.nextState,
+        drawPile: arrangedDrawPile,
+      };
+      assertValidNoMercyGameState(deterministicState);
+
+      const p2InitialHand = deterministicState.players[1].hand;
+      const p2InitialCount = p2InitialHand.length;
+
+      // Bob chooses 'blue'
+      const res2 = NoMercyActionProcessor.process(deterministicState, {
+        type: 'CHOOSE_COLOR_ROULETTE_COLOR',
+        playerId: 'p2',
+        chosenColor: 'blue',
+      });
+
+      expect(res2.nextState.pendingActionState).toBeNull();
+      expect(res2.nextState.activeColor).toBe('blue');
+
+      const p2NewHand = res2.nextState.players[1].hand;
+      // Exactly 6 cards drawn
+      expect(p2NewHand.length).toBe(p2InitialCount + 6);
+
+      // Every drawn card must be retained in Bob's hand
+      expect(p2NewHand.some((c) => c.id === cRed.id)).toBe(true);
+      expect(p2NewHand.some((c) => c.id === cWild1.id)).toBe(true);
+      expect(p2NewHand.some((c) => c.id === cWild2.id)).toBe(true);
+      expect(p2NewHand.some((c) => c.id === cYellow.id)).toBe(true);
+      expect(p2NewHand.some((c) => c.id === cWild3.id)).toBe(true);
+      expect(p2NewHand.some((c) => c.id === cBlueTarget.id)).toBe(true);
+
+      // Verify the event records the exact drawn cards sequence
+      const rouletteEvent = res2.events.find((e) => e.type === 'ROULETTE_RESOLVED');
+      expect(rouletteEvent).toBeDefined();
+      expect(rouletteEvent?.payload?.drawnCount).toBe(6);
+      const eventCards = rouletteEvent?.payload?.drawnCards as Card[];
+      expect(eventCards.map((c) => c.id)).toEqual([
+        cRed.id,
+        cWild1.id,
+        cWild2.id,
+        cYellow.id,
+        cWild3.id,
+        cBlueTarget.id,
+      ]);
+
+      // Bob loses turn, Alice plays next
+      expect(res2.nextState.currentPlayerIndex).toBe(0);
+
+      // Invariant check: strict 168 physical cards and unique IDs
+      assertValidNoMercyGameState(res2.nextState);
+    });
+
+    it('recycles set-aside cards when draw pile is exhausted during Roulette and adds all cards to victim hand', () => {
+      let state = NoMercyFixtureBuilder.createInitialGameFixture({
+        dealerIndex: 2, // P1 starts
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+          { id: 'p3', username: 'Charlie' },
+        ],
+      });
+
+      // Expand Bob (P2) to 24 cards and eliminate him with Draw Two from Alice (P1)
+      state = NoMercyFixtureBuilder.setHandSize(state, 'p2', 24);
+      const { nextState: s1, card: d2 } = NoMercyFixtureBuilder.injectPlayableCard(
+        state,
+        'p1',
+        'draw_two',
+        state.activeColor ?? 'blue'
+      );
+      const r1 = NoMercyActionProcessor.process(s1, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: d2.id,
+      });
+      // Bob accepts penalty -> reaches 26 cards -> eliminated!
+      const r2 = NoMercyActionProcessor.process(r1.nextState, {
+        type: 'ACCEPT_STACK_PENALTY',
+        playerId: 'p2',
+      });
+
+      expect(r2.nextState.players[1].isEliminated).toBe(true);
+      expect(r2.nextState.setAsideCards?.length).toBe(26);
+      assertValidNoMercyGameState(r2.nextState);
+
+      // Next active player is Charlie (P3, index 2)
+      expect(r2.nextState.currentPlayerIndex).toBe(2);
+
+      // Charlie plays Wild Color Roulette targeting Alice (P1)
+      const { nextState: sWithRoulette, card: rouletteCard } = NoMercyFixtureBuilder.injectPlayableCard(
+        r2.nextState,
+        'p3',
+        'wild_color_roulette'
+      );
+      const r3 = NoMercyActionProcessor.process(sWithRoulette, {
+        type: 'PLAY_CARD',
+        playerId: 'p3',
+        cardId: rouletteCard.id,
+      });
+
+      expect(r3.nextState.pendingActionState).toEqual({
+        type: 'AWAITING_COLOR_ROULETTE_SELECTION',
+        victimPlayerId: 'p1',
+        playedByPlayerId: 'p3',
+      });
+
+      // Guarantee a green number card exists in setAsideCards
+      let setAside = [...(r3.nextState.setAsideCards || [])];
+      let targetGreenCard = setAside.find((c) => c.color === 'green' && c.type === 'number');
+      let dp = [...r3.nextState.drawPile];
+      if (!targetGreenCard) {
+        const greenIdx = dp.findIndex((c) => c.color === 'green' && c.type === 'number');
+        targetGreenCard = dp[greenIdx];
+        dp[greenIdx] = setAside[0];
+        setAside[0] = targetGreenCard;
+      }
+
+      // Configure a 2-card draw pile with non-green cards (cRedDraw and cWildDraw)
+      const cRedDraw = dp.find((c) => c.color === 'red' && c.type === 'number')!;
+      const cWildDraw = dp.find((c) => c.value === 'wild_draw_ten')!;
+      const remainingDrawCards = dp.filter((c) => c.id !== cRedDraw.id && c.id !== cWildDraw.id);
+
+      // Low draw pile: pop order: cRedDraw, then cWildDraw, then exhausted!
+      const lowDrawPile = [cWildDraw, cRedDraw];
+      const expandedDiscardPile = [...remainingDrawCards, ...r3.nextState.discardPile];
+
+      const stateBeforeRoulette: GameState = {
+        ...r3.nextState,
+        drawPile: lowDrawPile,
+        discardPile: expandedDiscardPile,
+        setAsideCards: setAside,
+      };
+      assertValidNoMercyGameState(stateBeforeRoulette);
+
+      const p1InitialCount = stateBeforeRoulette.players[0].hand.length;
+
+      // Alice chooses 'green'
+      const r4 = NoMercyActionProcessor.process(stateBeforeRoulette, {
+        type: 'CHOOSE_COLOR_ROULETTE_COLOR',
+        playerId: 'p1',
+        chosenColor: 'green',
+      });
+
+      expect(r4.nextState.pendingActionState).toBeNull();
+      expect(r4.nextState.activeColor).toBe('green');
+
+      // Set-aside cards must have been recycled into the new draw pile during exhaustion
+      expect(r4.nextState.setAsideCards).toHaveLength(0);
+
+      // Alice drew at least the 2 initial cards (cRedDraw, cWildDraw) plus cards from reshuffled pile
+      const p1NewHand = r4.nextState.players[0].hand;
+      expect(p1NewHand.length).toBeGreaterThanOrEqual(p1InitialCount + 3);
+      expect(p1NewHand.some((c) => c.id === cRedDraw.id)).toBe(true);
+      expect(p1NewHand.some((c) => c.id === cWildDraw.id)).toBe(true);
+
+      // Last drawn card must be a non-wild green card
+      const lastDrawnCard = p1NewHand[p1NewHand.length - 1];
+      expect(lastDrawnCard.color).toBe('green');
+      expect(lastDrawnCard.type).not.toBe('wild');
+
+      // Full card conservation & ID uniqueness
+      assertValidNoMercyGameState(r4.nextState);
+    });
+
+    it('triggers Mercy Rule elimination if cards drawn during Wild Color Roulette push hand to >= 25 cards', () => {
+      let state = NoMercyFixtureBuilder.createInitialGameFixture({
+        dealerIndex: 2, // P1 starts ( (2 + 1) % 3 = 0 )
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+          { id: 'p3', username: 'Charlie' },
+        ],
+      });
+
+      // Expand Bob (P2) to 22 cards
+      state = NoMercyFixtureBuilder.setHandSize(state, 'p2', 22);
+
+      // Alice plays Wild Color Roulette targeting Bob
+      const { nextState: s1, card: rouletteCard } = NoMercyFixtureBuilder.injectPlayableCard(
+        state,
+        'p1',
+        'wild_color_roulette'
+      );
+      const res1 = NoMercyActionProcessor.process(s1, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: rouletteCard.id,
+      });
+
+      // Arrange draw pile so Bob must draw 4 cards (22 + 4 = 26 >= 25 -> elimination!)
+      const dp = res1.nextState.drawPile;
+      const c1 = dp.find((c) => c.color === 'red' && c.type === 'number')!;
+      const c2 = dp.find((c) => c.color === 'yellow' && c.type === 'number')!;
+      const c3 = dp.find((c) => c.value === 'wild_draw_six')!;
+      const cTarget = dp.find((c) => c.color === 'blue' && c.type === 'number')!;
+
+      const selectedIds = new Set([c1.id, c2.id, c3.id, cTarget.id]);
+      const otherCards = dp.filter((c) => !selectedIds.has(c.id));
+      const arrangedDrawPile = [...otherCards, cTarget, c3, c2, c1]; // Pop order: c1, c2, c3, cTarget (4 cards)
+
+      const stateWithArrangedDraw: GameState = {
+        ...res1.nextState,
+        drawPile: arrangedDrawPile,
+      };
+      assertValidNoMercyGameState(stateWithArrangedDraw);
+
+      // Bob chooses 'blue'
+      const res2 = NoMercyActionProcessor.process(stateWithArrangedDraw, {
+        type: 'CHOOSE_COLOR_ROULETTE_COLOR',
+        playerId: 'p2',
+        chosenColor: 'blue',
+      });
+
+      // Bob reached 26 cards and was eliminated by Mercy Rule!
+      const bob = res2.nextState.players.find((p) => p.id === 'p2')!;
+      expect(bob.isEliminated).toBe(true);
+      expect(bob.hand).toHaveLength(0);
+
+      // Bob's 26 cards are transferred to setAsideCards
+      expect(res2.nextState.setAsideCards?.length).toBe(26);
+      expect(res2.nextState.setAsideCards?.some((c) => c.id === c1.id)).toBe(true);
+      expect(res2.nextState.setAsideCards?.some((c) => c.id === c2.id)).toBe(true);
+      expect(res2.nextState.setAsideCards?.some((c) => c.id === c3.id)).toBe(true);
+      expect(res2.nextState.setAsideCards?.some((c) => c.id === cTarget.id)).toBe(true);
+
+      // Check invariants
+      assertValidNoMercyGameState(res2.nextState);
+    });
+
+    it('direct unit test: drawUntilColor retains all Wild cards and terminates strictly on matching non-Wild card', () => {
+      const topDiscard: Card = { id: 'top_card', color: 'red', type: 'number', value: '5', scoreValue: 5, variant: 'uno_show_em_no_mercy' };
+      const cRed: Card = { id: 'c_red', color: 'red', type: 'number', value: '3', scoreValue: 3, variant: 'uno_show_em_no_mercy' };
+      const cWild1: Card = { id: 'c_w1', color: null, type: 'wild', value: 'wild_draw_six', scoreValue: 50, variant: 'uno_show_em_no_mercy' };
+      const cWild2: Card = { id: 'c_w2', color: null, type: 'wild', value: 'wild_color_roulette', scoreValue: 50, variant: 'uno_show_em_no_mercy' };
+      const cYellow: Card = { id: 'c_yel', color: 'yellow', type: 'number', value: '8', scoreValue: 8, variant: 'uno_show_em_no_mercy' };
+      const cBlueTarget: Card = { id: 'c_blue', color: 'blue', type: 'number', value: '7', scoreValue: 7, variant: 'uno_show_em_no_mercy' };
+
+      // Array pop order: cRed -> cWild1 -> cWild2 -> cYellow -> cBlueTarget (stops!)
+      const drawPile = [cBlueTarget, cYellow, cWild2, cWild1, cRed];
+
+      const res = NoMercyActionProcessor.drawUntilColor(
+        drawPile,
+        [topDiscard],
+        'blue',
+        []
+      );
+
+      expect(res.drawnCards).toHaveLength(5);
+      expect(res.drawnCards.map((c) => c.id)).toEqual([
+        'c_red',
+        'c_w1',
+        'c_w2',
+        'c_yel',
+        'c_blue',
+      ]);
+      expect(res.drawnCards.filter((c) => isWildCard(c))).toHaveLength(2);
+      expect(res.drawnCards[res.drawnCards.length - 1].color).toBe('blue');
+      expect(res.drawnCards[res.drawnCards.length - 1].type).not.toBe('wild');
+      expect(res.newDrawPile).toHaveLength(0);
+      expect(res.newDiscardPile).toEqual([topDiscard]);
     });
   });
 });

@@ -128,8 +128,18 @@ export class FlipFixtureBuilder {
         ...targetPlayer.hand.filter((c) => c.id !== existingMatchingFlip.id),
       ];
 
+      const resolvedActiveColor =
+        state.pendingActionState?.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION'
+          ? (existingMatchingFlip.color as CardColor)
+          : state.activeColor;
+
       const nextState: GameState = {
         ...state,
+        activeColor: resolvedActiveColor,
+        pendingActionState:
+          state.pendingActionState?.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION'
+            ? null
+            : state.pendingActionState,
         players: state.players.map((p, idx) =>
           idx === targetPlayerIndex ? { ...p, hand: reorderedHand } : p
         ),
@@ -269,14 +279,24 @@ export class FlipFixtureBuilder {
       newActiveColor = discardReplacementCard.color;
     }
 
+    const resolvedActiveColor =
+      state.pendingActionState?.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION'
+        ? (foundFlipCard.color as CardColor)
+        : newActiveColor;
+
     const nextState: GameState = {
       ...state,
       drawPile: newDrawPile,
       discardPile: newDiscardPile,
       topDiscardCard: newTopDiscard,
-      activeColor: newActiveColor,
+      activeColor: resolvedActiveColor,
       players: newPlayers,
-      pendingActionState: needsDiscardTopSwap ? null : state.pendingActionState,
+      pendingActionState:
+        state.pendingActionState?.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION'
+          ? null
+          : needsDiscardTopSwap
+          ? null
+          : state.pendingActionState,
     };
 
     assertValidFlipGameState(nextState);
