@@ -44,6 +44,8 @@ export * from './variants/flip/flip.dealer';
 export * from './variants/flip/flip.validator';
 export * from './variants/flip/flip.actions';
 export * from './variants/flip/flip.adapter';
+export * from './variants/flip/flip.invariants';
+export * from './variants/flip/flip.fixture';
 
 // Testing utilities
 export * from './testing/deterministic-random';

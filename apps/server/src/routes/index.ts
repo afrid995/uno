@@ -11,7 +11,19 @@ router.use('/guest', guestRoutes);
 router.use('/rooms', roomRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
-  router.use('/test', testRoutes);
+  router.use('/test', (req, res, next) => {
+    if (process.env.ENABLE_TEST_HELPERS !== 'true') {
+      res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Test helper endpoints are strictly disabled.',
+        },
+      });
+      return;
+    }
+    testRoutes(req, res, next);
+  });
 }
 
 export default router;

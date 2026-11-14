@@ -106,6 +106,7 @@ export class UnoFlipAdapter implements GameVariantAdapter {
       // Discard card flipped to Dark Side
       topDiscard = FlipDeckFactory.flipCard(topDiscard, 'DARK');
       discardPile = [topDiscard];
+      activeColor = topDiscard.color;
 
       // Draw pile flipped to Dark Side
       drawPile = drawPile.reverse().map((c) => FlipDeckFactory.flipCard(c, 'DARK'));

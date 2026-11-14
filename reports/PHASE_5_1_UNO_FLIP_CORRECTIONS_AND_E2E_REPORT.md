@@ -273,3 +273,19 @@ Both Playwright E2E test suites executed in Google Chrome:
 ## 14. Conclusion
 
 Phase 5.1 has successfully hardened the UNO Ultimate project. The UNO Flip implementation is now strictly aligned with the official Mattel GDR44 rules, scoring tables, and opening card behaviors. The multiplayer experience has been validated through automated multi-browser Playwright tests, and all quality gates have passed. The codebase is clean, robust, and verified.
+
+---
+
+## Phase 5.2 Addendum: Deterministic Test Fixture Integrity & Physical Card Conservation
+
+> [!NOTE]
+> **Phase 5.2 Maintenance & Correctness Update**:
+> An architectural audit following Phase 5.1 identified that the test helper endpoints (`/api/test/inject-flip-card` and `/api/test/inject-starting-wild`) in `apps/server/src/routes/test.routes.ts` created cards from an external deck factory and inserted them without removing the corresponding physical cards, violating the 112 physical card conservation invariant and resetting the discard pile.
+>
+> In Phase 5.2, this fixture infrastructure was completely overhauled:
+> 1. Created `packages/game-engine/src/variants/flip/flip.invariants.ts` and `flip.fixture.ts` which enforce zero-card creation / zero-card destruction through pure atomic swapping within the existing physical card inventory.
+> 2. Hardened test endpoints with two-tier environment gating (`ENABLE_TEST_HELPERS === 'true'` and `NODE_ENV !== 'production'`), match mutex synchronization (`gameSessionManager.runWithLock`), and database-first persistence safety with automatic rollback.
+> 3. Added real-time server-side invariant verification via `GET /api/test/verify-invariants/:roomCode`, actively verified in Playwright E2E browser tests.
+> 
+> See `reports/PHASE_5_2_TEST_FIXTURE_INTEGRITY_REPORT.md` for full implementation details, mathematical invariants, and verification logs.
+

@@ -1,107 +1,258 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import { gameSessionManager } from '../modules/game/game.session.manager';
 import { gamePersistenceService } from '../modules/game/game.persistence.service';
 import { gameStatePublisher } from '../modules/game/game.state.publisher';
 import { guestSockets } from '../sockets/roomSocketHandler';
-import { FlipDeckFactory, CardColor } from '@uno-ultimate/game-engine';
+import {
+  FlipFixtureBuilder,
+  assertValidFlipGameState,
+  validateFlipGameStateInvariants,
+} from '@uno-ultimate/game-engine';
+import { logger } from '../utils/logger';
 
 const router: Router = Router();
 
-// Test-only endpoints for Playwright E2E determinism
-router.post('/inject-flip-card', async (req: Request, res: Response) => {
-  const { roomCode } = req.body;
-  const session = gameSessionManager.getSessionByRoomCode(roomCode);
-  if (!session) {
-    res.status(404).json({ success: false, error: 'Session not found' });
+// -------------------------------------------------------------
+// Security Gate: Reject if in production OR if ENABLE_TEST_HELPERS is not 'true'
+// -------------------------------------------------------------
+router.use((_req: Request, res: Response, next) => {
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_TEST_HELPERS !== 'true') {
+    res.status(403).json({
+      success: false,
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Test helper endpoints are strictly disabled.',
+      },
+    });
     return;
   }
-
-  const activeSide = session.state.activeSide ?? 'LIGHT';
-  const deck = FlipDeckFactory.createFlipDeck();
-  const currentIdx = session.state.currentPlayerIndex;
-  const currentColor = session.state.activeColor ?? (activeSide === 'LIGHT' ? 'blue' : 'teal');
-
-  let rawCard = deck.find((c) =>
-    activeSide === 'LIGHT'
-      ? c.lightFace.value === 'flip' && c.lightFace.color === currentColor
-      : c.darkFace.value === 'flip' && c.darkFace.color === currentColor
-  );
-
-  if (!rawCard) {
-    rawCard = deck.find((c) =>
-      activeSide === 'LIGHT' ? c.lightFace.value === 'flip' : c.darkFace.value === 'flip'
-    )!;
-  }
-
-  const activeFlipCard = FlipDeckFactory.flipCard(rawCard, activeSide);
-  const cardColor = activeSide === 'LIGHT' ? rawCard.lightFace.color : rawCard.darkFace.color;
-
-  // Ensure top discard card color matches so Flip card is immediately playable
-  const matchingDiscard = deck.find((c) =>
-    activeSide === 'LIGHT'
-      ? c.lightFace.color === cardColor && c.lightFace.value === '5'
-      : c.darkFace.color === cardColor && c.darkFace.value === '5'
-  ) ?? session.state.topDiscardCard;
-
-  const activeDiscard = FlipDeckFactory.flipCard(matchingDiscard, activeSide);
-
-  session.state = {
-    ...session.state,
-    activeColor: cardColor as CardColor,
-    topDiscardCard: activeDiscard,
-    discardPile: [activeDiscard],
-    players: session.state.players.map((p, idx) =>
-      idx === currentIdx
-        ? { ...p, hand: [activeFlipCard, ...p.hand.filter((c) => c.id !== activeFlipCard.id)] }
-        : p
-    ),
-  };
-
-  await gamePersistenceService.persistActionBatch(session.matchId, session.state, []);
-  gameStatePublisher.publishToAllParticipants(session.state, guestSockets);
-
-  res.json({
-    success: true,
-    cardId: activeFlipCard.id,
-    activeSide: session.state.activeSide,
-    currentPlayerId: session.state.players[currentIdx].id,
-  });
+  next();
 });
 
-router.post('/inject-starting-wild', async (req: Request, res: Response) => {
-  const { roomCode } = req.body;
-  const session = gameSessionManager.getSessionByRoomCode(roomCode);
-  if (!session) {
-    res.status(404).json({ success: false, error: 'Session not found' });
+// Zod schemas for input validation
+const injectFlipCardSchema = z.object({
+  roomCode: z.string().trim().min(1).max(10),
+  targetPlayerId: z.string().uuid().optional(),
+});
+
+const injectStartingWildSchema = z.object({
+  roomCode: z.string().trim().min(1).max(10),
+});
+
+/**
+ * POST /api/test/inject-flip-card
+ * Safely injects a playable Flip card into the active player's hand by swapping
+ * with an existing card from within the game's canonical 112-card inventory.
+ * Protected by match mutex and committed to PostgreSQL before in-memory state update.
+ */
+router.post('/inject-flip-card', async (req: Request, res: Response) => {
+  const parseResult = injectFlipCardSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'BAD_REQUEST',
+        message: 'Invalid request payload',
+        details: parseResult.error.format(),
+      },
+    });
     return;
   }
 
-  const deck = FlipDeckFactory.createFlipDeck();
-  const wildCard = deck.find((c) => c.lightFace.value === 'wild')!;
-  const activeWild = FlipDeckFactory.flipCard(wildCard, 'LIGHT');
+  const { roomCode, targetPlayerId } = parseResult.data;
+  const session = gameSessionManager.getSessionByRoomCode(roomCode);
+  if (!session) {
+    res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Active game session not found for this room.' },
+    });
+    return;
+  }
 
-  const dealerIdx = session.state.dealerIndex;
-  const designatedIdx = (dealerIdx + 1) % session.state.players.length;
-  const designatedPlayerId = session.state.players[designatedIdx].id;
+  if (session.state.variant !== 'uno_flip') {
+    res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_VARIANT', message: 'Test fixture is only valid for UNO Flip matches.' },
+    });
+    return;
+  }
 
-  session.state = {
-    ...session.state,
-    topDiscardCard: activeWild,
-    discardPile: [activeWild],
-    activeColor: null,
-    currentPlayerIndex: designatedIdx,
-    pendingActionState: {
-      type: 'AWAITING_STARTING_WILD_COLOR_SELECTION',
-      designatedPlayerId,
-    },
-  };
+  if (session.state.status !== 'IN_PROGRESS') {
+    res.status(400).json({
+      success: false,
+      error: { code: 'MATCH_NOT_ACTIVE', message: 'Match must be IN_PROGRESS to apply test fixtures.' },
+    });
+    return;
+  }
 
-  await gamePersistenceService.persistActionBatch(session.matchId, session.state, []);
-  gameStatePublisher.publishToAllParticipants(session.state, guestSockets);
+  try {
+    const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      // 1. Compute state mutation with pure fixture helper (preserves 112 cards & unique IDs)
+      const { nextState, injectedCard } = FlipFixtureBuilder.injectPlayableFlipCard(
+        activeSession.state,
+        targetPlayerId
+      );
+
+      // 2. Validate strict invariants
+      assertValidFlipGameState(nextState);
+
+      // 3. Persist to database FIRST (if this fails, activeSession.state is unchanged)
+      await gamePersistenceService.persistActionBatch(activeSession.matchId, nextState, []);
+
+      // 4. Update in-memory state ONLY AFTER successful database commit
+      activeSession.state = nextState;
+
+      // 5. Broadcast updated state to all connected participants
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      logger.info('Test helper: Flip card injected safely', {
+        matchId: activeSession.matchId,
+        roomCode,
+        activeSide: nextState.activeSide,
+      });
+
+      return {
+        cardId: injectedCard.id,
+        activeSide: nextState.activeSide,
+        currentPlayerId: nextState.players[nextState.currentPlayerIndex].id,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: outcome,
+    });
+  } catch (err: unknown) {
+    const message = (err as Error).message || 'Failed to inject Flip card';
+    logger.error('Error injecting Flip card fixture', { error: message });
+    res.status(500).json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message },
+    });
+  }
+});
+
+/**
+ * POST /api/test/inject-starting-wild
+ * Safely establishes an opening Starting Wild card state by swapping a physical
+ * Wild card from the draw pile onto the discard pile, strictly preserving all 112 cards.
+ */
+router.post('/inject-starting-wild', async (req: Request, res: Response) => {
+  const parseResult = injectStartingWildSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'BAD_REQUEST',
+        message: 'Invalid request payload',
+        details: parseResult.error.format(),
+      },
+    });
+    return;
+  }
+
+  const { roomCode } = parseResult.data;
+  const session = gameSessionManager.getSessionByRoomCode(roomCode);
+  if (!session) {
+    res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Active game session not found for this room.' },
+    });
+    return;
+  }
+
+  if (session.state.variant !== 'uno_flip') {
+    res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_VARIANT', message: 'Test fixture is only valid for UNO Flip matches.' },
+    });
+    return;
+  }
+
+  if (session.state.status !== 'IN_PROGRESS') {
+    res.status(400).json({
+      success: false,
+      error: { code: 'MATCH_NOT_ACTIVE', message: 'Match must be IN_PROGRESS to apply test fixtures.' },
+    });
+    return;
+  }
+
+  try {
+    const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      // 1. Compute mutated state with pure fixture helper (preserves 112 cards & unique IDs)
+      const { nextState, wildCard } = FlipFixtureBuilder.injectStartingWild(activeSession.state);
+
+      // 2. Validate strict invariants
+      assertValidFlipGameState(nextState);
+
+      // 3. Persist to database FIRST
+      await gamePersistenceService.persistActionBatch(activeSession.matchId, nextState, []);
+
+      // 4. Update in-memory state ONLY AFTER successful database commit
+      activeSession.state = nextState;
+
+      // 5. Broadcast to connected participants
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      logger.info('Test helper: Starting Wild state injected safely', {
+        matchId: activeSession.matchId,
+        roomCode,
+      });
+
+      const designatedPlayerId =
+        nextState.pendingActionState && 'designatedPlayerId' in nextState.pendingActionState
+          ? nextState.pendingActionState.designatedPlayerId
+          : null;
+
+      return {
+        cardId: wildCard.id,
+        designatedPlayerId,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: outcome,
+    });
+  } catch (err: unknown) {
+    const message = (err as Error).message || 'Failed to inject Starting Wild';
+    logger.error('Error injecting Starting Wild fixture', { error: message });
+    res.status(500).json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message },
+    });
+  }
+});
+
+/**
+ * GET /api/test/verify-invariants/:roomCode
+ * Verifies that the current in-memory and database game state satisfies all UNO Flip invariants:
+ * exact 112 physical card conservation, ID uniqueness, dual-face integrity, and active-side representations.
+ */
+router.get('/verify-invariants/:roomCode', async (req: Request, res: Response) => {
+  const roomCode = req.params.roomCode;
+  const session = gameSessionManager.getSessionByRoomCode(roomCode);
+  if (!session) {
+    res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Active game session not found for this room.' },
+    });
+    return;
+  }
+
+  const validation = validateFlipGameStateInvariants(session.state);
+  const totalCards =
+    session.state.players.reduce((sum, p) => sum + p.hand.length, 0) +
+    session.state.drawPile.length +
+    session.state.discardPile.length;
 
   res.json({
-    success: true,
-    designatedPlayerId,
+    success: validation.valid,
+    valid: validation.valid,
+    totalCards,
+    activeSide: session.state.activeSide,
+    errors: validation.errors,
   });
 });
 

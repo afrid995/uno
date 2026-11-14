@@ -20,6 +20,9 @@ export default defineConfig({
       url: 'http://localhost:4000/api/health',
       reuseExistingServer: !process.env.CI,
       timeout: 60000,
+      env: {
+        ENABLE_TEST_HELPERS: 'true',
+      },
     },
     {
       command: 'pnpm dev',

@@ -118,6 +118,13 @@ test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
     });
     expect(injectFlipRes.ok).toBe(true);
 
+    // Assert server-side invariant integrity (112 cards strictly conserved)
+    const verifyRes1 = await fetch(`http://localhost:4000/api/test/verify-invariants/${roomCode}`);
+    expect(verifyRes1.ok).toBe(true);
+    const verifyData1 = await verifyRes1.json();
+    expect(verifyData1.valid).toBe(true);
+    expect(verifyData1.totalCards).toBe(112);
+
     // Determine which page currently has the turn
     const isAliceTurn = await pageAlice.locator('text=YOUR TURN').isVisible();
     const activePage = isAliceTurn ? pageAlice : pageBob;
@@ -144,6 +151,13 @@ test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
       body: JSON.stringify({ roomCode }),
     });
     expect(injectDarkFlipRes.ok).toBe(true);
+
+    // Assert server-side invariant integrity (112 cards strictly conserved)
+    const verifyRes2 = await fetch(`http://localhost:4000/api/test/verify-invariants/${roomCode}`);
+    expect(verifyRes2.ok).toBe(true);
+    const verifyData2 = await verifyRes2.json();
+    expect(verifyData2.valid).toBe(true);
+    expect(verifyData2.totalCards).toBe(112);
 
     const isAliceDarkTurn = await pageAlice.locator('text=YOUR TURN').isVisible();
     const darkActivePage = isAliceDarkTurn ? pageAlice : pageBob;
@@ -224,6 +238,13 @@ test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
       body: JSON.stringify({ roomCode }),
     });
     expect(injectWildRes.ok).toBe(true);
+
+    // Assert server-side invariant integrity (112 cards strictly conserved)
+    const verifyWildRes = await fetch(`http://localhost:4000/api/test/verify-invariants/${roomCode}`);
+    expect(verifyWildRes.ok).toBe(true);
+    const verifyWildData = await verifyWildRes.json();
+    expect(verifyWildData.valid).toBe(true);
+    expect(verifyWildData.totalCards).toBe(112);
 
     // Identify which player is designated chooser
     const aliceHasPicker = await pageAlice.locator('[data-testid="wild-color-green"]').isVisible();

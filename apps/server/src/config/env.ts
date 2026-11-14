@@ -35,6 +35,11 @@ const envSchema = z.object({
     .string()
     .default('60')
     .transform((val) => parseInt(val, 10)),
+  ENABLE_TEST_HELPERS: z
+    .string()
+    .optional()
+    .transform((val) => val === 'true')
+    .default('false'),
 });
 
 const parsed = envSchema.safeParse(process.env);

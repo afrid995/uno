@@ -183,3 +183,33 @@ The game engine utilizes a runtime `VariantRegistry` pattern:
 - `flip.adapter.ts`: Implements Mattel GDR44 UNO Flip.
 
 Both variants operate with zero leaky abstractions, allowing future variants (e.g., Show 'em No Mercy, All Wild) to plug into the platform seamlessly without regressing existing games.
+
+---
+
+## 11. Test Fixture Architecture & Physical Card Invariant Verification
+
+To maintain deterministic end-to-end testing without compromising state validity or generating impossible game states, UNO Ultimate implements a formal test fixture infrastructure under `packages/game-engine/src/variants/flip/`:
+
+### 11.1 Physical Card Conservation Invariant
+In UNO Flip, a game consists of exactly 112 canonical physical cards. At all times during gameplay:
+$$\sum_{p \in \text{Players}} |\text{Hand}_p| + |\text{DrawPile}| + |\text{DiscardPile}| = 112$$
+Every physical card ID (`flip_c_001` through `flip_c_112`) must appear exactly once across all zones. Cards may never be created from outside the deck or destroyed.
+
+### 11.2 Atomic Card Swapping (`FlipFixtureBuilder`)
+When a test scenario requires injecting a specific card (such as a playable Flip card or a starting Wild card) into a player's hand or the discard pile:
+1. `FlipFixtureBuilder.injectPlayableFlipCard`: Locates an existing physical Flip card matching the required playability criteria within the game state (draw pile, opponent hand, or deep discard). It swaps that card with a non-Flip card in the target player's hand. If no matching color Flip card exists, the top discard is atomically swapped with a matching number card from the draw pile. This strictly preserves all hand sizes, total deck count, and discard history.
+2. `FlipFixtureBuilder.injectStartingWild`: Locates a physical Wild card in the existing draw pile and swaps it with the current top discard card, setting `activeColor = null` and designating the player to the left of the dealer.
+
+### 11.3 Invariant Checker (`FlipInvariantValidator`)
+The `validateFlipGameStateInvariants` engine method verifies:
+- Variant is strictly `'uno_flip'`.
+- `activeSide` is `'LIGHT'` or `'DARK'`.
+- Exact 112 physical cards across all zones with 112 unique IDs.
+- Dual faces match the canonical Mattel GDR44 deck factory.
+- Active card faces match `activeSide`.
+- Discard pile top card matches `topDiscardCard`.
+- `activeColor` matches top discard when non-wild, or is null when awaiting starting Wild selection.
+
+### 11.4 Invariant Verification Endpoint
+During automated E2E tests, `GET /api/test/verify-invariants/:roomCode` inspects the active game state on the server, guaranteeing that no test helper ever introduces card duplication, card loss, or corrupted state.
+
