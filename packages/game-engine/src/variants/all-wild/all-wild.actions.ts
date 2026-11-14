@@ -265,21 +265,16 @@ export class AllWildActionProcessor {
         break;
 
       case 'wild_forced_swap':
-        // Wild Forced Swap: If player has cards remaining, enters pending state to choose target player.
-        // If played as the final card (hand size becomes 0), the player has emptied their hand and
-        // wins immediately per Mattel rules ("When a player plays their final card, they win").
-        // The swap action is voided because the player has 0 cards left to exchange.
-        if (nextHand.length > 0) {
-          pendingActionState = {
-            type: 'AWAITING_FORCED_SWAP_SELECTION' as const,
-            sourcePlayerId: player.id,
-          };
-          ctx.addEvent('PENDING_FORCED_SWAP', player.id, { sourcePlayerId: player.id });
-          nextPlayerIndex = playerIndex;
-        } else {
-          pendingActionState = null;
-          nextPlayerIndex = playerIndex;
-        }
+        // Wild Forced Swap: Active player chooses target player to exchange hands with.
+        // Per game designer Nick Hayes and Mattel social media ruling, Wild Forced Swap MUST
+        // execute even if played as the player's final card. The player must choose an opponent
+        // to swap hands with; the chosen opponent receives the 0-card hand and wins the round!
+        pendingActionState = {
+          type: 'AWAITING_FORCED_SWAP_SELECTION' as const,
+          sourcePlayerId: player.id,
+        };
+        ctx.addEvent('PENDING_FORCED_SWAP', player.id, { sourcePlayerId: player.id });
+        nextPlayerIndex = playerIndex;
         break;
 
       default:

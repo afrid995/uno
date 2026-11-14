@@ -384,19 +384,32 @@ describe('UNO All Wild — Server Socket.IO Multiplayer Integration Tests', () =
     });
     expect(playSwapRes.success).toBe(true);
 
-    // Active player played their final card, so active player WINS immediately!
-    // No pending action state is entered and the swap is voided per Mattel rules.
+    const midSession2 = gameSessionManager.getSessionByRoomCode(roomCode2)!;
+    expect(midSession2.state.status).toBe('IN_PROGRESS');
+    expect(midSession2.state.pendingActionState?.type).toBe('AWAITING_FORCED_SWAP_SELECTION');
+
+    // Choose target for swap
+    const chooseSwapRes = await new Promise<{ success: boolean }>((res) => {
+      activeSocket2.emit(
+        SOCKET_EVENTS.GAME_CHOOSE_FORCED_SWAP,
+        { targetPlayerId: targetId2 },
+        (response: any) => res(response)
+      );
+    });
+    expect(chooseSwapRes.success).toBe(true);
+
+    // Target player received 0 cards, so target player WINS per designer Nick Hayes ruling!
     const wonSession2 = gameSessionManager.getSessionByRoomCode(roomCode2)!;
     expect(['ROUND_OVER', 'COMPLETED']).toContain(wonSession2.state.status);
-    expect(wonSession2.state.roundWinner?.id).toBe(activeId2);
-    expect(wonSession2.state.pendingActionState).toBeNull();
-    expect(wonSession2.state.players.find((p) => p.id === activeId2)!.hand).toHaveLength(0);
-    expect(wonSession2.state.players.find((p) => p.id === targetId2)!.hand).toHaveLength(3);
+    expect(wonSession2.state.roundWinner?.id).toBe(targetId2);
+    expect(wonSession2.state.roundWinner?.id).not.toBe(activeId2);
+    expect(wonSession2.state.players.find((p) => p.id === activeId2)!.hand).toHaveLength(3);
+    expect(wonSession2.state.players.find((p) => p.id === targetId2)!.hand).toHaveLength(0);
     assertValidAllWildGameState(wonSession2.state);
 
-    // Verify DB snapshot confirms active player victory
+    // Verify DB snapshot confirms target player victory
     const persisted2 = await gamePersistenceService.loadLatestSnapshot(session2.matchId);
     expect(persisted2).toBeDefined();
-    expect(persisted2?.roundWinner?.id).toBe(activeId2);
+    expect(persisted2?.roundWinner?.id).toBe(targetId2);
   }, 30000);
 });
