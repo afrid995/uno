@@ -83,6 +83,23 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
 
       {/* Status Badges */}
       <div className="mt-1.5 flex flex-col gap-1 items-center">
+        {/* UNO Flex Power Card Badge */}
+        {!isEliminated && player.powerCardStatus && (
+          <div
+            data-testid="power-card-badge"
+            data-power-status={player.powerCardStatus}
+            className={`px-2 py-0.5 rounded-full text-[9px] font-black border flex items-center gap-1 shadow-sm ${
+              player.powerCardStatus === 'green_check'
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-emerald-500/20'
+                : 'bg-rose-500/20 text-rose-400 border-rose-500/50 shadow-rose-500/20'
+            }`}
+            title={`Power Card: ${player.powerCardStatus === 'green_check' ? 'Green Side (Active)' : 'Red Side (Inactive)'}`}
+          >
+            <span>{player.powerCardStatus === 'green_check' ? '✓' : '✗'}</span>
+            <span>POWER</span>
+          </div>
+        )}
+
         {!isEliminated && player.hasDeclaredUno && (
           <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-slate-950 tracking-wider shadow-sm animate-pulse">
             UNO!

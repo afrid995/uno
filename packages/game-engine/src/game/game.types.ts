@@ -71,6 +71,11 @@ export interface PendingTargetedDrawTwoState {
   readonly sourcePlayerId: string;
 }
 
+export interface PendingTargetedDrawFourState {
+  readonly type: 'AWAITING_TARGETED_DRAW_FOUR_SELECTION';
+  readonly sourcePlayerId: string;
+}
+
 export interface PendingForcedSwapState {
   readonly type: 'AWAITING_FORCED_SWAP_SELECTION';
   readonly sourcePlayerId: string;
@@ -85,6 +90,7 @@ export type PendingActionState =
   | Pending7sSwapState
   | PendingColorRouletteState
   | PendingTargetedDrawTwoState
+  | PendingTargetedDrawFourState
   | PendingForcedSwapState;
 
 export interface GameWinner {

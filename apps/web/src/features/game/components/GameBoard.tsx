@@ -14,7 +14,9 @@ import { MatchResultModal } from './MatchResultModal';
 import { SevenSwapModal } from './SevenSwapModal';
 import { ColorRouletteModal } from './ColorRouletteModal';
 import { TargetedDrawTwoModal } from './TargetedDrawTwoModal';
+import { TargetedDrawFourModal } from './TargetedDrawFourModal';
 import { ForcedSwapModal } from './ForcedSwapModal';
+import { FlexCardChoiceModal } from './FlexCardChoiceModal';
 import { StackPenaltyBanner } from './StackPenaltyBanner';
 import { AlertCircle, RotateCcw, RotateCw, Skull } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,9 +39,13 @@ export const GameBoard: React.FC = () => {
     chooseRouletteColor,
     acceptStackPenalty,
     chooseTargetedDrawTwo,
+    chooseTargetedDrawFour,
     chooseForcedSwap,
     clearError,
   } = useGameStore();
+
+  const [selectedCardForFlexChoice, setSelectedCardForFlexChoice] = React.useState<Card | null>(null);
+  const [pendingPlayMode, setPendingPlayMode] = React.useState<'regular' | 'flex'>('regular');
 
   if (!gameState) {
     return (
@@ -64,10 +70,55 @@ export const GameBoard: React.FC = () => {
       : null;
 
   const handleCardClick = (card: Card) => {
+    if (gameState.variant === 'uno_flex') {
+      const isFlexCard = card.flexColor !== undefined || card.value.startsWith('flex_');
+      const isPowerActive = selfPublic?.powerCardStatus === 'green_check';
+
+      if (isFlexCard && isPowerActive) {
+        setSelectedCardForFlexChoice(card);
+        return;
+      }
+
+      // If power card is red or card has no flex option, play regular
+      if (card.type === 'wild') {
+        setPendingPlayMode('regular');
+        openWildColorPicker(card);
+      } else {
+        playCard(card.id, undefined, 'regular');
+      }
+      return;
+    }
+
     if (card.type === 'wild' && !isAllWild) {
       openWildColorPicker(card);
     } else {
       playCard(card.id);
+    }
+  };
+
+  const handleChooseRegular = () => {
+    if (!selectedCardForFlexChoice) return;
+    const card = selectedCardForFlexChoice;
+    setSelectedCardForFlexChoice(null);
+
+    if (card.type === 'wild') {
+      setPendingPlayMode('regular');
+      openWildColorPicker(card);
+    } else {
+      playCard(card.id, undefined, 'regular');
+    }
+  };
+
+  const handleChooseFlex = () => {
+    if (!selectedCardForFlexChoice) return;
+    const card = selectedCardForFlexChoice;
+    setSelectedCardForFlexChoice(null);
+
+    if (card.type === 'wild') {
+      setPendingPlayMode('flex');
+      openWildColorPicker(card);
+    } else {
+      playCard(card.id, undefined, 'flex');
     }
   };
 
@@ -127,6 +178,29 @@ export const GameBoard: React.FC = () => {
               className="flex items-center gap-1.5 px-3 py-1 rounded-xl font-display font-black text-xs tracking-wider border shadow-md bg-gradient-to-r from-indigo-950 via-purple-950 to-slate-950 border-indigo-400 text-indigo-300 shadow-indigo-950/60 shadow-lg"
             >
               <span>🌈 ALL WILD</span>
+            </div>
+          )}
+
+          {/* UNO Flex Variant Badge & Power Card Indicator */}
+          {gameState.variant === 'uno_flex' && (
+            <div
+              data-testid="uno-flex-badge"
+              className="flex items-center gap-2 px-3 py-1 rounded-xl font-display font-black text-xs tracking-wider border shadow-md bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-950 border-emerald-400 text-emerald-300 shadow-emerald-950/60"
+            >
+              <span>⚡ UNO FLEX</span>
+              {selfPublic?.powerCardStatus && (
+                <span
+                  data-testid="self-power-card-status"
+                  data-power-status={selfPublic.powerCardStatus}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
+                    selfPublic.powerCardStatus === 'green_check'
+                      ? 'bg-emerald-500/30 text-emerald-300 border-emerald-400'
+                      : 'bg-rose-500/30 text-rose-300 border-rose-400'
+                  }`}
+                >
+                  {selfPublic.powerCardStatus === 'green_check' ? '✓ POWER ACTIVE' : '✗ POWER USED'}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -275,7 +349,11 @@ export const GameBoard: React.FC = () => {
         activeSide={gameState.activeSide}
         onSelectColor={(color) => {
           if (selectedCardForWild) {
-            playCard(selectedCardForWild.id, color);
+            if (gameState.variant === 'uno_flex') {
+              playCard(selectedCardForWild.id, color, pendingPlayMode);
+            } else {
+              playCard(selectedCardForWild.id, color);
+            }
           }
         }}
         onClose={closeWildColorPicker}
@@ -322,6 +400,16 @@ export const GameBoard: React.FC = () => {
         }}
       />
 
+      {/* Wild Targeted Draw Four Modal (UNO Flex) */}
+      <TargetedDrawFourModal
+        isOpen={!!self.canChooseTargetedDrawFour}
+        eligiblePlayers={opponents.filter((p) => !p.isEliminated)}
+        isLoading={isActionLoading}
+        onSelectTarget={(targetId) => {
+          chooseTargetedDrawFour(targetId);
+        }}
+      />
+
       {/* Wild Forced Swap Modal */}
       <ForcedSwapModal
         isOpen={!!self.canChooseForcedSwap}
@@ -330,6 +418,16 @@ export const GameBoard: React.FC = () => {
         onSelectTarget={(targetId) => {
           chooseForcedSwap(targetId);
         }}
+      />
+
+      {/* Flex Card Choice Modal (Regular vs Flex mode) */}
+      <FlexCardChoiceModal
+        isOpen={!!selectedCardForFlexChoice}
+        card={selectedCardForFlexChoice}
+        isLoading={isActionLoading}
+        onChooseRegular={handleChooseRegular}
+        onChooseFlex={handleChooseFlex}
+        onClose={() => setSelectedCardForFlexChoice(null)}
       />
 
       <RoundResultModal />

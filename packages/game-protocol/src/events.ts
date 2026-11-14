@@ -70,6 +70,7 @@ export const SOCKET_EVENTS = {
   GAME_CHOOSE_ROULETTE_COLOR: 'game:choose-roulette-color',
   GAME_ACCEPT_STACK_PENALTY: 'game:accept-stack-penalty',
   GAME_CHOOSE_TARGETED_DRAW_TWO: 'game:choose-targeted-draw-two',
+  GAME_CHOOSE_TARGETED_DRAW_FOUR: 'game:choose-targeted-draw-four',
   GAME_CHOOSE_FORCED_SWAP: 'game:choose-forced-swap',
   GAME_NEXT_ROUND: 'game:next-round',
 
@@ -97,6 +98,8 @@ export const playCardInputSchema = z.object({
     'orange',
     'purple',
   ]).optional(),
+  playMode: z.enum(['regular', 'flex']).optional(),
+  targetPlayerId: z.string().optional(),
 });
 export type PlayCardInput = z.infer<typeof playCardInputSchema>;
 
@@ -136,6 +139,11 @@ export const chooseTargetedDrawTwoInputSchema = z.object({
   targetPlayerId: z.string().min(1, 'Target player ID is required'),
 });
 export type ChooseTargetedDrawTwoInput = z.infer<typeof chooseTargetedDrawTwoInputSchema>;
+
+export const chooseTargetedDrawFourInputSchema = z.object({
+  targetPlayerId: z.string().min(1, 'Target player ID is required'),
+});
+export type ChooseTargetedDrawFourInput = z.infer<typeof chooseTargetedDrawFourInputSchema>;
 
 export const chooseForcedSwapInputSchema = z.object({
   targetPlayerId: z.string().min(1, 'Target player ID is required'),
@@ -253,6 +261,10 @@ export interface ClientToServerEvents {
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_TWO]: (
     payload: ChooseTargetedDrawTwoInput,
+    callback: (response: SocketAck<{ success: boolean; targetPlayerId: string }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_FOUR]: (
+    payload: ChooseTargetedDrawFourInput,
     callback: (response: SocketAck<{ success: boolean; targetPlayerId: string }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_FORCED_SWAP]: (

@@ -62,6 +62,14 @@ export * from './variants/all-wild/all-wild.actions';
 export * from './variants/all-wild/all-wild.adapter';
 export * from './variants/all-wild/all-wild.invariants';
 export * from './variants/all-wild/all-wild.fixture';
+export * from './variants/flex/flex.constants';
+export * from './variants/flex/flex.deck';
+export * from './variants/flex/flex.dealer';
+export * from './variants/flex/flex.validator';
+export * from './variants/flex/flex.actions';
+export * from './variants/flex/flex.adapter';
+export * from './variants/flex/flex.invariants';
+export * from './variants/flex/flex.fixture';
 
 // Testing utilities
 export * from './testing/deterministic-random';

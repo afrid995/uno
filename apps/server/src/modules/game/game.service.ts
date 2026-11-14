@@ -45,6 +45,14 @@ export class GameService {
           'UNO Show \'em No Mercy requires between 2 and 6 players.'
         );
       }
+    } else if (variant === 'uno_flex') {
+      if (members.length < 2 || members.length > 8) {
+        throw new AppError(
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.BAD_REQUEST,
+          'UNO Flex requires between 2 and 8 players.'
+        );
+      }
     } else {
       if (members.length < 2 || members.length > 10) {
         throw new AppError(
@@ -134,13 +142,17 @@ export class GameService {
     guestId: string,
     roomCode: string,
     cardId: string,
-    chosenColor?: CardColor
+    chosenColor?: CardColor,
+    playMode?: 'regular' | 'flex',
+    targetPlayerId?: string
   ): Promise<ActionProcessResult> {
     return this.executeAction(roomCode, {
       type: 'PLAY_CARD',
       playerId: guestId,
       cardId,
       chosenColor,
+      playMode,
+      targetPlayerId,
     });
   }
 
@@ -290,6 +302,18 @@ export class GameService {
   ): Promise<ActionProcessResult> {
     return this.executeAction(roomCode, {
       type: 'CHOOSE_TARGETED_DRAW_TWO_TARGET',
+      playerId: guestId,
+      targetPlayerId,
+    });
+  }
+
+  async chooseTargetedDrawFourTarget(
+    guestId: string,
+    roomCode: string,
+    targetPlayerId: string
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'CHOOSE_TARGETED_DRAW_FOUR_TARGET',
       playerId: guestId,
       targetPlayerId,
     });

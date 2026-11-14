@@ -21,7 +21,12 @@ interface GameStateStore {
   roundScores: Record<string, number> | null;
 
   // Actions
-  playCard: (cardId: string, chosenColor?: CardColor) => Promise<boolean>;
+  playCard: (
+    cardId: string,
+    chosenColor?: CardColor,
+    playMode?: 'regular' | 'flex',
+    targetPlayerId?: string
+  ) => Promise<boolean>;
   drawCard: () => Promise<boolean>;
   passTurn: () => Promise<boolean>;
   callUno: () => Promise<boolean>;
@@ -37,6 +42,7 @@ interface GameStateStore {
   chooseRouletteColor: (chosenColor: 'red' | 'yellow' | 'green' | 'blue') => Promise<boolean>;
   acceptStackPenalty: () => Promise<boolean>;
   chooseTargetedDrawTwo: (targetPlayerId: string) => Promise<boolean>;
+  chooseTargetedDrawFour: (targetPlayerId: string) => Promise<boolean>;
   chooseForcedSwap: (targetPlayerId: string) => Promise<boolean>;
   startNextRound: () => Promise<boolean>;
 
@@ -64,14 +70,14 @@ export const useGameStore = create<GameStateStore>((set) => ({
   dismissRoundModal: () => set({ showRoundResultModal: false }),
   clearError: () => set({ error: null }),
 
-  playCard: async (cardId, chosenColor) => {
+  playCard: async (cardId, chosenColor, playMode, targetPlayerId) => {
     set({ isActionLoading: true, error: null, selectedCardForWild: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
       socket.emit(
         SOCKET_EVENTS.GAME_PLAY_CARD,
-        { cardId, chosenColor },
+        { cardId, chosenColor, playMode, targetPlayerId },
         (res) => {
           set({ isActionLoading: false });
           if (res.success) {
@@ -338,6 +344,23 @@ export const useGameStore = create<GameStateStore>((set) => ({
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to target player' });
+          resolve(false);
+        }
+      });
+    });
+  },
+
+  chooseTargetedDrawFour: async (targetPlayerId: string) => {
+    set({ isActionLoading: true, error: null });
+    const socket = socketManager.getSocket();
+
+    return new Promise<boolean>((resolve) => {
+      socket.emit(SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_FOUR, { targetPlayerId }, (res) => {
+        set({ isActionLoading: false });
+        if (res.success) {
+          resolve(true);
+        } else {
+          set({ error: res.error?.message || 'Failed to target player for Draw 4' });
           resolve(false);
         }
       });

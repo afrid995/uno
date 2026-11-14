@@ -14,6 +14,9 @@ import {
   AllWildFixtureBuilder,
   assertValidAllWildGameState,
   validateAllWildGameStateInvariants,
+  FlexFixtureBuilder,
+  assertValidFlexGameState,
+  validateFlexGameStateInvariants,
 } from '@uno-ultimate/game-engine';
 import { timingSafeSecretCompare } from '../utils/crypto';
 import { AppError } from '../middleware/errorHandler';
@@ -722,6 +725,278 @@ router.get(['/verify-all-wild-invariants/:roomCode', '/verify-all-wild-invariant
   try {
     const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
       const validation = validateAllWildGameStateInvariants(activeSession.state);
+      const totalCards =
+        activeSession.state.players.reduce((sum, p) => sum + p.hand.length, 0) +
+        activeSession.state.drawPile.length +
+        activeSession.state.discardPile.length;
+
+      return {
+        success: validation.valid,
+        valid: validation.valid,
+        totalCards,
+        errors: validation.errors,
+      };
+    });
+
+    res.json(outcome);
+  } catch (err: unknown) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: (err as Error).message } });
+  }
+});
+
+/**
+ * UNO Flex Test Helpers
+ */
+const injectFlexCardSchema = z.object({
+  roomCode: z.string().min(1),
+  targetPlayerId: z.string().optional(),
+  targetUsername: z.string().optional(),
+  cardValue: z.string().min(1),
+  cardColor: z.enum(['red', 'yellow', 'green', 'blue']).optional(),
+});
+
+const setFlexPowerCardSchema = z.object({
+  roomCode: z.string().min(1),
+  targetPlayerId: z.string().optional(),
+  targetUsername: z.string().optional(),
+  powerCardStatus: z.enum(['green_check', 'red_x']),
+});
+
+const setFlexHandSizeSchema = z.object({
+  roomCode: z.string().min(1),
+  targetPlayerId: z.string().optional(),
+  targetUsername: z.string().optional(),
+  targetCount: z.number().int().min(1).max(25),
+});
+
+/**
+ * POST /api/test/inject-flex-card
+ */
+router.post('/inject-flex-card', async (req: Request, res: Response) => {
+  const parseResult = injectFlexCardSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'BAD_REQUEST', message: 'Invalid payload', details: parseResult.error.format() },
+    });
+    return;
+  }
+
+  const { roomCode, targetPlayerId, targetUsername, cardValue, cardColor } = parseResult.data;
+  const session = gameSessionManager.getSessionByRoomCode(roomCode);
+  if (!session) {
+    res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Active game session not found for this room.' },
+    });
+    return;
+  }
+
+  try {
+    const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      if (activeSession.state.variant !== 'uno_flex') {
+        throw new AppError(400, 'INVALID_VARIANT', 'Fixture only valid for UNO Flex.');
+      }
+      if (activeSession.state.status !== 'IN_PROGRESS') {
+        throw new AppError(400, 'MATCH_NOT_ACTIVE', 'Match must be IN_PROGRESS.');
+      }
+
+      let targetId = targetPlayerId;
+      if (!targetId && targetUsername) {
+        const found = activeSession.state.players.find((p) => p.username === targetUsername);
+        if (found) targetId = found.id;
+      }
+      if (!targetId) {
+        throw new AppError(400, 'BAD_REQUEST', 'targetPlayerId or targetUsername required.');
+      }
+
+      const { nextState, card } = FlexFixtureBuilder.injectPlayableCard(
+        activeSession.state,
+        targetId,
+        cardValue,
+        cardColor
+      );
+
+      assertValidFlexGameState(nextState);
+      await gamePersistenceService.persistActionBatch(activeSession.matchId, nextState, []);
+      activeSession.state = nextState;
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      return {
+        cardId: card.id,
+        value: card.value,
+        color: card.color,
+        flexColor: card.flexColor,
+        targetPlayerId: targetId,
+      };
+    });
+
+    res.json({ success: true, data: outcome });
+  } catch (err: unknown) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({ success: false, error: { code: err.code, message: err.message } });
+    } else {
+      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: (err as Error).message } });
+    }
+  }
+});
+
+/**
+ * POST /api/test/set-flex-power-card
+ */
+router.post('/set-flex-power-card', async (req: Request, res: Response) => {
+  const parseResult = setFlexPowerCardSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'BAD_REQUEST', message: 'Invalid payload', details: parseResult.error.format() },
+    });
+    return;
+  }
+
+  const { roomCode, targetPlayerId, targetUsername, powerCardStatus } = parseResult.data;
+  const session = gameSessionManager.getSessionByRoomCode(roomCode);
+  if (!session) {
+    res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Active game session not found for this room.' },
+    });
+    return;
+  }
+
+  try {
+    const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      if (activeSession.state.variant !== 'uno_flex') {
+        throw new AppError(400, 'INVALID_VARIANT', 'Fixture only valid for UNO Flex.');
+      }
+      if (activeSession.state.status !== 'IN_PROGRESS') {
+        throw new AppError(400, 'MATCH_NOT_ACTIVE', 'Match must be IN_PROGRESS.');
+      }
+
+      let targetId = targetPlayerId;
+      if (!targetId && targetUsername) {
+        const found = activeSession.state.players.find((p) => p.username === targetUsername);
+        if (found) targetId = found.id;
+      }
+      if (!targetId) {
+        throw new AppError(400, 'BAD_REQUEST', 'targetPlayerId or targetUsername required.');
+      }
+
+      const nextState = FlexFixtureBuilder.setPowerCardStatus(
+        activeSession.state,
+        targetId,
+        powerCardStatus
+      );
+
+      assertValidFlexGameState(nextState);
+      await gamePersistenceService.persistActionBatch(activeSession.matchId, nextState, []);
+      activeSession.state = nextState;
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      return {
+        targetPlayerId: targetId,
+        powerCardStatus,
+      };
+    });
+
+    res.json({ success: true, data: outcome });
+  } catch (err: unknown) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({ success: false, error: { code: err.code, message: err.message } });
+    } else {
+      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: (err as Error).message } });
+    }
+  }
+});
+
+/**
+ * POST /api/test/set-flex-hand-size
+ */
+router.post('/set-flex-hand-size', async (req: Request, res: Response) => {
+  const parseResult = setFlexHandSizeSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'BAD_REQUEST', message: 'Invalid payload', details: parseResult.error.format() },
+    });
+    return;
+  }
+
+  const { roomCode, targetPlayerId, targetUsername, targetCount } = parseResult.data;
+  const session = gameSessionManager.getSessionByRoomCode(roomCode);
+  if (!session) {
+    res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Active game session not found for this room.' },
+    });
+    return;
+  }
+
+  try {
+    const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      if (activeSession.state.variant !== 'uno_flex') {
+        throw new AppError(400, 'INVALID_VARIANT', 'Fixture only valid for UNO Flex.');
+      }
+      if (activeSession.state.status !== 'IN_PROGRESS') {
+        throw new AppError(400, 'MATCH_NOT_ACTIVE', 'Match must be IN_PROGRESS.');
+      }
+
+      let targetId = targetPlayerId;
+      if (!targetId && targetUsername) {
+        const found = activeSession.state.players.find((p) => p.username === targetUsername);
+        if (found) targetId = found.id;
+      }
+      if (!targetId) {
+        throw new AppError(400, 'BAD_REQUEST', 'targetPlayerId or targetUsername required.');
+      }
+
+      const nextState = FlexFixtureBuilder.setHandSize(
+        activeSession.state,
+        targetId,
+        targetCount
+      );
+
+      assertValidFlexGameState(nextState);
+      await gamePersistenceService.persistActionBatch(activeSession.matchId, nextState, []);
+      activeSession.state = nextState;
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      return {
+        targetPlayerId: targetId,
+        targetCount,
+        handLength: nextState.players.find((p: { id: string }) => p.id === targetId)?.hand.length,
+      };
+    });
+
+    res.json({ success: true, data: outcome });
+  } catch (err: unknown) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({ success: false, error: { code: err.code, message: err.message } });
+    } else {
+      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: (err as Error).message } });
+    }
+  }
+});
+
+/**
+ * GET /api/test/verify-flex-invariants/:roomCode
+ */
+router.get(['/verify-flex-invariants/:roomCode', '/verify-flex-invariants'], async (req: Request, res: Response) => {
+  const roomCode = req.params.roomCode || (req.query.roomCode as string);
+  if (!roomCode) {
+    res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'roomCode required' } });
+    return;
+  }
+
+  const session = gameSessionManager.getSessionByRoomCode(roomCode);
+  if (!session) {
+    res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Session not found' } });
+    return;
+  }
+
+  try {
+    const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      const validation = validateFlexGameStateInvariants(activeSession.state);
       const totalCards =
         activeSession.state.players.reduce((sum, p) => sum + p.hand.length, 0) +
         activeSession.state.drawPile.length +

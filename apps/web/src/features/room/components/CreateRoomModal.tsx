@@ -12,14 +12,16 @@ interface CreateRoomModalProps {
 
 export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) => {
   const [maxPlayers, setMaxPlayers] = useState<number>(ROOM_RULES.DEFAULT_MAX_PLAYERS);
-  const [variant, setVariant] = useState<'classic' | 'uno_flip' | 'uno_show_em_no_mercy' | 'uno_all_wild'>('classic');
+  const [variant, setVariant] = useState<'classic' | 'uno_flip' | 'uno_show_em_no_mercy' | 'uno_all_wild' | 'uno_flex'>('classic');
   const { createRoom, isLoading, error, clearError } = useRoomStore();
   const navigate = useNavigate();
 
-  const handleSelectVariant = (newVariant: 'classic' | 'uno_flip' | 'uno_show_em_no_mercy' | 'uno_all_wild') => {
+  const handleSelectVariant = (newVariant: 'classic' | 'uno_flip' | 'uno_show_em_no_mercy' | 'uno_all_wild' | 'uno_flex') => {
     setVariant(newVariant);
     if (newVariant === 'uno_show_em_no_mercy' && maxPlayers > 6) {
       setMaxPlayers(6);
+    } else if (newVariant === 'uno_flex' && maxPlayers > 8) {
+      setMaxPlayers(8);
     }
   };
 
@@ -86,6 +88,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                     ? 'UNO Flip!'
                     : variant === 'uno_show_em_no_mercy'
                     ? "UNO Show 'em No Mercy"
+                    : variant === 'uno_flex'
+                    ? 'UNO Flex'
                     : 'UNO All Wild'}
                 </span>
               </label>
@@ -163,6 +167,25 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                     Mattel HHL33 rules (112 cards, every card wild, targeted draw 2, forced swap).
                   </div>
                 </button>
+
+                <button
+                  type="button"
+                  data-testid="variant-select-uno-flex"
+                  onClick={() => handleSelectVariant('uno_flex')}
+                  className={`p-3 rounded-2xl text-left border transition-all sm:col-span-2 ${
+                    variant === 'uno_flex'
+                      ? 'bg-gradient-to-br from-emerald-600/30 to-teal-500/20 border-emerald-400 text-white shadow-glow'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                  }`}
+                >
+                  <div className="font-bold font-display text-sm text-white mb-0.5 flex items-center gap-1.5">
+                    UNO Flex
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/30 text-emerald-300 font-mono">112C</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 leading-tight">
+                    Mattel HNB00 rules (112 cards, Power Cards, flex sides, flip mechanic, targeted draws).
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -179,7 +202,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
               </div>
 
               <div className="flex items-center justify-between gap-2">
-                {(variant === 'uno_show_em_no_mercy' ? [2, 3, 4, 5, 6] : [2, 4, 6, 8, 10]).map((num) => (
+                {(variant === 'uno_show_em_no_mercy' ? [2, 3, 4, 5, 6] : variant === 'uno_flex' ? [2, 3, 4, 6, 8] : [2, 4, 6, 8, 10]).map((num) => (
                   <button
                     key={num}
                     type="button"
@@ -197,6 +220,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
               <p className="text-[11px] text-slate-500">
                 {variant === 'uno_show_em_no_mercy'
                   ? 'UNO Show ’em No Mercy strictly supports 2 to 6 players.'
+                  : variant === 'uno_flex'
+                  ? 'UNO Flex supports 2 to 8 players (8 Power Cards).'
                   : variant === 'uno_all_wild'
                   ? 'UNO All Wild supports 2 to 10 players (default 6).'
                   : 'Mattel standard rooms support 2 to 10 players (default 6).'}

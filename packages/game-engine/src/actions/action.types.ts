@@ -17,8 +17,11 @@ export type GameActionType =
   | 'CHOOSE_COLOR_ROULETTE_COLOR'
   | 'ACCEPT_STACK_PENALTY'
   | 'CHOOSE_TARGETED_DRAW_TWO_TARGET'
+  | 'CHOOSE_TARGETED_DRAW_FOUR_TARGET'
   | 'CHOOSE_FORCED_SWAP_TARGET'
   | 'START_NEXT_ROUND';
+
+export type PlayCardMode = 'regular' | 'flex';
 
 export interface PlayCardAction {
   readonly type: 'PLAY_CARD';
@@ -26,6 +29,10 @@ export interface PlayCardAction {
   readonly cardId: string;
   /** Chosen color if playing a Wild, Wild Draw Four, Wild Draw Two, or Wild Draw Color */
   readonly chosenColor?: CardColor;
+  /** Play mode for UNO Flex: 'regular' (default) or 'flex' (uses flex side) */
+  readonly playMode?: PlayCardMode;
+  /** Optional target player ID for targeted flex effects (e.g. Flex Wild Target Draw Two or Flex Wild Draw Four) */
+  readonly targetPlayerId?: string;
 }
 
 export interface DrawCardAction {
@@ -108,6 +115,12 @@ export interface ChooseTargetedDrawTwoTargetAction {
   readonly targetPlayerId: string;
 }
 
+export interface ChooseTargetedDrawFourTargetAction {
+  readonly type: 'CHOOSE_TARGETED_DRAW_FOUR_TARGET';
+  readonly playerId: string;
+  readonly targetPlayerId: string;
+}
+
 export interface ChooseForcedSwapTargetAction {
   readonly type: 'CHOOSE_FORCED_SWAP_TARGET';
   readonly playerId: string;
@@ -136,6 +149,7 @@ export type GameAction =
   | ChooseColorRouletteColorAction
   | AcceptStackPenaltyAction
   | ChooseTargetedDrawTwoTargetAction
+  | ChooseTargetedDrawFourTargetAction
   | ChooseForcedSwapTargetAction
   | StartNextRoundAction;
 

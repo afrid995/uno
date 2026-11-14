@@ -114,19 +114,22 @@ export class RoomService {
       settings.variant !== 'classic' &&
       settings.variant !== 'uno_flip' &&
       settings.variant !== 'uno_show_em_no_mercy' &&
-      settings.variant !== 'uno_all_wild'
+      settings.variant !== 'uno_all_wild' &&
+      settings.variant !== 'uno_flex'
     ) {
       throw new AppError(
         HTTP_STATUS.BAD_REQUEST,
         ERROR_CODES.VALIDATION_ERROR,
-        'Invalid game variant. Supported variants are classic, uno_flip, uno_show_em_no_mercy, and uno_all_wild.'
+        'Invalid game variant. Supported variants are classic, uno_flip, uno_show_em_no_mercy, uno_all_wild, and uno_flex.'
       );
     }
 
     const effectiveMaxPlayers =
       settings.variant === 'uno_show_em_no_mercy'
         ? Math.min(maxPlayers, 6)
-        : maxPlayers;
+        : settings.variant === 'uno_flex'
+          ? Math.min(maxPlayers, 8)
+          : maxPlayers;
 
     // Verify host guest exists
     const hostGuest = await prisma.guestSession.findUnique({
@@ -530,12 +533,13 @@ export class RoomService {
         settings.variant !== 'classic' &&
         settings.variant !== 'uno_flip' &&
         settings.variant !== 'uno_show_em_no_mercy' &&
-        settings.variant !== 'uno_all_wild'
+        settings.variant !== 'uno_all_wild' &&
+        settings.variant !== 'uno_flex'
       ) {
         throw new AppError(
           HTTP_STATUS.BAD_REQUEST,
           ERROR_CODES.VALIDATION_ERROR,
-          'Invalid game variant. Supported variants are classic, uno_flip, uno_show_em_no_mercy, and uno_all_wild.'
+          'Invalid game variant. Supported variants are classic, uno_flip, uno_show_em_no_mercy, uno_all_wild, and uno_flex.'
         );
       }
 

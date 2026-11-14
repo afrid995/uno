@@ -1,5 +1,6 @@
 import { Card, CardColor, FlipSide } from '../cards/card.types';
 import { GameState, GameStatus, GameWinner } from '../game/game.types';
+import { PowerCardStatus } from '../players/player.types';
 import { TurnDirection } from '../turns/turn.direction';
 
 export interface PublicPlayer {
@@ -9,6 +10,7 @@ export interface PublicPlayer {
   readonly hasDeclaredUno: boolean;
   readonly score: number;
   readonly isEliminated?: boolean;
+  readonly powerCardStatus?: PowerCardStatus;
 }
 
 export interface PublicPendingWildDrawFour {
@@ -57,6 +59,21 @@ export interface PublicPendingColorRoulette {
   readonly playedByPlayerId: string;
 }
 
+export interface PublicPendingTargetedDrawTwo {
+  readonly type: 'AWAITING_TARGETED_DRAW_TWO_SELECTION';
+  readonly sourcePlayerId: string;
+}
+
+export interface PublicPendingTargetedDrawFour {
+  readonly type: 'AWAITING_TARGETED_DRAW_FOUR_SELECTION';
+  readonly sourcePlayerId: string;
+}
+
+export interface PublicPendingForcedSwap {
+  readonly type: 'AWAITING_FORCED_SWAP_SELECTION';
+  readonly sourcePlayerId: string;
+}
+
 export type PublicPendingActionState =
   | PublicPendingWildDrawFour
   | PublicPendingWildDrawTwo
@@ -64,7 +81,10 @@ export type PublicPendingActionState =
   | PublicPendingStartingWildColor
   | PublicPendingStack
   | PublicPending7sSwap
-  | PublicPendingColorRoulette;
+  | PublicPendingColorRoulette
+  | PublicPendingTargetedDrawTwo
+  | PublicPendingTargetedDrawFour
+  | PublicPendingForcedSwap;
 
 export interface PublicGameState {
   readonly id: string;
@@ -145,6 +165,21 @@ export function getPublicGameState(state: GameState): PublicGameState {
         victimPlayerId: state.pendingActionState.victimPlayerId,
         playedByPlayerId: state.pendingActionState.playedByPlayerId,
       };
+    } else if (state.pendingActionState.type === 'AWAITING_TARGETED_DRAW_TWO_SELECTION') {
+      pendingActionState = {
+        type: 'AWAITING_TARGETED_DRAW_TWO_SELECTION',
+        sourcePlayerId: state.pendingActionState.sourcePlayerId,
+      };
+    } else if (state.pendingActionState.type === 'AWAITING_TARGETED_DRAW_FOUR_SELECTION') {
+      pendingActionState = {
+        type: 'AWAITING_TARGETED_DRAW_FOUR_SELECTION',
+        sourcePlayerId: state.pendingActionState.sourcePlayerId,
+      };
+    } else if (state.pendingActionState.type === 'AWAITING_FORCED_SWAP_SELECTION') {
+      pendingActionState = {
+        type: 'AWAITING_FORCED_SWAP_SELECTION',
+        sourcePlayerId: state.pendingActionState.sourcePlayerId,
+      };
     }
   }
 
@@ -163,6 +198,7 @@ export function getPublicGameState(state: GameState): PublicGameState {
       hasDeclaredUno: p.hasDeclaredUno,
       score: p.score,
       isEliminated: p.isEliminated,
+      powerCardStatus: p.powerCardStatus,
     })),
     playerOrder: state.playerOrder,
     currentPlayerIndex: state.currentPlayerIndex,

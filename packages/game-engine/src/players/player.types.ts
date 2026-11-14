@@ -1,5 +1,7 @@
 import { Card } from '../cards/card.types';
 
+export type PowerCardStatus = 'green_check' | 'red_x';
+
 export interface Player {
   /** Unique guest identifier */
   readonly id: string;
@@ -19,4 +21,6 @@ export interface Player {
   readonly isEliminated?: boolean;
   /** Elimination sequence order if eliminated */
   readonly eliminationOrder?: number;
+  /** State of player's Power Card in UNO Flex (green checkmark or red X) */
+  readonly powerCardStatus?: PowerCardStatus;
 }

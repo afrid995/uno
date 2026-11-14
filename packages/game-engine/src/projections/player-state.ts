@@ -27,6 +27,7 @@ export interface PlayerPrivateView {
   readonly canChoose7sSwap?: boolean;
   readonly canChooseRouletteColor?: boolean;
   readonly canChooseTargetedDrawTwo?: boolean;
+  readonly canChooseTargetedDrawFour?: boolean;
   readonly canChooseForcedSwap?: boolean;
   readonly isEliminated?: boolean;
 }
@@ -70,17 +71,46 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
       })
       .map((c) => c.id);
   } else if (isCurrentTurn && state.status === 'IN_PROGRESS' && !state.pendingActionState) {
+    const isFlexMatch = (card: Card): boolean => {
+      if (MoveValidator.isCardMatch(card, state.activeColor, state.topDiscardCard)) {
+        return true;
+      }
+      if (state.variant === 'uno_flex' && player.powerCardStatus === 'green_check') {
+        // Flex side matching
+        if (card.flexColor && state.activeColor !== null && card.flexColor === state.activeColor) {
+          return true;
+        }
+        if (
+          (card.value === 'flex_draw_two' || card.value === 'flex_reverse' || card.value === 'flex_skip') &&
+          (card.flexColor === state.activeColor ||
+            card.color === state.activeColor ||
+            state.topDiscardCard.value === card.value ||
+            state.topDiscardCard.value === card.value.replace('flex_', ''))
+        ) {
+          return true;
+        }
+        if (
+          card.value === 'flex_wild_draw_four' ||
+          card.value === 'flex_wild_target_draw_two' ||
+          card.value === 'flex_wild_all_draw'
+        ) {
+          return true;
+        }
+      }
+      return false;
+    };
+
     if (player.hasDrawnThisTurn) {
       // Per official rules, after drawing, only the drawn card can be played (if it matches)
       if (player.drawnCardId) {
         const drawnCard = player.hand.find((c) => c.id === player.drawnCardId);
-        if (drawnCard && MoveValidator.isCardMatch(drawnCard, state.activeColor, state.topDiscardCard)) {
+        if (drawnCard && isFlexMatch(drawnCard)) {
           playableCardIds = [drawnCard.id];
         }
       }
     } else {
       playableCardIds = player.hand
-        .filter((c) => MoveValidator.isCardMatch(c, state.activeColor, state.topDiscardCard))
+        .filter((c) => isFlexMatch(c))
         .map((c) => c.id);
     }
   }
@@ -111,6 +141,10 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
 
   const canChooseTargetedDrawTwo =
     state.pendingActionState?.type === 'AWAITING_TARGETED_DRAW_TWO_SELECTION' &&
+    state.pendingActionState.sourcePlayerId === playerId;
+
+  const canChooseTargetedDrawFour =
+    state.pendingActionState?.type === 'AWAITING_TARGETED_DRAW_FOUR_SELECTION' &&
     state.pendingActionState.sourcePlayerId === playerId;
 
   const canChooseForcedSwap =
@@ -153,6 +187,7 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     canChoose7sSwap,
     canChooseRouletteColor,
     canChooseTargetedDrawTwo,
+    canChooseTargetedDrawFour,
     canChooseForcedSwap,
     isEliminated: player.isEliminated,
   };

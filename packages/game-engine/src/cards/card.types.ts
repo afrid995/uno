@@ -8,6 +8,7 @@ export type NumberCardValue = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8
 
 export type ClassicActionCardValue = 'skip' | 'reverse' | 'draw_two';
 export type FlipActionCardValue = 'draw_one' | 'draw_five' | 'skip_everyone' | 'flip';
+export type FlexActionCardValue = 'flex_draw_two' | 'flex_reverse' | 'flex_skip';
 export type NoMercyActionCardValue =
   | 'skip'
   | 'reverse'
@@ -18,11 +19,17 @@ export type NoMercyActionCardValue =
 export type ActionCardValue =
   | ClassicActionCardValue
   | FlipActionCardValue
+  | FlexActionCardValue
   | 'draw_four'
   | 'discard_all';
 
 export type ClassicWildCardValue = 'wild' | 'wild_draw_four';
 export type FlipWildCardValue = 'wild_draw_two' | 'wild_draw_color';
+export type FlexWildCardValue =
+  | 'wild_all_flip'
+  | 'flex_wild_draw_four'
+  | 'flex_wild_target_draw_two'
+  | 'flex_wild_all_draw';
 export type NoMercyWildCardValue =
   | 'wild_reverse_draw_four'
   | 'wild_draw_six'
@@ -43,6 +50,7 @@ export type AllWildCardValue = 'wild' | AllWildActionCardValue;
 export type WildCardValue =
   | ClassicWildCardValue
   | FlipWildCardValue
+  | FlexWildCardValue
   | NoMercyWildCardValue
   | AllWildActionCardValue;
 
@@ -76,6 +84,10 @@ export interface Card {
   readonly lightFace?: CardFace;
   readonly darkFace?: CardFace;
   readonly currentSide?: FlipSide;
+  /** Optional secondary flex color for UNO Flex */
+  readonly flexColor?: CardColor | null;
+  /** Optional flip icon indicator for UNO Flex classic number cards */
+  readonly hasFlipIcon?: boolean;
 }
 
 export interface PhysicalFlipCard extends Card {
@@ -87,6 +99,19 @@ export interface PhysicalFlipCard extends Card {
 
 export function isFlipCard(card: Card): card is PhysicalFlipCard {
   return card.variant === 'uno_flip' && !!card.lightFace && !!card.darkFace;
+}
+
+export function isFlexCard(card: Card): boolean {
+  return (
+    card.variant === 'uno_flex' &&
+    (!!card.flexColor ||
+      card.value === 'flex_draw_two' ||
+      card.value === 'flex_reverse' ||
+      card.value === 'flex_skip' ||
+      card.value === 'flex_wild_draw_four' ||
+      card.value === 'flex_wild_target_draw_two' ||
+      card.value === 'flex_wild_all_draw')
+  );
 }
 
 export const CLASSIC_CARD_COLORS: readonly ClassicCardColor[] = ['red', 'yellow', 'green', 'blue'] as const;
@@ -123,6 +148,9 @@ export const ALL_ACTION_VALUES: readonly ActionCardValue[] = [
   'flip',
   'draw_four',
   'discard_all',
+  'flex_draw_two',
+  'flex_reverse',
+  'flex_skip',
 ] as const;
 
 export const ALL_WILD_VALUES: readonly WildCardValue[] = [
@@ -133,4 +161,13 @@ export const ALL_WILD_VALUES: readonly WildCardValue[] = [
   'wild_draw_six',
   'wild_draw_ten',
   'wild_color_roulette',
+  'wild_all_flip',
+  'flex_wild_draw_four',
+  'flex_wild_target_draw_two',
+  'flex_wild_all_draw',
+  'wild_reverse',
+  'wild_skip',
+  'wild_skip_two',
+  'wild_targeted_draw_two',
+  'wild_forced_swap',
 ] as const;

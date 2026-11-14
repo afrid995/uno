@@ -11,6 +11,7 @@ import {
   chooseRouletteColorInputSchema,
   acceptStackPenaltyInputSchema,
   chooseTargetedDrawTwoInputSchema,
+  chooseTargetedDrawFourInputSchema,
   chooseForcedSwapInputSchema,
   CardColor,
 } from '@uno-ultimate/game-protocol';
@@ -55,7 +56,9 @@ export function registerGameHandlers(
         guestId,
         roomCode,
         validated.cardId,
-        validated.chosenColor
+        validated.chosenColor,
+        validated.playMode,
+        validated.targetPlayerId
       );
 
       // Publish personalized projections to all participants
@@ -571,6 +574,38 @@ export function registerGameHandlers(
       });
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to choose Targeted Draw Two target';
+      const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      callback({ success: false, error: { code, message } });
+    }
+  });
+
+  // 17b. Handle game:choose-targeted-draw-four
+  socket.on(SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_FOUR, async (payload, callback) => {
+    try {
+      const guestId = getAuthenticatedGuestId();
+      const roomCode = getActiveRoomCode();
+      const validated = await chooseTargetedDrawFourInputSchema.parseAsync(payload);
+
+      const { nextState } = await gameService.chooseTargetedDrawFourTarget(
+        guestId,
+        roomCode,
+        validated.targetPlayerId
+      );
+
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      if (nextState.status === 'ROUND_OVER') {
+        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
+      } else if (nextState.status === 'COMPLETED') {
+        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
+      }
+
+      callback({
+        success: true,
+        data: { success: true, targetPlayerId: validated.targetPlayerId },
+      });
+    } catch (err: unknown) {
+      const message = (err as Error).message || 'Failed to choose Targeted Draw Four target';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
       callback({ success: false, error: { code, message } });
     }
