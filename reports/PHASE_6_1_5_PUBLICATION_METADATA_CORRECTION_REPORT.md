@@ -32,7 +32,7 @@ No gameplay code, engine logic, server routes, client UI components, or test sui
 | **Phase 6.1.2 Final Published HEAD** | `45af9ccbd8f5b58cea66ce6d2b14c37001eeb2bc` | Final verified published HEAD of Phase 6.1.2 |
 | **Phase 6.1.3 Published HEAD** | `9eede9cf3fd0c4df2a78893864017669934d1ce6` | Metadata alignment & No Mercy fixture regression tests |
 | **Phase 6.1.4 Published HEAD** | `f042e0d96cdc42aa8367293a41df1e496650cab4` | Fixture test evidence & historical report accuracy (Phase 6.1.5 baseline) |
-| **Phase 6.1.5 Final Published HEAD** | *(Recorded upon git push)* | Final publication metadata correction |
+| **Phase 6.1.5 Final Published HEAD** | `df6ba955eccbd097a7504c62d18e78ba9299645e` | Final publication metadata correction |
 
 ---
 
