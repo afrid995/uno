@@ -109,13 +109,23 @@ export class RoomService {
     maxPlayers: number = ROOM_RULES.DEFAULT_MAX_PLAYERS,
     settings: Record<string, unknown> = {}
   ): Promise<RoomPublicDto> {
-    if (settings.variant !== undefined && settings.variant !== 'classic' && settings.variant !== 'uno_flip') {
+    if (
+      settings.variant !== undefined &&
+      settings.variant !== 'classic' &&
+      settings.variant !== 'uno_flip' &&
+      settings.variant !== 'uno_show_em_no_mercy'
+    ) {
       throw new AppError(
         HTTP_STATUS.BAD_REQUEST,
         ERROR_CODES.VALIDATION_ERROR,
-        'Invalid game variant. Supported variants are classic and uno_flip.'
+        'Invalid game variant. Supported variants are classic, uno_flip, and uno_show_em_no_mercy.'
       );
     }
+
+    const effectiveMaxPlayers =
+      settings.variant === 'uno_show_em_no_mercy'
+        ? Math.min(maxPlayers, 6)
+        : maxPlayers;
 
     // Verify host guest exists
     const hostGuest = await prisma.guestSession.findUnique({
@@ -137,7 +147,7 @@ export class RoomService {
         data: {
           roomCode,
           hostGuestId,
-          maxPlayers,
+          maxPlayers: effectiveMaxPlayers,
           settings: settings as object,
           status: 'WAITING',
           version: 1,
@@ -253,7 +263,10 @@ export class RoomService {
       }
 
       // Check capacity
-      if (room.members.length >= room.maxPlayers) {
+      const variant = ((room.settings as Record<string, unknown>)?.variant as string) || 'classic';
+      const effectiveMaxPlayers =
+        variant === 'uno_show_em_no_mercy' ? Math.min(room.maxPlayers, 6) : room.maxPlayers;
+      if (room.members.length >= effectiveMaxPlayers) {
         throw new AppError(HTTP_STATUS.BAD_REQUEST, ERROR_CODES.ROOM_FULL, 'Room is currently full.');
       }
 
@@ -511,11 +524,16 @@ export class RoomService {
         );
       }
 
-      if (settings.variant !== undefined && settings.variant !== 'classic' && settings.variant !== 'uno_flip') {
+      if (
+        settings.variant !== undefined &&
+        settings.variant !== 'classic' &&
+        settings.variant !== 'uno_flip' &&
+        settings.variant !== 'uno_show_em_no_mercy'
+      ) {
         throw new AppError(
           HTTP_STATUS.BAD_REQUEST,
           ERROR_CODES.VALIDATION_ERROR,
-          'Invalid game variant. Supported variants are classic and uno_flip.'
+          'Invalid game variant. Supported variants are classic, uno_flip, and uno_show_em_no_mercy.'
         );
       }
 

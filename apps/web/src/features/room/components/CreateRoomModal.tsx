@@ -12,9 +12,16 @@ interface CreateRoomModalProps {
 
 export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) => {
   const [maxPlayers, setMaxPlayers] = useState<number>(ROOM_RULES.DEFAULT_MAX_PLAYERS);
-  const [variant, setVariant] = useState<'classic' | 'uno_flip'>('classic');
+  const [variant, setVariant] = useState<'classic' | 'uno_flip' | 'uno_show_em_no_mercy'>('classic');
   const { createRoom, isLoading, error, clearError } = useRoomStore();
   const navigate = useNavigate();
+
+  const handleSelectVariant = (newVariant: 'classic' | 'uno_flip' | 'uno_show_em_no_mercy') => {
+    setVariant(newVariant);
+    if (newVariant === 'uno_show_em_no_mercy' && maxPlayers > 6) {
+      setMaxPlayers(6);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -73,15 +80,19 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                   Game Variant
                 </span>
                 <span className="font-mono text-xs text-amber-400 font-bold uppercase">
-                  {variant === 'classic' ? 'Classic UNO' : 'UNO Flip!'}
+                  {variant === 'classic'
+                    ? 'Classic UNO'
+                    : variant === 'uno_flip'
+                    ? 'UNO Flip!'
+                    : "UNO Show 'em No Mercy"}
                 </span>
               </label>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <button
                   type="button"
                   data-testid="variant-select-classic"
-                  onClick={() => setVariant('classic')}
+                  onClick={() => handleSelectVariant('classic')}
                   className={`p-3 rounded-2xl text-left border transition-all ${
                     variant === 'classic'
                       ? 'bg-gradient-to-br from-uno-red/20 to-uno-yellow/10 border-uno-red text-white shadow-glow'
@@ -97,7 +108,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                 <button
                   type="button"
                   data-testid="variant-select-uno-flip"
-                  onClick={() => setVariant('uno_flip')}
+                  onClick={() => handleSelectVariant('uno_flip')}
                   className={`p-3 rounded-2xl text-left border transition-all ${
                     variant === 'uno_flip'
                       ? 'bg-gradient-to-br from-purple-600/30 to-teal-500/20 border-purple-400 text-white shadow-glow'
@@ -106,10 +117,29 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                 >
                   <div className="font-bold font-display text-sm text-white mb-0.5 flex items-center gap-1.5">
                     UNO Flip!
-                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-500/30 text-purple-300 font-mono">NEW</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-500/30 text-purple-300 font-mono">112C</span>
                   </div>
                   <div className="text-[11px] text-slate-400 leading-tight">
-                    Double-sided cards, Light &amp; Dark sides, Flip card (112 cards).
+                    Dual-sided cards, Light &amp; Dark sides, Flip mechanic.
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  data-testid="variant-select-no-mercy"
+                  onClick={() => handleSelectVariant('uno_show_em_no_mercy')}
+                  className={`p-3 rounded-2xl text-left border transition-all ${
+                    variant === 'uno_show_em_no_mercy'
+                      ? 'bg-gradient-to-br from-rose-700/30 to-orange-600/20 border-rose-500 text-white shadow-glow'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                  }`}
+                >
+                  <div className="font-bold font-display text-sm text-white mb-0.5 flex items-center gap-1.5">
+                    No Mercy
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500/30 text-rose-300 font-mono">NEW</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 leading-tight">
+                    Mattel HWV18 rules (168 cards, stacking, 7-0 swaps, 25-card mercy).
                   </div>
                 </button>
               </div>
@@ -128,7 +158,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
               </div>
 
               <div className="flex items-center justify-between gap-2">
-                {[2, 4, 6, 8, 10].map((num) => (
+                {(variant === 'uno_show_em_no_mercy' ? [2, 3, 4, 5, 6] : [2, 4, 6, 8, 10]).map((num) => (
                   <button
                     key={num}
                     type="button"
@@ -144,7 +174,9 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                 ))}
               </div>
               <p className="text-[11px] text-slate-500">
-                Mattel standard rooms support 2 to 10 players (default 6).
+                {variant === 'uno_show_em_no_mercy'
+                  ? 'UNO Show ’em No Mercy strictly supports 2 to 6 players.'
+                  : 'Mattel standard rooms support 2 to 10 players (default 6).'}
               </p>
             </div>
 

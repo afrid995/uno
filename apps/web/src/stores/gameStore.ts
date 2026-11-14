@@ -33,6 +33,9 @@ interface GameStateStore {
   challengeWildDrawColor: () => Promise<boolean>;
   acceptWildDrawColor: () => Promise<boolean>;
   chooseStartingWildColor: (chosenColor: CardColor) => Promise<boolean>;
+  choose7sSwap: (targetPlayerId: string) => Promise<boolean>;
+  chooseRouletteColor: (chosenColor: 'red' | 'yellow' | 'green' | 'blue') => Promise<boolean>;
+  acceptStackPenalty: () => Promise<boolean>;
   startNextRound: () => Promise<boolean>;
 
   openWildColorPicker: (card: Card) => void;
@@ -265,6 +268,57 @@ export const useGameStore = create<GameStateStore>((set) => ({
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to choose starting color' });
+          resolve(false);
+        }
+      });
+    });
+  },
+
+  choose7sSwap: async (targetPlayerId: string) => {
+    set({ isActionLoading: true, error: null });
+    const socket = socketManager.getSocket();
+
+    return new Promise<boolean>((resolve) => {
+      socket.emit(SOCKET_EVENTS.GAME_CHOOSE_7S_SWAP, { targetPlayerId }, (res) => {
+        set({ isActionLoading: false });
+        if (res.success) {
+          resolve(true);
+        } else {
+          set({ error: res.error?.message || 'Failed to swap hands' });
+          resolve(false);
+        }
+      });
+    });
+  },
+
+  chooseRouletteColor: async (chosenColor: 'red' | 'yellow' | 'green' | 'blue') => {
+    set({ isActionLoading: true, error: null });
+    const socket = socketManager.getSocket();
+
+    return new Promise<boolean>((resolve) => {
+      socket.emit(SOCKET_EVENTS.GAME_CHOOSE_ROULETTE_COLOR, { chosenColor }, (res) => {
+        set({ isActionLoading: false });
+        if (res.success) {
+          resolve(true);
+        } else {
+          set({ error: res.error?.message || 'Failed to choose roulette color' });
+          resolve(false);
+        }
+      });
+    });
+  },
+
+  acceptStackPenalty: async () => {
+    set({ isActionLoading: true, error: null });
+    const socket = socketManager.getSocket();
+
+    return new Promise<boolean>((resolve) => {
+      socket.emit(SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY, {}, (res) => {
+        set({ isActionLoading: false });
+        if (res.success) {
+          resolve(true);
+        } else {
+          set({ error: res.error?.message || 'Failed to accept stack penalty' });
           resolve(false);
         }
       });

@@ -37,15 +37,26 @@ export class GameService {
       );
     }
 
-    if (members.length < 2 || members.length > 10) {
-      throw new AppError(
-        HTTP_STATUS.BAD_REQUEST,
-        ERROR_CODES.BAD_REQUEST,
-        'Match requires between 2 and 10 players.'
-      );
+    if (variant === 'uno_show_em_no_mercy') {
+      if (members.length < 2 || members.length > 6) {
+        throw new AppError(
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.BAD_REQUEST,
+          'UNO Show \'em No Mercy requires between 2 and 6 players.'
+        );
+      }
+    } else {
+      if (members.length < 2 || members.length > 10) {
+        throw new AppError(
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.BAD_REQUEST,
+          'Match requires between 2 and 10 players.'
+        );
+      }
     }
 
     const matchId = uuidv4();
+    const targetScore = variant === 'uno_show_em_no_mercy' ? 1000 : 500;
 
     // 2. Initialize GameState through official engine factory
     const initialGameState = GameFactory.createGame({
@@ -53,7 +64,7 @@ export class GameService {
       roomId,
       variant,
       players: members.map((m) => ({ id: m.guestId, username: m.username })),
-      targetScore: 500,
+      targetScore,
     });
 
     // 3. Persist Match, MatchPlayers, and initial sequence 0 snapshot in PostgreSQL
@@ -235,6 +246,40 @@ export class GameService {
       type: 'CHOOSE_STARTING_WILD_COLOR',
       playerId: guestId,
       chosenColor,
+    });
+  }
+
+  async choose7sSwapTarget(
+    guestId: string,
+    roomCode: string,
+    targetPlayerId: string
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'CHOOSE_7S_SWAP_TARGET',
+      playerId: guestId,
+      targetPlayerId,
+    });
+  }
+
+  async chooseColorRouletteColor(
+    guestId: string,
+    roomCode: string,
+    chosenColor: CardColor
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'CHOOSE_COLOR_ROULETTE_COLOR',
+      playerId: guestId,
+      chosenColor,
+    });
+  }
+
+  async acceptStackPenalty(
+    guestId: string,
+    roomCode: string
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'ACCEPT_STACK_PENALTY',
+      playerId: guestId,
     });
   }
 

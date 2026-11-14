@@ -24,6 +24,8 @@ export const actionCardValueSchema = z.enum([
   'draw_five',
   'skip_everyone',
   'flip',
+  'draw_four',
+  'discard_all',
 ]);
 
 export const wildCardValueSchema = z.enum([
@@ -31,6 +33,10 @@ export const wildCardValueSchema = z.enum([
   'wild_draw_four',
   'wild_draw_two',
   'wild_draw_color',
+  'wild_reverse_draw_four',
+  'wild_draw_six',
+  'wild_draw_ten',
+  'wild_color_roulette',
 ]);
 
 export const cardValueSchema = z.union([

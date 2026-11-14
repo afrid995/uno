@@ -24,6 +24,18 @@ export const ROOM_RULES = {
   RECONNECT_GRACE_PERIOD_MS: 30000, // 30 seconds
 } as const;
 
+export const NO_MERCY_RULES = {
+  EDITION: "Mattel UNO Show 'em No Mercy (HWV18 168-card edition)",
+  MIN_PLAYERS: 2,
+  MAX_PLAYERS: 6,
+  TARGET_WIN_SCORE: 1000,
+  MERCY_HAND_LIMIT: 25,
+  DECK_SIZE: 168,
+  INITIAL_HAND_SIZE: 7,
+  MISSED_UNO_PENALTY_CARDS: 2,
+  ELIMINATION_BONUS_POINTS: 250,
+} as const;
+
 export const HTTP_STATUS = {
   OK: 200,
   CREATED: 201,

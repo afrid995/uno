@@ -8,11 +8,27 @@ export type NumberCardValue = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8
 
 export type ClassicActionCardValue = 'skip' | 'reverse' | 'draw_two';
 export type FlipActionCardValue = 'draw_one' | 'draw_five' | 'skip_everyone' | 'flip';
-export type ActionCardValue = ClassicActionCardValue | FlipActionCardValue;
+export type NoMercyActionCardValue =
+  | 'skip'
+  | 'reverse'
+  | 'draw_two'
+  | 'draw_four'
+  | 'discard_all'
+  | 'skip_everyone';
+export type ActionCardValue =
+  | ClassicActionCardValue
+  | FlipActionCardValue
+  | 'draw_four'
+  | 'discard_all';
 
 export type ClassicWildCardValue = 'wild' | 'wild_draw_four';
 export type FlipWildCardValue = 'wild_draw_two' | 'wild_draw_color';
-export type WildCardValue = ClassicWildCardValue | FlipWildCardValue;
+export type NoMercyWildCardValue =
+  | 'wild_reverse_draw_four'
+  | 'wild_draw_six'
+  | 'wild_draw_ten'
+  | 'wild_color_roulette';
+export type WildCardValue = ClassicWildCardValue | FlipWildCardValue | NoMercyWildCardValue;
 
 export type CardValue = NumberCardValue | ActionCardValue | WildCardValue;
 
@@ -89,10 +105,16 @@ export const ALL_ACTION_VALUES: readonly ActionCardValue[] = [
   'draw_five',
   'skip_everyone',
   'flip',
+  'draw_four',
+  'discard_all',
 ] as const;
 
 export const ALL_WILD_VALUES: readonly WildCardValue[] = [
   ...WILD_VALUES,
   'wild_draw_two',
   'wild_draw_color',
+  'wild_reverse_draw_four',
+  'wild_draw_six',
+  'wild_draw_ten',
+  'wild_color_roulette',
 ] as const;

@@ -72,6 +72,12 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         if (isDarkSide || card.value === 'wild_draw_color') {
           return 'from-slate-950 via-purple-950 to-slate-900 border-fuchsia-400 text-white shadow-fuchsia-500/30';
         }
+        if (card.value === 'wild_draw_ten' || card.value === 'wild_draw_six' || card.value === 'wild_reverse_draw_four') {
+          return 'from-slate-950 via-rose-950 to-slate-900 border-rose-500 text-white shadow-rose-500/30';
+        }
+        if (card.value === 'wild_color_roulette') {
+          return 'from-slate-950 via-amber-950 to-slate-900 border-amber-400 text-white shadow-amber-500/30';
+        }
         return 'from-slate-900 via-indigo-950 to-purple-950 border-purple-400 text-white';
     }
   };
@@ -88,8 +94,12 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         return '+1';
       case 'draw_two':
         return '+2';
+      case 'draw_four':
+        return '+4';
       case 'draw_five':
         return '+5';
+      case 'discard_all':
+        return 'DISC';
       case 'flip':
         return 'FLIP';
       case 'wild':
@@ -98,6 +108,14 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         return '+2';
       case 'wild_draw_four':
         return '+4';
+      case 'wild_reverse_draw_four':
+        return '+4 ⇄';
+      case 'wild_draw_six':
+        return '+6';
+      case 'wild_draw_ten':
+        return '+10';
+      case 'wild_color_roulette':
+        return 'ROUL';
       case 'wild_draw_color':
         return 'COLOR';
       default:
@@ -105,8 +123,21 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
     }
   };
 
+  const getCenterDisplayValue = () => {
+    switch (card.value) {
+      case 'discard_all':
+        return 'DISCARD';
+      case 'skip_everyone':
+        return 'SKIP ALL';
+      case 'wild_color_roulette':
+        return 'ROULETTE';
+      default:
+        return getDisplayValue();
+    }
+  };
+
   const displayVal = getDisplayValue();
-  const isWild = card.type === 'wild';
+  const centerDisplayVal = getCenterDisplayValue();
   const colorClasses = getColorClasses(card.color);
 
   return (
@@ -136,7 +167,7 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
 
       {/* Center oval symbol */}
       <div className="relative mx-auto w-4/5 h-3/5 rounded-full bg-slate-950/20 backdrop-blur-xs border border-white/20 flex items-center justify-center rotate-[-15deg] shadow-inner">
-        {isWild ? (
+        {card.value === 'wild' ? (
           isDarkSide ? (
             <div className="grid grid-cols-2 gap-0.5 w-6 h-6 sm:w-8 sm:h-8 rounded-full overflow-hidden shadow-sm">
               <div className="bg-pink-500" />
@@ -153,8 +184,14 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
             </div>
           )
         ) : (
-          <span className={`font-display font-black drop-shadow-md ${card.value === 'flip' ? 'text-sm sm:text-lg tracking-wider' : 'text-lg sm:text-2xl'}`}>
-            {displayVal}
+          <span
+            className={`font-display font-black drop-shadow-md text-center ${
+              ['flip', 'discard_all', 'skip_everyone', 'wild_color_roulette', 'wild_reverse_draw_four'].includes(card.value)
+                ? 'text-[11px] sm:text-xs tracking-wider'
+                : 'text-lg sm:text-2xl'
+            }`}
+          >
+            {centerDisplayVal}
           </span>
         )}
       </div>

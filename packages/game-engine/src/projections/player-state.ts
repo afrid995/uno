@@ -21,6 +21,19 @@ export interface PlayerPrivateView {
   readonly isTargetedByWildDrawColor?: boolean;
   readonly canChooseStartingColor?: boolean;
   readonly isAwaitingStartingColor?: boolean;
+  readonly canStack?: boolean;
+  readonly isTargetedByStack?: boolean;
+  readonly canChoose7sSwap?: boolean;
+  readonly canChooseRouletteColor?: boolean;
+  readonly isEliminated?: boolean;
+}
+
+function getNoMercyDrawValue(card: Card): number | null {
+  if (card.value === 'draw_two') return 2;
+  if (card.value === 'draw_four' || card.value === 'wild_reverse_draw_four') return 4;
+  if (card.value === 'wild_draw_six') return 6;
+  if (card.value === 'wild_draw_ten') return 10;
+  return null;
 }
 
 export interface PlayerGameState extends PublicGameState {
@@ -43,8 +56,21 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
   const isCurrentTurn = publicState.currentTurnGuestId === playerId;
   let playableCardIds: string[] = [];
 
-  // Card play is only allowed when match is in progress and NO pending resolution is blocking
-  if (isCurrentTurn && state.status === 'IN_PROGRESS' && !state.pendingActionState) {
+  const isStackResolution = state.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION';
+  const isTargetedByStack = isStackResolution && state.pendingActionState!.targetPlayerId === playerId;
+
+  if (player.isEliminated) {
+    playableCardIds = [];
+  } else if (isTargetedByStack) {
+    // During stacking, only Draw cards of equal or higher value can be stacked
+    const requiredMin = state.pendingActionState!.lastStackedValue;
+    playableCardIds = player.hand
+      .filter((c) => {
+        const val = getNoMercyDrawValue(c);
+        return val !== null && val >= requiredMin;
+      })
+      .map((c) => c.id);
+  } else if (isCurrentTurn && state.status === 'IN_PROGRESS' && !state.pendingActionState) {
     if (player.hasDrawnThisTurn) {
       // Per official rules, after drawing, only the drawn card can be played (if it matches)
       if (player.drawnCardId) {
@@ -76,14 +102,22 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     state.pendingActionState?.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION' &&
     state.pendingActionState.designatedPlayerId === playerId;
 
-  const canDraw = isCurrentTurn && !player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
-  const canPass = isCurrentTurn && player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
+  const canChoose7sSwap =
+    state.pendingActionState?.type === 'AWAITING_7S_SWAP_SELECTION' &&
+    state.pendingActionState.sourcePlayerId === playerId;
+
+  const canChooseRouletteColor =
+    state.pendingActionState?.type === 'AWAITING_COLOR_ROULETTE_SELECTION' &&
+    state.pendingActionState.victimPlayerId === playerId;
+
+  const canDraw = !player.isEliminated && isCurrentTurn && !player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
+  const canPass = !player.isEliminated && isCurrentTurn && player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
 
   // Player can call UNO if they hold 1 or 2 cards and haven't declared it yet
-  const canCallUno = player.hand.length <= 2 && !player.hasDeclaredUno;
+  const canCallUno = !player.isEliminated && player.hand.length <= 2 && !player.hasDeclaredUno;
 
   // Catching UNO is valid if someone else is currently vulnerable
-  const canCatchUno = !!(state.unoVulnerablePlayerId && state.unoVulnerablePlayerId !== playerId);
+  const canCatchUno = !player.isEliminated && !!(state.unoVulnerablePlayerId && state.unoVulnerablePlayerId !== playerId);
 
   const canResolveWildDrawFour = isVictimOfWdf;
   const canResolveWildDrawTwo = isVictimOfWd2;
@@ -107,6 +141,11 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     isTargetedByWildDrawColor: isVictimOfWdc,
     canChooseStartingColor,
     isAwaitingStartingColor,
+    canStack: isTargetedByStack && playableCardIds.length > 0,
+    isTargetedByStack,
+    canChoose7sSwap,
+    canChooseRouletteColor,
+    isEliminated: player.isEliminated,
   };
 
   // Temporary private disclosure of offender's hand to authorized challenger only

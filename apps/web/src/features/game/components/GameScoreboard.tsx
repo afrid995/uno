@@ -104,9 +104,14 @@ export const GameScoreboard: React.FC = () => {
                             D
                           </span>
                         )}
-                        {player.hasDeclaredUno && (
+                        {player.hasDeclaredUno && !player.isEliminated && (
                           <span className="text-[9px] px-1 py-0.2 bg-rose-500/20 text-rose-300 rounded border border-rose-500/30 font-black">
                             UNO
+                          </span>
+                        )}
+                        {player.isEliminated && (
+                          <span className="text-[9px] px-1 py-0.2 bg-rose-950 text-rose-300 rounded border border-rose-700/60 font-black">
+                            ELIMINATED
                           </span>
                         )}
                       </div>

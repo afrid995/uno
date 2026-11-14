@@ -346,12 +346,26 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
         return;
       }
 
-      if (room.members.length < 2) {
-        callback({
-          success: false,
-          error: { code: ERROR_CODES.NOT_ENOUGH_PLAYERS, message: 'At least 2 players are required to play.' },
-        });
-        return;
+      const variant = ((room.settings as Record<string, unknown>)?.variant as string) || 'classic';
+      if (variant === 'uno_show_em_no_mercy') {
+        if (room.members.length < 2 || room.members.length > 6) {
+          callback({
+            success: false,
+            error: {
+              code: ERROR_CODES.BAD_REQUEST,
+              message: 'UNO Show \'em No Mercy requires between 2 and 6 players to start.',
+            },
+          });
+          return;
+        }
+      } else {
+        if (room.members.length < 2 || room.members.length > 10) {
+          callback({
+            success: false,
+            error: { code: ERROR_CODES.NOT_ENOUGH_PLAYERS, message: 'At least 2 players are required to play.' },
+          });
+          return;
+        }
       }
 
       // Check if non-host players are ready

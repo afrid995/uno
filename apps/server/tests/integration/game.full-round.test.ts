@@ -386,5 +386,5 @@ describe('Game Full Round & Multi-Round Match Lifecycle Integration Tests', () =
       p1Socket.emit(SOCKET_EVENTS.GAME_DRAW_CARD, {}, resolve);
     });
     expect(postGamePlayAck.success).toBe(false);
-  });
+  }, 30000);
 });

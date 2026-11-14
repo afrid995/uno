@@ -42,8 +42,8 @@ describe('RoomService Unit Tests', () => {
     const code = generateRoomCode();
     expect(code).toHaveLength(ROOM_RULES.CODE_LENGTH);
     expect(ROOM_RULES.CODE_PATTERN.test(code)).toBe(true);
-    // Must not contain ambiguous characters
-    expect(/^[0O1IL]/.test(code)).toBe(false);
+    // Must not contain ambiguous characters (0, O, 1, I)
+    expect(/[0O1I]/.test(code)).toBe(false);
   });
 
   it('creates a private room with the creator as host and status WAITING', async () => {

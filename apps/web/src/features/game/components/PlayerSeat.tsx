@@ -17,21 +17,28 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
   onCatchUno,
   className = '',
 }) => {
+  const isEliminated = !!player.isEliminated;
+
   return (
     <div
       data-testid="player-seat"
       data-player-id={player.id}
-      className={`flex flex-col items-center p-2.5 rounded-2xl bg-slate-900/80 border transition-all duration-300 ${
-        isCurrentTurn
+      data-is-eliminated={isEliminated}
+      className={`flex flex-col items-center p-2.5 rounded-2xl transition-all duration-300 ${
+        isEliminated
+          ? 'bg-slate-950/70 border-rose-950/60 opacity-60'
+          : isCurrentTurn
           ? 'border-amber-400/80 ring-2 ring-amber-400/50 shadow-glow-amber bg-slate-800/90 scale-105'
-          : 'border-slate-800 hover:border-slate-700'
-      } ${className}`}
+          : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+      } border ${className}`}
     >
       {/* Avatar & Turn Indicator */}
       <div className="relative mb-1.5">
         <div
           className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-display font-black text-sm sm:text-base ${
-            isCurrentTurn
+            isEliminated
+              ? 'bg-rose-950/60 text-rose-400/60 border border-rose-900/40'
+              : isCurrentTurn
               ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 shadow-md'
               : 'bg-slate-800 text-slate-300 border border-slate-700'
           }`}
@@ -40,7 +47,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         </div>
 
         {/* Current turn pulsing dot */}
-        {isCurrentTurn && (
+        {isCurrentTurn && !isEliminated && (
           <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-400 border border-slate-950" />
@@ -59,25 +66,31 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         </p>
       </div>
 
-      {/* Cards Remaining Fan / Count */}
-      <div className="mt-2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 shadow-inner">
-        <div className="w-3 h-4 rounded-xs bg-uno-red border border-red-300 rotate-[-10deg]" />
-        <div className="w-3 h-4 rounded-xs bg-uno-blue border border-blue-300 rotate-[10deg] -ml-2" />
-        <span className="text-xs font-black text-white ml-1.5">
-          {player.cardCount}
-        </span>
-      </div>
+      {/* Cards Remaining Fan / Count or Eliminated Badge */}
+      {isEliminated ? (
+        <div className="mt-2 px-2.5 py-0.5 rounded-full bg-rose-950/90 border border-rose-700 text-[10px] font-black text-rose-300 tracking-wider">
+          ELIMINATED
+        </div>
+      ) : (
+        <div className="mt-2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 shadow-inner">
+          <div className="w-3 h-4 rounded-xs bg-uno-red border border-red-300 rotate-[-10deg]" />
+          <div className="w-3 h-4 rounded-xs bg-uno-blue border border-blue-300 rotate-[10deg] -ml-2" />
+          <span className="text-xs font-black text-white ml-1.5">
+            {player.cardCount}
+          </span>
+        </div>
+      )}
 
       {/* Status Badges */}
       <div className="mt-1.5 flex flex-col gap-1 items-center">
-        {player.hasDeclaredUno && (
+        {!isEliminated && player.hasDeclaredUno && (
           <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-slate-950 tracking-wider shadow-sm animate-pulse">
             UNO!
           </span>
         )}
 
         {/* Catch Missed UNO Button */}
-        {isVulnerableToUno && onCatchUno && (
+        {!isEliminated && isVulnerableToUno && onCatchUno && (
           <button
             data-testid="catch-uno-btn"
             onClick={onCatchUno}

@@ -512,175 +512,296 @@ describe('Test Helper Routes Security Access & Invariant Hardening Tests', () =>
   });
 
   describe('7. Locked Precondition Verification & Race-Condition Prevention', () => {
+    /**
+     * Helper to deterministically synchronize lock acquisition between a test lock holder
+     * and an incoming route request invoking gameSessionManager.runWithLock.
+     * Guarantees the route request is actively enqueued behind the held lock before releasing.
+     */
+    function setupRunWithLockSync() {
+      let lockHolderActive = false;
+      let onEnqueued: () => void = () => {};
+      const enqueuedPromise = new Promise<void>((resolve) => {
+        onEnqueued = resolve;
+      });
+
+      const originalRunWithLock = gameSessionManager.runWithLock.bind(gameSessionManager);
+      const spy = vi.spyOn(gameSessionManager, 'runWithLock').mockImplementation(async (targetMatchId, fn) => {
+        if (lockHolderActive) {
+          onEnqueued();
+        }
+        return originalRunWithLock(targetMatchId, fn);
+      });
+
+      return {
+        markHolderActive: () => {
+          lockHolderActive = true;
+        },
+        awaitEnqueued: () => enqueuedPromise,
+        restore: () => spy.mockRestore(),
+      };
+    }
+
     it('rejects /inject-flip-card if match becomes COMPLETED while request is queued behind mutex', async () => {
       const sessionBefore = gameSessionManager.getSessionByRoomCode(testRoomCode)!;
       const initialHand = [...sessionBefore.state.players[0].hand];
       const eventsBefore = await prisma.gameEvent.count({ where: { matchId } });
 
+      const sync = setupRunWithLockSync();
       let releaseBlocker: () => void = () => {};
       const blockerPromise = new Promise<void>((resolve) => {
         releaseBlocker = resolve;
       });
 
-      // 1. Acquire mutex lock first and hold it with controlled promise
-      const lockHold = gameSessionManager.runWithLock(matchId, async (lockedSession) => {
-        // Concurrently mutate status to COMPLETED while holding the mutex
-        lockedSession.state = {
-          ...lockedSession.state,
-          status: 'COMPLETED',
-        };
-        await blockerPromise;
+      let markHolderStarted: () => void = () => {};
+      const holderStartedPromise = new Promise<void>((resolve) => {
+        markHolderStarted = resolve;
       });
 
-      // 2. Dispatch fixture request (it enters queue behind lockHold)
-      const fixtureReqPromise = request(app)
-        .post('/api/test/inject-flip-card')
-        .set(SECRET_HEADER, VALID_TEST_SECRET)
-        .send({ roomCode: testRoomCode });
+      try {
+        // 1. Acquire mutex lock first, mutate state to COMPLETED, and hold it
+        const lockHold = gameSessionManager.runWithLock(matchId, async (lockedSession) => {
+          lockedSession.state = {
+            ...lockedSession.state,
+            status: 'COMPLETED',
+          };
+          sync.markHolderActive();
+          markHolderStarted();
+          await blockerPromise;
+        });
 
-      // 3. Release the lock holder
-      releaseBlocker();
-      await lockHold;
+        // Ensure lock holder is actively executing and holding the mutex before dispatching request
+        await holderStartedPromise;
 
-      // 4. Await fixture request response
-      const res = await fixtureReqPromise;
+        // 2. Dispatch fixture request (actively executing via .then)
+        const fixtureReqPromise = request(app)
+          .post('/api/test/inject-flip-card')
+          .set(SECRET_HEADER, VALID_TEST_SECRET)
+          .send({ roomCode: testRoomCode })
+          .then((res) => res);
 
-      expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
-      expect(res.body.error.code).toBe('MATCH_NOT_ACTIVE');
-      expect(res.body.error.message).toContain('Match must be IN_PROGRESS');
+        // 3. Await deterministic synchronization signal proving the route has invoked runWithLock
+        // and is queued behind the active lockHolder
+        await sync.awaitEnqueued();
 
-      // 5. Verify NO fixture mutation occurred
-      const sessionAfter = gameSessionManager.getSessionByRoomCode(testRoomCode)!;
-      expect(sessionAfter.state.players[0].hand).toEqual(initialHand);
+        // 4. Release the lock holder
+        releaseBlocker();
+        await lockHold;
 
-      // 6. Verify NO database persistence occurred
-      const eventsAfter = await prisma.gameEvent.count({ where: { matchId } });
-      expect(eventsAfter).toBe(eventsBefore);
+        // 5. Await fixture request response
+        const res = await fixtureReqPromise;
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('MATCH_NOT_ACTIVE');
+        expect(res.body.error.message).toContain('Match must be IN_PROGRESS');
+
+        // 6. Verify NO fixture mutation occurred
+        const sessionAfter = gameSessionManager.getSessionByRoomCode(testRoomCode)!;
+        expect(sessionAfter.state.players[0].hand).toEqual(initialHand);
+
+        // 7. Verify NO database persistence occurred
+        const eventsAfter = await prisma.gameEvent.count({ where: { matchId } });
+        expect(eventsAfter).toBe(eventsBefore);
+      } finally {
+        sync.restore();
+      }
     });
 
     it('rejects /inject-flip-card if match variant changes while request is queued behind mutex', async () => {
+      const sync = setupRunWithLockSync();
       let releaseBlocker: () => void = () => {};
       const blockerPromise = new Promise<void>((resolve) => {
         releaseBlocker = resolve;
       });
 
-      // 1. Acquire lock and change variant while holding it
-      const lockHold = gameSessionManager.runWithLock(matchId, async (lockedSession) => {
-        lockedSession.state = {
-          ...lockedSession.state,
-          variant: 'classic' as any,
-        };
-        await blockerPromise;
+      let markHolderStarted: () => void = () => {};
+      const holderStartedPromise = new Promise<void>((resolve) => {
+        markHolderStarted = resolve;
       });
 
-      // 2. Dispatch fixture request
-      const fixtureReqPromise = request(app)
-        .post('/api/test/inject-flip-card')
-        .set(SECRET_HEADER, VALID_TEST_SECRET)
-        .send({ roomCode: testRoomCode });
+      try {
+        // 1. Acquire lock and change variant while holding it
+        const lockHold = gameSessionManager.runWithLock(matchId, async (lockedSession) => {
+          lockedSession.state = {
+            ...lockedSession.state,
+            variant: 'classic' as any,
+          };
+          sync.markHolderActive();
+          markHolderStarted();
+          await blockerPromise;
+        });
 
-      // 3. Release blocker
-      releaseBlocker();
-      await lockHold;
+        await holderStartedPromise;
 
-      const res = await fixtureReqPromise;
+        // 2. Dispatch fixture request (actively executing via .then)
+        const fixtureReqPromise = request(app)
+          .post('/api/test/inject-flip-card')
+          .set(SECRET_HEADER, VALID_TEST_SECRET)
+          .send({ roomCode: testRoomCode })
+          .then((res) => res);
 
-      expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
-      expect(res.body.error.code).toBe('INVALID_VARIANT');
-      expect(res.body.error.message).toContain('Test fixture is only valid for UNO Flip matches');
+        // 3. Await deterministic queue signal
+        await sync.awaitEnqueued();
+
+        // 4. Release blocker
+        releaseBlocker();
+        await lockHold;
+
+        const res = await fixtureReqPromise;
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('INVALID_VARIANT');
+        expect(res.body.error.message).toContain('Test fixture is only valid for UNO Flip matches');
+      } finally {
+        sync.restore();
+      }
     });
 
     it('rejects /inject-starting-wild if match becomes COMPLETED while request is queued behind mutex', async () => {
+      const sync = setupRunWithLockSync();
       let releaseBlocker: () => void = () => {};
       const blockerPromise = new Promise<void>((resolve) => {
         releaseBlocker = resolve;
       });
 
-      const lockHold = gameSessionManager.runWithLock(matchId, async (lockedSession) => {
-        lockedSession.state = {
-          ...lockedSession.state,
-          status: 'COMPLETED',
-        };
-        await blockerPromise;
+      let markHolderStarted: () => void = () => {};
+      const holderStartedPromise = new Promise<void>((resolve) => {
+        markHolderStarted = resolve;
       });
 
-      const fixtureReqPromise = request(app)
-        .post('/api/test/inject-starting-wild')
-        .set(SECRET_HEADER, VALID_TEST_SECRET)
-        .send({ roomCode: testRoomCode });
+      try {
+        const lockHold = gameSessionManager.runWithLock(matchId, async (lockedSession) => {
+          lockedSession.state = {
+            ...lockedSession.state,
+            status: 'COMPLETED',
+          };
+          sync.markHolderActive();
+          markHolderStarted();
+          await blockerPromise;
+        });
 
-      releaseBlocker();
-      await lockHold;
+        await holderStartedPromise;
 
-      const res = await fixtureReqPromise;
+        const fixtureReqPromise = request(app)
+          .post('/api/test/inject-starting-wild')
+          .set(SECRET_HEADER, VALID_TEST_SECRET)
+          .send({ roomCode: testRoomCode })
+          .then((res) => res);
 
-      expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
-      expect(res.body.error.code).toBe('MATCH_NOT_ACTIVE');
+        // Await deterministic queue signal
+        await sync.awaitEnqueued();
+
+        releaseBlocker();
+        await lockHold;
+
+        const res = await fixtureReqPromise;
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('MATCH_NOT_ACTIVE');
+      } finally {
+        sync.restore();
+      }
     });
 
     it('rejects /inject-starting-wild if match variant changes while request is queued behind mutex', async () => {
+      const sync = setupRunWithLockSync();
       let releaseBlocker: () => void = () => {};
       const blockerPromise = new Promise<void>((resolve) => {
         releaseBlocker = resolve;
       });
 
-      const lockHold = gameSessionManager.runWithLock(matchId, async (lockedSession) => {
-        lockedSession.state = {
-          ...lockedSession.state,
-          variant: 'classic' as any,
-        };
-        await blockerPromise;
+      let markHolderStarted: () => void = () => {};
+      const holderStartedPromise = new Promise<void>((resolve) => {
+        markHolderStarted = resolve;
       });
 
-      const fixtureReqPromise = request(app)
-        .post('/api/test/inject-starting-wild')
-        .set(SECRET_HEADER, VALID_TEST_SECRET)
-        .send({ roomCode: testRoomCode });
+      try {
+        const lockHold = gameSessionManager.runWithLock(matchId, async (lockedSession) => {
+          lockedSession.state = {
+            ...lockedSession.state,
+            variant: 'classic' as any,
+          };
+          sync.markHolderActive();
+          markHolderStarted();
+          await blockerPromise;
+        });
 
-      releaseBlocker();
-      await lockHold;
+        await holderStartedPromise;
 
-      const res = await fixtureReqPromise;
+        const fixtureReqPromise = request(app)
+          .post('/api/test/inject-starting-wild')
+          .set(SECRET_HEADER, VALID_TEST_SECRET)
+          .send({ roomCode: testRoomCode })
+          .then((res) => res);
 
-      expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
-      expect(res.body.error.code).toBe('INVALID_VARIANT');
+        // Await deterministic queue signal
+        await sync.awaitEnqueued();
+
+        releaseBlocker();
+        await lockHold;
+
+        const res = await fixtureReqPromise;
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('INVALID_VARIANT');
+      } finally {
+        sync.restore();
+      }
     });
 
     it('serializes /verify-invariants under mutex so verification inspects a stable state', async () => {
+      const sync = setupRunWithLockSync();
       let releaseBlocker: () => void = () => {};
       const blockerPromise = new Promise<void>((resolve) => {
         releaseBlocker = resolve;
+      });
+
+      let markHolderStarted: () => void = () => {};
+      const holderStartedPromise = new Promise<void>((resolve) => {
+        markHolderStarted = resolve;
       });
 
       let mutationFinished = false;
 
-      // 1. Acquire lock and simulate an in-flight mutation
-      const lockHold = gameSessionManager.runWithLock(matchId, async () => {
-        await blockerPromise;
-        mutationFinished = true;
-      });
+      try {
+        // 1. Acquire lock and simulate an in-flight mutation
+        const lockHold = gameSessionManager.runWithLock(matchId, async () => {
+          sync.markHolderActive();
+          markHolderStarted();
+          await blockerPromise;
+          mutationFinished = true;
+        });
 
-      // 2. Dispatch verification request
-      const verifyPromise = request(app)
-        .get(`/api/test/verify-invariants/${testRoomCode}`)
-        .set(SECRET_HEADER, VALID_TEST_SECRET);
+        await holderStartedPromise;
 
-      // Verify that verifyPromise does not resolve until lockHold releases
-      expect(mutationFinished).toBe(false);
+        // 2. Dispatch verification request (actively executing via .then)
+        const verifyPromise = request(app)
+          .get(`/api/test/verify-invariants/${testRoomCode}`)
+          .set(SECRET_HEADER, VALID_TEST_SECRET)
+          .then((res) => res);
 
-      releaseBlocker();
-      await lockHold;
+        // 3. Await deterministic queue signal proving the route has invoked runWithLock
+        await sync.awaitEnqueued();
 
-      const res = await verifyPromise;
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.valid).toBe(true);
-      expect(res.body.totalCards).toBe(112);
-      expect(mutationFinished).toBe(true);
+        // Verify that verifyPromise has not resolved and mutation has not finished while lock is held
+        expect(mutationFinished).toBe(false);
+
+        // 4. Release lock
+        releaseBlocker();
+        await lockHold;
+
+        const res = await verifyPromise;
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.valid).toBe(true);
+        expect(res.body.totalCards).toBe(112);
+        expect(mutationFinished).toBe(true);
+      } finally {
+        sync.restore();
+      }
     });
   });
 });

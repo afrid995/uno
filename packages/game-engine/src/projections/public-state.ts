@@ -8,6 +8,7 @@ export interface PublicPlayer {
   readonly cardCount: number;
   readonly hasDeclaredUno: boolean;
   readonly score: number;
+  readonly isEliminated?: boolean;
 }
 
 export interface PublicPendingWildDrawFour {
@@ -36,11 +37,34 @@ export interface PublicPendingStartingWildColor {
   readonly designatedPlayerId: string;
 }
 
+export interface PublicPendingStack {
+  readonly type: 'AWAITING_STACK_RESOLUTION';
+  readonly targetPlayerId: string;
+  readonly playedByPlayerId: string;
+  readonly accumulatedPenalty: number;
+  readonly lastStackedValue: number;
+  readonly lastCardValue: Card['value'];
+}
+
+export interface PublicPending7sSwap {
+  readonly type: 'AWAITING_7S_SWAP_SELECTION';
+  readonly sourcePlayerId: string;
+}
+
+export interface PublicPendingColorRoulette {
+  readonly type: 'AWAITING_COLOR_ROULETTE_SELECTION';
+  readonly victimPlayerId: string;
+  readonly playedByPlayerId: string;
+}
+
 export type PublicPendingActionState =
   | PublicPendingWildDrawFour
   | PublicPendingWildDrawTwo
   | PublicPendingWildDrawColor
-  | PublicPendingStartingWildColor;
+  | PublicPendingStartingWildColor
+  | PublicPendingStack
+  | PublicPending7sSwap
+  | PublicPendingColorRoulette;
 
 export interface PublicGameState {
   readonly id: string;
@@ -64,6 +88,7 @@ export interface PublicGameState {
   readonly sequenceNumber: number;
   readonly unoVulnerablePlayerId: string | null;
   readonly pendingActionState: PublicPendingActionState | null;
+  readonly eliminatedPlayerIds?: readonly string[];
   readonly roundWinner: GameWinner | null;
   readonly winner: GameWinner | null;
 }
@@ -100,6 +125,26 @@ export function getPublicGameState(state: GameState): PublicGameState {
         type: 'AWAITING_STARTING_WILD_COLOR_SELECTION',
         designatedPlayerId: state.pendingActionState.designatedPlayerId,
       };
+    } else if (state.pendingActionState.type === 'AWAITING_STACK_RESOLUTION') {
+      pendingActionState = {
+        type: 'AWAITING_STACK_RESOLUTION',
+        targetPlayerId: state.pendingActionState.targetPlayerId,
+        playedByPlayerId: state.pendingActionState.playedByPlayerId,
+        accumulatedPenalty: state.pendingActionState.accumulatedPenalty,
+        lastStackedValue: state.pendingActionState.lastStackedValue,
+        lastCardValue: state.pendingActionState.lastCardValue,
+      };
+    } else if (state.pendingActionState.type === 'AWAITING_7S_SWAP_SELECTION') {
+      pendingActionState = {
+        type: 'AWAITING_7S_SWAP_SELECTION',
+        sourcePlayerId: state.pendingActionState.sourcePlayerId,
+      };
+    } else if (state.pendingActionState.type === 'AWAITING_COLOR_ROULETTE_SELECTION') {
+      pendingActionState = {
+        type: 'AWAITING_COLOR_ROULETTE_SELECTION',
+        victimPlayerId: state.pendingActionState.victimPlayerId,
+        playedByPlayerId: state.pendingActionState.playedByPlayerId,
+      };
     }
   }
 
@@ -117,6 +162,7 @@ export function getPublicGameState(state: GameState): PublicGameState {
       cardCount: p.hand.length,
       hasDeclaredUno: p.hasDeclaredUno,
       score: p.score,
+      isEliminated: p.isEliminated,
     })),
     playerOrder: state.playerOrder,
     currentPlayerIndex: state.currentPlayerIndex,
@@ -131,6 +177,7 @@ export function getPublicGameState(state: GameState): PublicGameState {
     sequenceNumber: state.sequenceNumber,
     unoVulnerablePlayerId: state.unoVulnerablePlayerId,
     pendingActionState,
+    eliminatedPlayerIds: state.eliminatedPlayerIds,
     roundWinner: state.roundWinner,
     winner: state.winner,
   };

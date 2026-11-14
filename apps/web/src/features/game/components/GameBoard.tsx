@@ -11,7 +11,10 @@ import { GameScoreboard } from './GameScoreboard';
 import { WildColorPicker } from './WildColorPicker';
 import { RoundResultModal } from './RoundResultModal';
 import { MatchResultModal } from './MatchResultModal';
-import { AlertCircle, RotateCcw, RotateCw } from 'lucide-react';
+import { SevenSwapModal } from './SevenSwapModal';
+import { ColorRouletteModal } from './ColorRouletteModal';
+import { StackPenaltyBanner } from './StackPenaltyBanner';
+import { AlertCircle, RotateCcw, RotateCw, Skull } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const GameBoard: React.FC = () => {
@@ -28,6 +31,9 @@ export const GameBoard: React.FC = () => {
     callUno,
     challengeUno,
     chooseStartingWildColor,
+    choose7sSwap,
+    chooseRouletteColor,
+    acceptStackPenalty,
     clearError,
   } = useGameStore();
 
@@ -47,6 +53,10 @@ export const GameBoard: React.FC = () => {
   const selfPublic = players.find((p) => p.id === self.id);
   const currentTurnPlayer = players.find((p) => p.id === currentTurnGuestId);
   const isMyTurn = self.isCurrentTurn;
+  const pendingStack =
+    gameState.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION'
+      ? gameState.pendingActionState
+      : null;
 
   const handleCardClick = (card: Card) => {
     if (card.type === 'wild') {
@@ -155,6 +165,20 @@ export const GameBoard: React.FC = () => {
           </div>
         )}
 
+        {/* Stack attack resolution banner */}
+        {pendingStack && (
+          <StackPenaltyBanner
+            pendingStack={pendingStack}
+            isTarget={!!self.isTargetedByStack}
+            canStack={!!self.canStack}
+            targetUsername={
+              players.find((p) => p.id === pendingStack.targetPlayerId)?.username ?? 'Player'
+            }
+            isLoading={isActionLoading}
+            onAcceptPenalty={acceptStackPenalty}
+          />
+        )}
+
         {/* Wild Draw Four challenge or inspected hand banner */}
         <ChallengePanel />
 
@@ -176,6 +200,17 @@ export const GameBoard: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* Eliminated Player Spectator Banner */}
+      {self.isEliminated && (
+        <div
+          data-testid="eliminated-player-banner"
+          className="mx-auto my-2 max-w-xl w-full p-3 rounded-2xl bg-rose-950/90 border border-rose-500 text-rose-200 text-xs text-center font-bold shadow-lg flex items-center justify-center gap-2"
+        >
+          <Skull className="w-4 h-4 text-rose-400" />
+          <span>ELIMINATED BY MERCY RULE (25+ Cards) — You are now observing in spectator mode.</span>
+        </div>
+      )}
 
       {/* Bottom Area: Controls & Player Hand */}
       <div className="w-full flex flex-col items-center space-y-2 mt-auto">
@@ -241,6 +276,25 @@ export const GameBoard: React.FC = () => {
           chooseStartingWildColor(color);
         }}
         onClose={() => {}}
+      />
+
+      {/* 7's Mandatory Swap Modal */}
+      <SevenSwapModal
+        isOpen={!!self.canChoose7sSwap}
+        eligiblePlayers={opponents.filter((p) => !p.isEliminated)}
+        isLoading={isActionLoading}
+        onSelectTarget={(targetId) => {
+          choose7sSwap(targetId);
+        }}
+      />
+
+      {/* Wild Color Roulette Modal */}
+      <ColorRouletteModal
+        isOpen={!!self.canChooseRouletteColor}
+        isLoading={isActionLoading}
+        onSelectColor={(color) => {
+          chooseRouletteColor(color);
+        }}
       />
 
       <RoundResultModal />

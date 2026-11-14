@@ -66,13 +66,17 @@ export const SOCKET_EVENTS = {
   GAME_ACCEPT_WILD_DRAW_TWO: 'game:accept-wild-draw-two',
   GAME_CHALLENGE_WILD_DRAW_COLOR: 'game:challenge-wild-draw-color',
   GAME_ACCEPT_WILD_DRAW_COLOR: 'game:accept-wild-draw-color',
+  GAME_CHOOSE_7S_SWAP: 'game:choose-7s-swap',
+  GAME_CHOOSE_ROULETTE_COLOR: 'game:choose-roulette-color',
+  GAME_ACCEPT_STACK_PENALTY: 'game:accept-stack-penalty',
   GAME_NEXT_ROUND: 'game:next-round',
 
-  // Phase 4 Gameplay Broadcasts: Server to Client
+  // Phase 4 & Phase 6 Gameplay Broadcasts: Server to Client
   GAME_STARTED: 'game:started',
   GAME_STATE: 'game:state',
   GAME_ROUND_FINISHED: 'game:round-finished',
   GAME_FINISHED: 'game:finished',
+  GAME_PLAYER_ELIMINATED: 'game:player-eliminated',
   GAME_ERROR: 'game:error',
 } as const;
 
@@ -112,6 +116,19 @@ export const chooseColorInputSchema = z.object({
   ]),
 });
 export type ChooseColorInput = z.infer<typeof chooseColorInputSchema>;
+
+export const choose7sSwapInputSchema = z.object({
+  targetPlayerId: z.string().min(1, 'Target player ID is required'),
+});
+export type Choose7sSwapInput = z.infer<typeof choose7sSwapInputSchema>;
+
+export const chooseRouletteColorInputSchema = z.object({
+  chosenColor: z.enum(['red', 'yellow', 'green', 'blue']),
+});
+export type ChooseRouletteColorInput = z.infer<typeof chooseRouletteColorInputSchema>;
+
+export const acceptStackPenaltyInputSchema = z.object({}).optional();
+export type AcceptStackPenaltyInput = z.infer<typeof acceptStackPenaltyInputSchema>;
 
 /**
  * Socket.IO client-to-server event signatures
@@ -210,6 +227,18 @@ export interface ClientToServerEvents {
     payload: Record<string, never> | undefined,
     callback: (response: SocketAck<{ accepted: boolean; cardsDrawn: number }>) => void
   ) => void;
+  [SOCKET_EVENTS.GAME_CHOOSE_7S_SWAP]: (
+    payload: Choose7sSwapInput,
+    callback: (response: SocketAck<{ success: boolean; targetPlayerId: string }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_CHOOSE_ROULETTE_COLOR]: (
+    payload: ChooseRouletteColorInput,
+    callback: (response: SocketAck<{ success: boolean; cardsRevealed: number; eliminated: boolean }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY]: (
+    payload: AcceptStackPenaltyInput,
+    callback: (response: SocketAck<{ success: boolean; cardsDrawn: number; eliminated: boolean }>) => void
+  ) => void;
   [SOCKET_EVENTS.GAME_NEXT_ROUND]: (
     payload: Record<string, never> | undefined,
     callback: (response: SocketAck<{ started: boolean }>) => void
@@ -241,6 +270,7 @@ export interface ServerToClientEvents {
   [SOCKET_EVENTS.GAME_STATE]: (payload: { state: PlayerGameState }) => void;
   [SOCKET_EVENTS.GAME_ROUND_FINISHED]: (payload: { roundWinner: GameWinner; roundNumber: number; scores: Record<string, number> }) => void;
   [SOCKET_EVENTS.GAME_FINISHED]: (payload: { winner: GameWinner; finalScores: Record<string, number> }) => void;
+  [SOCKET_EVENTS.GAME_PLAYER_ELIMINATED]: (payload: { guestId: string; username: string; cardCount: number; remainingPlayerCount: number }) => void;
   [SOCKET_EVENTS.GAME_ERROR]: (payload: { code: string; message: string }) => void;
 }
 

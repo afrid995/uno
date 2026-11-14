@@ -12,6 +12,10 @@ export type GameActionType =
   | 'ACCEPT_WILD_DRAW_TWO'
   | 'CHALLENGE_WILD_DRAW_COLOR'
   | 'ACCEPT_WILD_DRAW_COLOR'
+  | 'CHOOSE_STARTING_WILD_COLOR'
+  | 'CHOOSE_7S_SWAP_TARGET'
+  | 'CHOOSE_COLOR_ROULETTE_COLOR'
+  | 'ACCEPT_STACK_PENALTY'
   | 'START_NEXT_ROUND';
 
 export interface PlayCardAction {
@@ -79,6 +83,23 @@ export interface ChooseStartingWildColorAction {
   readonly chosenColor: CardColor;
 }
 
+export interface Choose7sSwapTargetAction {
+  readonly type: 'CHOOSE_7S_SWAP_TARGET';
+  readonly playerId: string;
+  readonly targetPlayerId: string;
+}
+
+export interface ChooseColorRouletteColorAction {
+  readonly type: 'CHOOSE_COLOR_ROULETTE_COLOR';
+  readonly playerId: string;
+  readonly chosenColor: CardColor;
+}
+
+export interface AcceptStackPenaltyAction {
+  readonly type: 'ACCEPT_STACK_PENALTY';
+  readonly playerId: string;
+}
+
 export interface StartNextRoundAction {
   readonly type: 'START_NEXT_ROUND';
   readonly triggeredByPlayerId: string;
@@ -97,6 +118,9 @@ export type GameAction =
   | ChallengeWildDrawColorAction
   | AcceptWildDrawColorAction
   | ChooseStartingWildColorAction
+  | Choose7sSwapTargetAction
+  | ChooseColorRouletteColorAction
+  | AcceptStackPenaltyAction
   | StartNextRoundAction;
 
 export interface GameEventRecord {

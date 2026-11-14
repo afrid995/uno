@@ -7,6 +7,9 @@ import {
   SocketData,
   playCardInputSchema,
   challengeUnoInputSchema,
+  choose7sSwapInputSchema,
+  chooseRouletteColorInputSchema,
+  acceptStackPenaltyInputSchema,
   CardColor,
 } from '@uno-ultimate/game-protocol';
 import { ERROR_CODES } from '@uno-ultimate/shared';
@@ -84,9 +87,28 @@ export function registerGameHandlers(
       const guestId = getAuthenticatedGuestId();
       const roomCode = getActiveRoomCode();
 
-      const { nextState } = await gameService.drawCard(guestId, roomCode);
+      const { nextState, events } = await gameService.drawCard(guestId, roomCode);
 
       gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      const elim = events.find((e) => e.type === 'PLAYER_ELIMINATED');
+      if (elim) {
+        const pElim = elim.payload as { playerId: string; cardCount: number; eliminationOrder: number };
+        const elimPlayer = nextState.players.find((p) => p.id === pElim.playerId);
+        const remaining = nextState.players.filter((p) => !p.isEliminated).length;
+        io.to(roomCode).emit(SOCKET_EVENTS.GAME_PLAYER_ELIMINATED, {
+          guestId: pElim.playerId,
+          username: elimPlayer?.username ?? 'Player',
+          cardCount: pElim.cardCount,
+          remainingPlayerCount: remaining,
+        });
+      }
+
+      if (nextState.status === 'ROUND_OVER') {
+        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
+      } else if (nextState.status === 'COMPLETED') {
+        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
+      }
 
       const player = nextState.players.find((p) => p.id === guestId);
       callback({
@@ -398,7 +420,129 @@ export function registerGameHandlers(
   socket.on(SOCKET_EVENTS.GAME_CHOOSE_STARTING_WILD_COLOR, handleChooseStartingWildColor);
   socket.on(SOCKET_EVENTS.GAME_CHOOSE_COLOR, handleChooseStartingWildColor);
 
-  // 13. Handle game:next-round
+  // 14. Handle game:choose-7s-swap
+  socket.on(SOCKET_EVENTS.GAME_CHOOSE_7S_SWAP, async (payload, callback) => {
+    try {
+      const guestId = getAuthenticatedGuestId();
+      const roomCode = getActiveRoomCode();
+      const validated = await choose7sSwapInputSchema.parseAsync(payload);
+
+      const { nextState } = await gameService.choose7sSwapTarget(
+        guestId,
+        roomCode,
+        validated.targetPlayerId
+      );
+
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      callback({
+        success: true,
+        data: { success: true, targetPlayerId: validated.targetPlayerId },
+      });
+    } catch (err: unknown) {
+      const message = (err as Error).message || 'Failed to select 7s swap target';
+      const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      callback({ success: false, error: { code, message } });
+    }
+  });
+
+  // 15. Handle game:choose-roulette-color
+  socket.on(SOCKET_EVENTS.GAME_CHOOSE_ROULETTE_COLOR, async (payload, callback) => {
+    try {
+      const guestId = getAuthenticatedGuestId();
+      const roomCode = getActiveRoomCode();
+      const validated = await chooseRouletteColorInputSchema.parseAsync(payload);
+
+      const { nextState, events } = await gameService.chooseColorRouletteColor(
+        guestId,
+        roomCode,
+        validated.chosenColor
+      );
+
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      const elim = events.find((e) => e.type === 'PLAYER_ELIMINATED');
+      if (elim) {
+        const pElim = elim.payload as { playerId: string; cardCount: number; eliminationOrder: number };
+        const elimPlayer = nextState.players.find((p) => p.id === pElim.playerId);
+        const remaining = nextState.players.filter((p) => !p.isEliminated).length;
+        io.to(roomCode).emit(SOCKET_EVENTS.GAME_PLAYER_ELIMINATED, {
+          guestId: pElim.playerId,
+          username: elimPlayer?.username ?? 'Player',
+          cardCount: pElim.cardCount,
+          remainingPlayerCount: remaining,
+        });
+      }
+
+      if (nextState.status === 'ROUND_OVER') {
+        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
+      } else if (nextState.status === 'COMPLETED') {
+        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
+      }
+
+      const resEvent = events.find((e) => e.type === 'ROULETTE_RESOLVED');
+      const cardsRevealed = (resEvent?.payload?.drawnCount as number) ?? 0;
+      const victimPlayer = nextState.players.find((p) => p.id === guestId);
+      const eliminated = !!victimPlayer?.isEliminated;
+
+      callback({
+        success: true,
+        data: { success: true, cardsRevealed, eliminated },
+      });
+    } catch (err: unknown) {
+      const message = (err as Error).message || 'Failed to resolve Color Roulette';
+      const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      callback({ success: false, error: { code, message } });
+    }
+  });
+
+  // 16. Handle game:accept-stack-penalty
+  socket.on(SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY, async (payload, callback) => {
+    try {
+      await acceptStackPenaltyInputSchema.parseAsync(payload);
+      const guestId = getAuthenticatedGuestId();
+      const roomCode = getActiveRoomCode();
+
+      const { nextState, events } = await gameService.acceptStackPenalty(guestId, roomCode);
+
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      const elim = events.find((e) => e.type === 'PLAYER_ELIMINATED');
+      if (elim) {
+        const pElim = elim.payload as { playerId: string; cardCount: number; eliminationOrder: number };
+        const elimPlayer = nextState.players.find((p) => p.id === pElim.playerId);
+        const remaining = nextState.players.filter((p) => !p.isEliminated).length;
+        io.to(roomCode).emit(SOCKET_EVENTS.GAME_PLAYER_ELIMINATED, {
+          guestId: pElim.playerId,
+          username: elimPlayer?.username ?? 'Player',
+          cardCount: pElim.cardCount,
+          remainingPlayerCount: remaining,
+        });
+      }
+
+      if (nextState.status === 'ROUND_OVER') {
+        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
+      } else if (nextState.status === 'COMPLETED') {
+        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
+      }
+
+      const resEvent = events.find((e) => e.type === 'STACK_PENALTY_RESOLVED');
+      const drawnCount = (resEvent?.payload?.drawnCount as number) ?? 0;
+      const targetPlayer = nextState.players.find((p) => p.id === guestId);
+      const eliminated = !!targetPlayer?.isEliminated;
+
+      callback({
+        success: true,
+        data: { success: true, cardsDrawn: drawnCount, eliminated },
+      });
+    } catch (err: unknown) {
+      const message = (err as Error).message || 'Failed to accept stack penalty';
+      const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      callback({ success: false, error: { code, message } });
+    }
+  });
+
+  // 17. Handle game:next-round
   socket.on(SOCKET_EVENTS.GAME_NEXT_ROUND, async (_payload, callback) => {
     try {
       const guestId = getAuthenticatedGuestId();

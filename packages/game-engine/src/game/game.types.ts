@@ -1,4 +1,4 @@
-import { Card, CardColor, FlipSide } from '../cards/card.types';
+import { Card, CardColor, FlipSide, CardValue } from '../cards/card.types';
 import { Player } from '../players/player.types';
 import { TurnDirection } from '../turns/turn.direction';
 
@@ -44,11 +44,36 @@ export interface PendingStartingWildColorState {
   readonly designatedPlayerId: string;
 }
 
+export interface PendingStackState {
+  readonly type: 'AWAITING_STACK_RESOLUTION';
+  readonly targetPlayerId: string;
+  readonly playedByPlayerId: string;
+  readonly accumulatedPenalty: number;
+  /** The numerical penalty of the last played card (2, 4, 6, 10). Next stack card must be >= lastStackedValue */
+  readonly lastStackedValue: number;
+  readonly lastCardValue: CardValue;
+  readonly chosenColor?: CardColor;
+}
+
+export interface Pending7sSwapState {
+  readonly type: 'AWAITING_7S_SWAP_SELECTION';
+  readonly sourcePlayerId: string;
+}
+
+export interface PendingColorRouletteState {
+  readonly type: 'AWAITING_COLOR_ROULETTE_SELECTION';
+  readonly victimPlayerId: string;
+  readonly playedByPlayerId: string;
+}
+
 export type PendingActionState =
   | PendingWildDrawFourState
   | PendingWildDrawTwoState
   | PendingWildDrawColorState
-  | PendingStartingWildColorState;
+  | PendingStartingWildColorState
+  | PendingStackState
+  | Pending7sSwapState
+  | PendingColorRouletteState;
 
 export interface GameWinner {
   readonly id: string;
@@ -110,6 +135,12 @@ export interface GameState {
   readonly roundWinner: GameWinner | null;
   /** Match winner record if match is completed */
   readonly winner: GameWinner | null;
+  /** Discarded / set-aside cards from eliminated players for 168-card conservation */
+  readonly setAsideCards?: readonly Card[];
+  /** IDs of players eliminated under the Mercy Rule (25+ cards) */
+  readonly eliminatedPlayerIds?: readonly string[];
+  /** Number of players eliminated during the current hand (for 250pt winner bonus) */
+  readonly eliminatedBonusCount?: number;
   /** ISO timestamp when match was created */
   readonly createdAt: string;
   /** ISO timestamp of latest state update */

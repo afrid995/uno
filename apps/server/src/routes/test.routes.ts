@@ -8,6 +8,9 @@ import {
   FlipFixtureBuilder,
   assertValidFlipGameState,
   validateFlipGameStateInvariants,
+  NoMercyFixtureBuilder,
+  assertValidNoMercyGameState,
+  validateNoMercyGameStateInvariants,
 } from '@uno-ultimate/game-engine';
 import { timingSafeSecretCompare } from '../utils/crypto';
 import { AppError } from '../middleware/errorHandler';
@@ -96,6 +99,21 @@ const injectFlipCardSchema = z.object({
 
 const injectStartingWildSchema = z.object({
   roomCode: z.string().trim().min(1).max(10),
+});
+
+const injectNoMercyCardSchema = z.object({
+  roomCode: z.string().trim().min(1).max(10),
+  cardValue: z.string().min(1),
+  color: z.enum(['red', 'yellow', 'green', 'blue']).optional(),
+  targetPlayerId: z.string().uuid().optional(),
+  targetUsername: z.string().optional(),
+});
+
+const setNoMercyHandSizeSchema = z.object({
+  roomCode: z.string().trim().min(1).max(10),
+  targetPlayerId: z.string().uuid().optional(),
+  targetUsername: z.string().optional(),
+  targetCount: z.number().int().min(1).max(50),
 });
 
 /**
@@ -327,6 +345,187 @@ router.get('/verify-invariants/:roomCode', async (req: Request, res: Response) =
       success: false,
       error: { code: 'INTERNAL_ERROR', message },
     });
+  }
+});
+
+/**
+ * POST /api/test/inject-no-mercy-card
+ * Swaps a card of specified value/color into player's hand strictly conserving 168 cards.
+ */
+router.post('/inject-no-mercy-card', async (req: Request, res: Response) => {
+  const parseResult = injectNoMercyCardSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'BAD_REQUEST', message: 'Invalid payload', details: parseResult.error.format() },
+    });
+    return;
+  }
+
+  const { roomCode, cardValue, color, targetPlayerId, targetUsername } = parseResult.data;
+  const session = gameSessionManager.getSessionByRoomCode(roomCode);
+  if (!session) {
+    res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Active game session not found for this room.' },
+    });
+    return;
+  }
+
+  try {
+    const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      if (activeSession.state.variant !== 'uno_show_em_no_mercy') {
+        throw new AppError(400, 'INVALID_VARIANT', 'Fixture only valid for UNO Show \'em No Mercy.');
+      }
+      if (activeSession.state.status !== 'IN_PROGRESS') {
+        throw new AppError(400, 'MATCH_NOT_ACTIVE', 'Match must be IN_PROGRESS.');
+      }
+
+      let targetId = targetPlayerId;
+      if (!targetId && targetUsername) {
+        const found = activeSession.state.players.find((p) => p.username === targetUsername);
+        if (found) targetId = found.id;
+      }
+      if (!targetId) {
+        targetId = activeSession.state.players[activeSession.state.currentPlayerIndex].id;
+      }
+
+      const { nextState, card } = NoMercyFixtureBuilder.injectPlayableCard(
+        activeSession.state,
+        targetId,
+        cardValue,
+        color
+      );
+
+      assertValidNoMercyGameState(nextState);
+      await gamePersistenceService.persistActionBatch(activeSession.matchId, nextState, []);
+      activeSession.state = nextState;
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      return {
+        cardId: card.id,
+        value: card.value,
+        color: card.color,
+        targetPlayerId: targetId,
+      };
+    });
+
+    res.json({ success: true, data: outcome });
+  } catch (err: unknown) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({ success: false, error: { code: err.code, message: err.message } });
+    } else {
+      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: (err as Error).message } });
+    }
+  }
+});
+
+/**
+ * POST /api/test/set-no-mercy-hand-size
+ * Adjusts hand size of target player (e.g. setting to 24 for Mercy Rule elimination test)
+ */
+router.post('/set-no-mercy-hand-size', async (req: Request, res: Response) => {
+  const parseResult = setNoMercyHandSizeSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'BAD_REQUEST', message: 'Invalid payload', details: parseResult.error.format() },
+    });
+    return;
+  }
+
+  const { roomCode, targetPlayerId, targetUsername, targetCount } = parseResult.data;
+  const session = gameSessionManager.getSessionByRoomCode(roomCode);
+  if (!session) {
+    res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Active game session not found for this room.' },
+    });
+    return;
+  }
+
+  try {
+    const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      if (activeSession.state.variant !== 'uno_show_em_no_mercy') {
+        throw new AppError(400, 'INVALID_VARIANT', 'Fixture only valid for UNO Show \'em No Mercy.');
+      }
+      if (activeSession.state.status !== 'IN_PROGRESS') {
+        throw new AppError(400, 'MATCH_NOT_ACTIVE', 'Match must be IN_PROGRESS.');
+      }
+
+      let targetId = targetPlayerId;
+      if (!targetId && targetUsername) {
+        const found = activeSession.state.players.find((p) => p.username === targetUsername);
+        if (found) targetId = found.id;
+      }
+      if (!targetId) {
+        throw new AppError(400, 'BAD_REQUEST', 'targetPlayerId or targetUsername required.');
+      }
+
+      const nextState = NoMercyFixtureBuilder.setHandSize(
+        activeSession.state,
+        targetId,
+        targetCount
+      );
+
+      await gamePersistenceService.persistActionBatch(activeSession.matchId, nextState, []);
+      activeSession.state = nextState;
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      return {
+        targetPlayerId: targetId,
+        targetCount,
+        handLength: nextState.players.find((p: { id: string }) => p.id === targetId)?.hand.length,
+      };
+    });
+
+    res.json({ success: true, data: outcome });
+  } catch (err: unknown) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({ success: false, error: { code: err.code, message: err.message } });
+    } else {
+      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: (err as Error).message } });
+    }
+  }
+});
+
+/**
+ * GET /api/test/verify-no-mercy-invariants/:roomCode
+ * GET /api/test/verify-no-mercy-invariants?roomCode=...
+ */
+router.get(['/verify-no-mercy-invariants/:roomCode', '/verify-no-mercy-invariants'], async (req: Request, res: Response) => {
+  const roomCode = req.params.roomCode || (req.query.roomCode as string);
+  if (!roomCode) {
+    res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'roomCode required' } });
+    return;
+  }
+
+  const session = gameSessionManager.getSessionByRoomCode(roomCode);
+  if (!session) {
+    res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Session not found' } });
+    return;
+  }
+
+  try {
+    const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      const validation = validateNoMercyGameStateInvariants(activeSession.state);
+      const totalCards =
+        activeSession.state.players.reduce((sum, p) => sum + p.hand.length, 0) +
+        activeSession.state.drawPile.length +
+        activeSession.state.discardPile.length +
+        (activeSession.state.setAsideCards?.length || 0);
+
+      return {
+        success: validation.valid,
+        valid: validation.valid,
+        totalCards,
+        errors: validation.errors,
+      };
+    });
+
+    res.json(outcome);
+  } catch (err: unknown) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: (err as Error).message } });
   }
 });
 
