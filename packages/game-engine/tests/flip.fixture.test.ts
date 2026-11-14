@@ -398,9 +398,10 @@ describe('UNO Flip Fixture Builder & Invariant Validation (Phase 5.2)', () => {
     it('detects top discard and discard pile discrepancies', () => {
       const state = FlipFixtureBuilder.createInitialGameFixture();
 
-      // Swap topDiscardCard with a different card not matching discardPile[last]
+      // Swap topDiscardCard with a different card guaranteed not to match discardPile[last]
       const canonicalDeck = FlipDeckFactory.createFlipDeck();
-      const fakeTop = FlipDeckFactory.flipCard(canonicalDeck[50], state.activeSide ?? 'LIGHT');
+      const differentCard = canonicalDeck.find((c) => c.id !== state.topDiscardCard.id)!;
+      const fakeTop = FlipDeckFactory.flipCard(differentCard, state.activeSide ?? 'LIGHT');
 
       const corruptedState: GameState = {
         ...state,

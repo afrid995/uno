@@ -313,7 +313,7 @@ describe('UNO All Wild — Final-Card Action Resolution Audit & Regression Suite
   });
 
   describe('8. Final Wild Forced Swap', () => {
-    it('enters pending action state when played as last card, and awards round victory to the swap target who receives the 0-card hand', () => {
+    it('ends round immediately when played as final card, awarding victory to the player who played it and voiding the swap', () => {
       const base = AllWildFixtureBuilder.createInitialGameFixture({
         players: [
           { id: 'p1', username: 'P1' },
@@ -332,52 +332,63 @@ describe('UNO All Wild — Final-Card Action Resolution Audit & Regression Suite
         'wild_forced_swap'
       );
 
-      // Step 1: P1 plays Wild Forced Swap as last card
-      const { nextState: intermediateState, events: playEvents } = adapter.processAction(sWithSwap, {
+      // P1 plays Wild Forced Swap as their last card
+      const { nextState: finalState, events } = adapter.processAction(sWithSwap, {
         type: 'PLAY_CARD',
         playerId: 'p1',
         cardId: card.id,
       });
 
-      // Must NOT declare P1 winner immediately
-      expect(intermediateState.status).toBe('IN_PROGRESS');
-      expect(intermediateState.players[0].hand).toHaveLength(0);
-      expect(intermediateState.pendingActionState).toEqual({
-        type: 'AWAITING_FORCED_SWAP_SELECTION',
-        sourcePlayerId: 'p1',
-      });
-      expect(playEvents.some((e) => e.type === 'PENDING_FORCED_SWAP')).toBe(true);
-      assertValidAllWildGameState(intermediateState);
-
-      // Step 2: P1 chooses P2 as the swap target
-      const { nextState: finalState, events: swapEvents } = adapter.processAction(intermediateState, {
-        type: 'CHOOSE_FORCED_SWAP_TARGET',
-        playerId: 'p1',
-        targetPlayerId: 'p2',
-      });
-
-      // Hand swap execution:
-      // P1 had 0 cards, receives P2's 3 cards!
-      // P2 had 3 cards, receives P1's 0 cards!
-      expect(finalState.players[0].hand).toHaveLength(3);
-      expect(finalState.players[1].hand).toHaveLength(0);
-
-      // P2 is now the player with 0 cards -> P2 WINS THE ROUND!
+      // Round ends immediately: P1 is the winner!
       expect(['ROUND_OVER', 'COMPLETED']).toContain(finalState.status);
-      expect(finalState.roundWinner?.id).toBe('p2');
-      expect(finalState.roundWinner?.id).not.toBe('p1');
+      expect(finalState.roundWinner?.id).toBe('p1');
+      expect(finalState.players[0].hand).toHaveLength(0);
+      expect(finalState.players[1].hand).toHaveLength(3); // P2 hand unchanged
+      expect(finalState.players[2].hand).toHaveLength(4); // P3 hand unchanged
       expect(finalState.pendingActionState).toBeNull();
 
-      // P2 receives score for all opponents: P1's new 3 cards + P3's 4 cards
-      const opponentCards = [...finalState.players[0].hand, ...finalState.players[2].hand];
+      // P1 scores points from all opponents' hands (P2 3 cards + P3 4 cards)
+      const opponentCards = [...finalState.players[1].hand, ...finalState.players[2].hand];
       const expectedScore = opponentCards.reduce(
         (sum, c) => sum + (ALL_WILD_CARD_POINTS[c.value] || 20),
         0
       );
       expect(finalState.roundWinner?.roundScore).toBe(expectedScore);
 
-      expect(swapEvents.some((e) => e.type === 'HANDS_FORCED_SWAPPED')).toBe(true);
-      expect(swapEvents.some((e) => e.type === 'ROUND_WON')).toBe(true);
+      expect(events.some((e) => e.type === 'CARD_PLAYED')).toBe(true);
+      expect(events.some((e) => e.type === 'ROUND_WON')).toBe(true);
+      // No PENDING_FORCED_SWAP or HANDS_FORCED_SWAPPED event because swap is voided
+      expect(events.some((e) => e.type === 'PENDING_FORCED_SWAP')).toBe(false);
+      expect(events.some((e) => e.type === 'HANDS_FORCED_SWAPPED')).toBe(false);
+      assertValidAllWildGameState(finalState);
+    });
+
+    it('in 2-player game, playing Wild Forced Swap as final card awards victory immediately to the active player', () => {
+      const base = AllWildFixtureBuilder.createInitialGameFixture({
+        players: [{ id: 'p1', username: 'P1' }, { id: 'p2', username: 'P2' }],
+        dealerIndex: 1, // p1 starts
+      });
+      const s1 = AllWildFixtureBuilder.setHandSize(base, 'p1', 1);
+      const s2 = AllWildFixtureBuilder.setHandSize(s1, 'p2', 5);
+
+      const { nextState: sWithSwap, card } = AllWildFixtureBuilder.injectPlayableCard(
+        s2,
+        'p1',
+        'wild_forced_swap'
+      );
+
+      const { nextState: finalState, events } = adapter.processAction(sWithSwap, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: card.id,
+      });
+
+      expect(['ROUND_OVER', 'COMPLETED']).toContain(finalState.status);
+      expect(finalState.roundWinner?.id).toBe('p1');
+      expect(finalState.players[0].hand).toHaveLength(0);
+      expect(finalState.players[1].hand).toHaveLength(5);
+      expect(finalState.pendingActionState).toBeNull();
+      expect(events.some((e) => e.type === 'ROUND_WON')).toBe(true);
       assertValidAllWildGameState(finalState);
     });
   });
