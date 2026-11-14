@@ -9,7 +9,7 @@
 **Phase 6.1 Implementation Commit:** `a04c7b0526226371f8966477e828a1c8e6138e83`  
 **Phase 6.1 Published HEAD:** `cbf545a90647fa51e2fe0c07da8cfe98f2e159fc`  
 **Phase 6.1.1 Final Published HEAD:** `2e44de9270b00e7e171e558e2e5e994d62042ad4`  
-**Phase 6.1.2 Final Published Commit:** `37fdf14ba5f24520e93d73688285b11fe0d42a13`  
+**Phase 6.1.2 Final Published Commit:** `45af9ccbd8f5b58cea66ce6d2b14c37001eeb2bc`  
 **Phase:** Phase 6.1 / 6.1.1 / 6.1.2 — Rule-Fidelity, Mercy Card Recycling & Regression Hardening  
 **Authority:** Official Mattel UNO Show 'em No Mercy Instructions (`HVW18-Eng.pdf` / Product HWV18)
 
@@ -49,8 +49,8 @@ All monorepo quality gates have passed:
 - **Phase 6.1 Intermediate Implementation Commit:** `a04c7b0526226371f8966477e828a1c8e6138e83` (contained core engine, socket, and test updates)
 - **Phase 6.1 Final Published HEAD:** `cbf545a90647fa51e2fe0c07da8cfe98f2e159fc` (recorded initial publication report metadata)
 - **Phase 6.1.1 Final Published HEAD:** `2e44de9270b00e7e171e558e2e5e994d62042ad4` (baseline for Phase 6.1.2 audit)
-- **Phase 6.1.2 Final Published Commit:** `37fdf14ba5f24520e93d73688285b11fe0d42a13`
-- **Commit History Clarification:** Commit `a04c7b0526226371f8966477e828a1c8e6138e83` is an earlier Phase 6.1 commit containing the gameplay and test changes; commit `cbf545a90647fa51e2fe0c07da8cfe98f2e159fc` is the verified final published HEAD of Phase 6.1; commit `2e44de9270b00e7e171e558e2e5e994d62042ad4` is the verified final published HEAD of Phase 6.1.1; commit `37fdf14ba5f24520e93d73688285b11fe0d42a13` is the verified published commit of Phase 6.1.2.
+- **Phase 6.1.2 Final Published Commit:** `45af9ccbd8f5b58cea66ce6d2b14c37001eeb2bc`
+- **Commit History Clarification:** Commit `a04c7b0526226371f8966477e828a1c8e6138e83` is an earlier Phase 6.1 commit containing the gameplay and test changes; commit `cbf545a90647fa51e2fe0c07da8cfe98f2e159fc` is the verified final published HEAD of Phase 6.1; commit `2e44de9270b00e7e171e558e2e5e994d62042ad4` is the verified final published HEAD of Phase 6.1.1; commit `45af9ccbd8f5b58cea66ce6d2b14c37001eeb2bc` is the verified published commit of Phase 6.1.2.
 - **Previous Completed Phase:** Phase 6 — UNO Show ’em No Mercy
 - **Completed Phase:** Phase 6.1 / 6.1.1 / 6.1.2 — Rule-Fidelity, Mercy Card Recycling & Regression Hardening
 

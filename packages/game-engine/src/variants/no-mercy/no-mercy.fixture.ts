@@ -61,6 +61,10 @@ export class NoMercyFixtureBuilder {
       return { nextState: state, card: existing };
     }
 
+    if (!player.hand || player.hand.length === 0) {
+      throw new Error(`Player ${targetPlayerId} has no cards to swap.`);
+    }
+
     // Find matching card across existing inventory: drawPile -> opponents -> deep discard
     const drawCardIndex = state.drawPile.findIndex(predicate);
     let cardToInject: Card | null = null;
