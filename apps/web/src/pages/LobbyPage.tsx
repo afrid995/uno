@@ -150,7 +150,7 @@ export const LobbyPage: React.FC = () => {
               <h2 className="font-display font-black text-2xl tracking-tight">Starting Game Match</h2>
             </div>
             <p className="text-sm text-white/90">
-              Match countdown initiated ({startingCountdown}s). Preparing the {roomVariant === 'uno_show_em_no_mercy' ? '168-card' : roomVariant === 'uno_flip' ? '112-card dual-sided' : '108-card'} deck and dealing hands...
+              Match countdown initiated ({startingCountdown}s). Preparing the {roomVariant === 'uno_show_em_no_mercy' ? '168-card' : roomVariant === 'uno_all_wild' ? '112-card all-wild' : roomVariant === 'uno_flip' ? '112-card dual-sided' : '108-card'} deck and dealing hands...
             </p>
           </motion.div>
         )}
@@ -187,17 +187,21 @@ export const LobbyPage: React.FC = () => {
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs ${
             roomVariant === 'uno_show_em_no_mercy'
               ? 'bg-rose-950/60 text-rose-400 border border-rose-600/40'
+              : roomVariant === 'uno_all_wild'
+              ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
               : roomVariant === 'uno_flip'
               ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
               : 'bg-uno-red/20 text-uno-red border border-uno-red/30'
           }`}>
-            {roomVariant === 'uno_show_em_no_mercy' ? 'MERCY' : roomVariant === 'uno_flip' ? 'FLIP' : 'UNO'}
+            {roomVariant === 'uno_show_em_no_mercy' ? 'MERCY' : roomVariant === 'uno_all_wild' ? 'WILD' : roomVariant === 'uno_flip' ? 'FLIP' : 'UNO'}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-sm text-white font-display">
                 {roomVariant === 'uno_show_em_no_mercy'
                   ? "UNO Show 'em No Mercy"
+                  : roomVariant === 'uno_all_wild'
+                  ? 'UNO All Wild'
                   : roomVariant === 'uno_flip'
                   ? 'UNO Flip!'
                   : 'Classic UNO'}
@@ -205,12 +209,16 @@ export const LobbyPage: React.FC = () => {
               <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
                 roomVariant === 'uno_show_em_no_mercy'
                   ? 'bg-rose-950/80 text-rose-300 border border-rose-700/60'
+                  : roomVariant === 'uno_all_wild'
+                  ? 'bg-indigo-900/60 text-indigo-300 border border-indigo-700/50'
                   : roomVariant === 'uno_flip'
                   ? 'bg-purple-900/60 text-purple-300 border border-purple-700/50'
                   : 'bg-red-950/60 text-rose-300 border border-rose-800/50'
               }`}>
                 {roomVariant === 'uno_show_em_no_mercy'
                   ? '168 CARDS • MAX 6'
+                  : roomVariant === 'uno_all_wild'
+                  ? '112 CARDS • ALL WILD'
                   : roomVariant === 'uno_flip'
                   ? '112 DUAL-SIDED CARDS'
                   : '108 CARDS'}
@@ -219,6 +227,8 @@ export const LobbyPage: React.FC = () => {
             <p className="text-[11px] text-slate-400">
               {roomVariant === 'uno_show_em_no_mercy'
                 ? 'Official Mattel HWV18 rules, Stacking (+2 to +10), 7-0 swaps, 25-card Mercy Rule elimination.'
+                : roomVariant === 'uno_all_wild'
+                ? 'Official Mattel HHL33 rules, 100% wild cards, Targeted Draw 2, Forced Swap.'
                 : roomVariant === 'uno_flip'
                 ? 'Light Side vs Dark Side, Flip card, Draw 1 / Draw 5, Skip Everyone.'
                 : 'Official Mattel 42001 rules, Wild Draw Four, 4-card UNO challenge penalty.'}
@@ -227,7 +237,7 @@ export const LobbyPage: React.FC = () => {
         </div>
 
         {isCurrentPlayerHost && (
-          <div className="flex items-center gap-2 self-stretch sm:self-auto">
+          <div className="flex items-center gap-2 self-stretch sm:self-auto flex-wrap">
             <span className="text-xs text-slate-400 mr-1 hidden sm:inline">Change:</span>
             <button
               type="button"
@@ -267,6 +277,19 @@ export const LobbyPage: React.FC = () => {
               }`}
             >
               No Mercy
+            </button>
+            <button
+              type="button"
+              data-testid="lobby-toggle-all-wild"
+              disabled={roomVariant === 'uno_all_wild'}
+              onClick={() => updateSettings({ variant: 'uno_all_wild' })}
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                roomVariant === 'uno_all_wild'
+                  ? 'bg-gradient-to-r from-indigo-700 to-fuchsia-600 text-white shadow-glow'
+                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              All Wild
             </button>
           </div>
         )}

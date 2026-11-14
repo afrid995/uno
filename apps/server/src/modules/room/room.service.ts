@@ -113,12 +113,13 @@ export class RoomService {
       settings.variant !== undefined &&
       settings.variant !== 'classic' &&
       settings.variant !== 'uno_flip' &&
-      settings.variant !== 'uno_show_em_no_mercy'
+      settings.variant !== 'uno_show_em_no_mercy' &&
+      settings.variant !== 'uno_all_wild'
     ) {
       throw new AppError(
         HTTP_STATUS.BAD_REQUEST,
         ERROR_CODES.VALIDATION_ERROR,
-        'Invalid game variant. Supported variants are classic, uno_flip, and uno_show_em_no_mercy.'
+        'Invalid game variant. Supported variants are classic, uno_flip, uno_show_em_no_mercy, and uno_all_wild.'
       );
     }
 
@@ -528,12 +529,13 @@ export class RoomService {
         settings.variant !== undefined &&
         settings.variant !== 'classic' &&
         settings.variant !== 'uno_flip' &&
-        settings.variant !== 'uno_show_em_no_mercy'
+        settings.variant !== 'uno_show_em_no_mercy' &&
+        settings.variant !== 'uno_all_wild'
       ) {
         throw new AppError(
           HTTP_STATUS.BAD_REQUEST,
           ERROR_CODES.VALIDATION_ERROR,
-          'Invalid game variant. Supported variants are classic, uno_flip, and uno_show_em_no_mercy.'
+          'Invalid game variant. Supported variants are classic, uno_flip, uno_show_em_no_mercy, and uno_all_wild.'
         );
       }
 

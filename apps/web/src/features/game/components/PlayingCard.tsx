@@ -78,6 +78,21 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         if (card.value === 'wild_color_roulette') {
           return 'from-slate-950 via-amber-950 to-slate-900 border-amber-400 text-white shadow-amber-500/30';
         }
+        if (card.value === 'wild_targeted_draw_two') {
+          return 'from-slate-950 via-cyan-950 to-slate-900 border-cyan-400 text-white shadow-cyan-500/30';
+        }
+        if (card.value === 'wild_forced_swap') {
+          return 'from-slate-950 via-emerald-950 to-slate-900 border-emerald-400 text-white shadow-emerald-500/30';
+        }
+        if (card.value === 'wild_skip_two') {
+          return 'from-slate-950 via-orange-950 to-slate-900 border-orange-400 text-white shadow-orange-500/30';
+        }
+        if (card.value === 'wild_reverse') {
+          return 'from-slate-950 via-blue-950 to-slate-900 border-blue-400 text-white shadow-blue-500/30';
+        }
+        if (card.value === 'wild_skip') {
+          return 'from-slate-950 via-red-950 to-slate-900 border-red-400 text-white shadow-red-500/30';
+        }
         return 'from-slate-900 via-indigo-950 to-purple-950 border-purple-400 text-white';
     }
   };
@@ -118,6 +133,16 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         return 'ROUL';
       case 'wild_draw_color':
         return 'COLOR';
+      case 'wild_reverse':
+        return '⇄';
+      case 'wild_skip':
+        return '⊘';
+      case 'wild_skip_two':
+        return '⊘2';
+      case 'wild_targeted_draw_two':
+        return '+2🎯';
+      case 'wild_forced_swap':
+        return '⇅';
       default:
         return card.value;
     }
@@ -131,6 +156,16 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         return 'SKIP ALL';
       case 'wild_color_roulette':
         return 'ROULETTE';
+      case 'wild_reverse':
+        return 'REVERSE';
+      case 'wild_skip':
+        return 'SKIP';
+      case 'wild_skip_two':
+        return 'SKIP 2';
+      case 'wild_targeted_draw_two':
+        return 'TARGET +2';
+      case 'wild_forced_swap':
+        return 'SWAP';
       default:
         return getDisplayValue();
     }

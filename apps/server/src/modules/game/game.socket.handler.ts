@@ -10,6 +10,8 @@ import {
   choose7sSwapInputSchema,
   chooseRouletteColorInputSchema,
   acceptStackPenaltyInputSchema,
+  chooseTargetedDrawTwoInputSchema,
+  chooseForcedSwapInputSchema,
   CardColor,
 } from '@uno-ultimate/game-protocol';
 import { ERROR_CODES } from '@uno-ultimate/shared';
@@ -542,7 +544,71 @@ export function registerGameHandlers(
     }
   });
 
-  // 17. Handle game:next-round
+  // 17. Handle game:choose-targeted-draw-two
+  socket.on(SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_TWO, async (payload, callback) => {
+    try {
+      const guestId = getAuthenticatedGuestId();
+      const roomCode = getActiveRoomCode();
+      const validated = await chooseTargetedDrawTwoInputSchema.parseAsync(payload);
+
+      const { nextState } = await gameService.chooseTargetedDrawTwoTarget(
+        guestId,
+        roomCode,
+        validated.targetPlayerId
+      );
+
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      if (nextState.status === 'ROUND_OVER') {
+        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
+      } else if (nextState.status === 'COMPLETED') {
+        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
+      }
+
+      callback({
+        success: true,
+        data: { success: true, targetPlayerId: validated.targetPlayerId },
+      });
+    } catch (err: unknown) {
+      const message = (err as Error).message || 'Failed to choose Targeted Draw Two target';
+      const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      callback({ success: false, error: { code, message } });
+    }
+  });
+
+  // 18. Handle game:choose-forced-swap
+  socket.on(SOCKET_EVENTS.GAME_CHOOSE_FORCED_SWAP, async (payload, callback) => {
+    try {
+      const guestId = getAuthenticatedGuestId();
+      const roomCode = getActiveRoomCode();
+      const validated = await chooseForcedSwapInputSchema.parseAsync(payload);
+
+      const { nextState } = await gameService.chooseForcedSwapTarget(
+        guestId,
+        roomCode,
+        validated.targetPlayerId
+      );
+
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      if (nextState.status === 'ROUND_OVER') {
+        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
+      } else if (nextState.status === 'COMPLETED') {
+        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
+      }
+
+      callback({
+        success: true,
+        data: { success: true, targetPlayerId: validated.targetPlayerId },
+      });
+    } catch (err: unknown) {
+      const message = (err as Error).message || 'Failed to choose Forced Swap target';
+      const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      callback({ success: false, error: { code, message } });
+    }
+  });
+
+  // 19. Handle game:next-round
   socket.on(SOCKET_EVENTS.GAME_NEXT_ROUND, async (_payload, callback) => {
     try {
       const guestId = getAuthenticatedGuestId();

@@ -37,6 +37,11 @@ export const wildCardValueSchema = z.enum([
   'wild_draw_six',
   'wild_draw_ten',
   'wild_color_roulette',
+  'wild_reverse',
+  'wild_skip',
+  'wild_skip_two',
+  'wild_targeted_draw_two',
+  'wild_forced_swap',
 ]);
 
 export const cardValueSchema = z.union([

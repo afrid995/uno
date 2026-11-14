@@ -283,6 +283,30 @@ export class GameService {
     });
   }
 
+  async chooseTargetedDrawTwoTarget(
+    guestId: string,
+    roomCode: string,
+    targetPlayerId: string
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'CHOOSE_TARGETED_DRAW_TWO_TARGET',
+      playerId: guestId,
+      targetPlayerId,
+    });
+  }
+
+  async chooseForcedSwapTarget(
+    guestId: string,
+    roomCode: string,
+    targetPlayerId: string
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'CHOOSE_FORCED_SWAP_TARGET',
+      playerId: guestId,
+      targetPlayerId,
+    });
+  }
+
   async startNextRound(
     guestId: string,
     roomCode: string

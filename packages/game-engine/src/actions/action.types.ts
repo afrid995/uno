@@ -16,6 +16,8 @@ export type GameActionType =
   | 'CHOOSE_7S_SWAP_TARGET'
   | 'CHOOSE_COLOR_ROULETTE_COLOR'
   | 'ACCEPT_STACK_PENALTY'
+  | 'CHOOSE_TARGETED_DRAW_TWO_TARGET'
+  | 'CHOOSE_FORCED_SWAP_TARGET'
   | 'START_NEXT_ROUND';
 
 export interface PlayCardAction {
@@ -100,6 +102,18 @@ export interface AcceptStackPenaltyAction {
   readonly playerId: string;
 }
 
+export interface ChooseTargetedDrawTwoTargetAction {
+  readonly type: 'CHOOSE_TARGETED_DRAW_TWO_TARGET';
+  readonly playerId: string;
+  readonly targetPlayerId: string;
+}
+
+export interface ChooseForcedSwapTargetAction {
+  readonly type: 'CHOOSE_FORCED_SWAP_TARGET';
+  readonly playerId: string;
+  readonly targetPlayerId: string;
+}
+
 export interface StartNextRoundAction {
   readonly type: 'START_NEXT_ROUND';
   readonly triggeredByPlayerId: string;
@@ -121,6 +135,8 @@ export type GameAction =
   | Choose7sSwapTargetAction
   | ChooseColorRouletteColorAction
   | AcceptStackPenaltyAction
+  | ChooseTargetedDrawTwoTargetAction
+  | ChooseForcedSwapTargetAction
   | StartNextRoundAction;
 
 export interface GameEventRecord {

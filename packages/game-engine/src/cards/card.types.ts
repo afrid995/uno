@@ -28,7 +28,23 @@ export type NoMercyWildCardValue =
   | 'wild_draw_six'
   | 'wild_draw_ten'
   | 'wild_color_roulette';
-export type WildCardValue = ClassicWildCardValue | FlipWildCardValue | NoMercyWildCardValue;
+
+export type AllWildActionCardValue =
+  | 'wild_reverse'
+  | 'wild_skip'
+  | 'wild_skip_two'
+  | 'wild_draw_two'
+  | 'wild_draw_four'
+  | 'wild_targeted_draw_two'
+  | 'wild_forced_swap';
+
+export type AllWildCardValue = 'wild' | AllWildActionCardValue;
+
+export type WildCardValue =
+  | ClassicWildCardValue
+  | FlipWildCardValue
+  | NoMercyWildCardValue
+  | AllWildActionCardValue;
 
 export type CardValue = NumberCardValue | ActionCardValue | WildCardValue;
 

@@ -13,6 +13,8 @@ import { RoundResultModal } from './RoundResultModal';
 import { MatchResultModal } from './MatchResultModal';
 import { SevenSwapModal } from './SevenSwapModal';
 import { ColorRouletteModal } from './ColorRouletteModal';
+import { TargetedDrawTwoModal } from './TargetedDrawTwoModal';
+import { ForcedSwapModal } from './ForcedSwapModal';
 import { StackPenaltyBanner } from './StackPenaltyBanner';
 import { AlertCircle, RotateCcw, RotateCw, Skull } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,6 +36,8 @@ export const GameBoard: React.FC = () => {
     choose7sSwap,
     chooseRouletteColor,
     acceptStackPenalty,
+    chooseTargetedDrawTwo,
+    chooseForcedSwap,
     clearError,
   } = useGameStore();
 
@@ -53,13 +57,14 @@ export const GameBoard: React.FC = () => {
   const selfPublic = players.find((p) => p.id === self.id);
   const currentTurnPlayer = players.find((p) => p.id === currentTurnGuestId);
   const isMyTurn = self.isCurrentTurn;
+  const isAllWild = gameState.variant === 'uno_all_wild';
   const pendingStack =
     gameState.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION'
       ? gameState.pendingActionState
       : null;
 
   const handleCardClick = (card: Card) => {
-    if (card.type === 'wild') {
+    if (card.type === 'wild' && !isAllWild) {
       openWildColorPicker(card);
     } else {
       playCard(card.id);
@@ -112,6 +117,16 @@ export const GameBoard: React.FC = () => {
               }`}
             >
               <span>{gameState.activeSide === 'DARK' ? '🌙 DARK SIDE' : '☀️ LIGHT SIDE'}</span>
+            </div>
+          )}
+
+          {/* UNO All Wild Badge */}
+          {isAllWild && (
+            <div
+              data-testid="all-wild-badge"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl font-display font-black text-xs tracking-wider border shadow-md bg-gradient-to-r from-indigo-950 via-purple-950 to-slate-950 border-indigo-400 text-indigo-300 shadow-indigo-950/60 shadow-lg"
+            >
+              <span>🌈 ALL WILD</span>
             </div>
           )}
         </div>
@@ -294,6 +309,26 @@ export const GameBoard: React.FC = () => {
         isLoading={isActionLoading}
         onSelectColor={(color) => {
           chooseRouletteColor(color);
+        }}
+      />
+
+      {/* Wild Targeted Draw Two Modal */}
+      <TargetedDrawTwoModal
+        isOpen={!!self.canChooseTargetedDrawTwo}
+        eligiblePlayers={opponents.filter((p) => !p.isEliminated)}
+        isLoading={isActionLoading}
+        onSelectTarget={(targetId) => {
+          chooseTargetedDrawTwo(targetId);
+        }}
+      />
+
+      {/* Wild Forced Swap Modal */}
+      <ForcedSwapModal
+        isOpen={!!self.canChooseForcedSwap}
+        eligiblePlayers={opponents.filter((p) => !p.isEliminated)}
+        isLoading={isActionLoading}
+        onSelectTarget={(targetId) => {
+          chooseForcedSwap(targetId);
         }}
       />
 

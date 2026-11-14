@@ -66,6 +66,16 @@ export interface PendingColorRouletteState {
   readonly playedByPlayerId: string;
 }
 
+export interface PendingTargetedDrawTwoState {
+  readonly type: 'AWAITING_TARGETED_DRAW_TWO_SELECTION';
+  readonly sourcePlayerId: string;
+}
+
+export interface PendingForcedSwapState {
+  readonly type: 'AWAITING_FORCED_SWAP_SELECTION';
+  readonly sourcePlayerId: string;
+}
+
 export type PendingActionState =
   | PendingWildDrawFourState
   | PendingWildDrawTwoState
@@ -73,7 +83,9 @@ export type PendingActionState =
   | PendingStartingWildColorState
   | PendingStackState
   | Pending7sSwapState
-  | PendingColorRouletteState;
+  | PendingColorRouletteState
+  | PendingTargetedDrawTwoState
+  | PendingForcedSwapState;
 
 export interface GameWinner {
   readonly id: string;

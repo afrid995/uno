@@ -36,6 +36,8 @@ interface GameStateStore {
   choose7sSwap: (targetPlayerId: string) => Promise<boolean>;
   chooseRouletteColor: (chosenColor: 'red' | 'yellow' | 'green' | 'blue') => Promise<boolean>;
   acceptStackPenalty: () => Promise<boolean>;
+  chooseTargetedDrawTwo: (targetPlayerId: string) => Promise<boolean>;
+  chooseForcedSwap: (targetPlayerId: string) => Promise<boolean>;
   startNextRound: () => Promise<boolean>;
 
   openWildColorPicker: (card: Card) => void;
@@ -319,6 +321,40 @@ export const useGameStore = create<GameStateStore>((set) => ({
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to accept stack penalty' });
+          resolve(false);
+        }
+      });
+    });
+  },
+
+  chooseTargetedDrawTwo: async (targetPlayerId: string) => {
+    set({ isActionLoading: true, error: null });
+    const socket = socketManager.getSocket();
+
+    return new Promise<boolean>((resolve) => {
+      socket.emit(SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_TWO, { targetPlayerId }, (res) => {
+        set({ isActionLoading: false });
+        if (res.success) {
+          resolve(true);
+        } else {
+          set({ error: res.error?.message || 'Failed to target player' });
+          resolve(false);
+        }
+      });
+    });
+  },
+
+  chooseForcedSwap: async (targetPlayerId: string) => {
+    set({ isActionLoading: true, error: null });
+    const socket = socketManager.getSocket();
+
+    return new Promise<boolean>((resolve) => {
+      socket.emit(SOCKET_EVENTS.GAME_CHOOSE_FORCED_SWAP, { targetPlayerId }, (res) => {
+        set({ isActionLoading: false });
+        if (res.success) {
+          resolve(true);
+        } else {
+          set({ error: res.error?.message || 'Failed to swap hands' });
           resolve(false);
         }
       });

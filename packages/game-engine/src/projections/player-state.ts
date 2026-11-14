@@ -26,6 +26,8 @@ export interface PlayerPrivateView {
   readonly isTargetedByStack?: boolean;
   readonly canChoose7sSwap?: boolean;
   readonly canChooseRouletteColor?: boolean;
+  readonly canChooseTargetedDrawTwo?: boolean;
+  readonly canChooseForcedSwap?: boolean;
   readonly isEliminated?: boolean;
 }
 
@@ -107,6 +109,14 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     state.pendingActionState?.type === 'AWAITING_COLOR_ROULETTE_SELECTION' &&
     state.pendingActionState.victimPlayerId === playerId;
 
+  const canChooseTargetedDrawTwo =
+    state.pendingActionState?.type === 'AWAITING_TARGETED_DRAW_TWO_SELECTION' &&
+    state.pendingActionState.sourcePlayerId === playerId;
+
+  const canChooseForcedSwap =
+    state.pendingActionState?.type === 'AWAITING_FORCED_SWAP_SELECTION' &&
+    state.pendingActionState.sourcePlayerId === playerId;
+
   const canDraw = !player.isEliminated && isCurrentTurn && !player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
   const canPass = !player.isEliminated && isCurrentTurn && player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
 
@@ -142,6 +152,8 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     isTargetedByStack,
     canChoose7sSwap,
     canChooseRouletteColor,
+    canChooseTargetedDrawTwo,
+    canChooseForcedSwap,
     isEliminated: player.isEliminated,
   };
 

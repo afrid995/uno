@@ -12,11 +12,11 @@ interface CreateRoomModalProps {
 
 export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) => {
   const [maxPlayers, setMaxPlayers] = useState<number>(ROOM_RULES.DEFAULT_MAX_PLAYERS);
-  const [variant, setVariant] = useState<'classic' | 'uno_flip' | 'uno_show_em_no_mercy'>('classic');
+  const [variant, setVariant] = useState<'classic' | 'uno_flip' | 'uno_show_em_no_mercy' | 'uno_all_wild'>('classic');
   const { createRoom, isLoading, error, clearError } = useRoomStore();
   const navigate = useNavigate();
 
-  const handleSelectVariant = (newVariant: 'classic' | 'uno_flip' | 'uno_show_em_no_mercy') => {
+  const handleSelectVariant = (newVariant: 'classic' | 'uno_flip' | 'uno_show_em_no_mercy' | 'uno_all_wild') => {
     setVariant(newVariant);
     if (newVariant === 'uno_show_em_no_mercy' && maxPlayers > 6) {
       setMaxPlayers(6);
@@ -84,11 +84,13 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                     ? 'Classic UNO'
                     : variant === 'uno_flip'
                     ? 'UNO Flip!'
-                    : "UNO Show 'em No Mercy"}
+                    : variant === 'uno_show_em_no_mercy'
+                    ? "UNO Show 'em No Mercy"
+                    : 'UNO All Wild'}
                 </span>
               </label>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <button
                   type="button"
                   data-testid="variant-select-classic"
@@ -136,10 +138,29 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                 >
                   <div className="font-bold font-display text-sm text-white mb-0.5 flex items-center gap-1.5">
                     No Mercy
-                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500/30 text-rose-300 font-mono">NEW</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500/30 text-rose-300 font-mono">168C</span>
                   </div>
                   <div className="text-[11px] text-slate-400 leading-tight">
                     Mattel HWV18 rules (168 cards, stacking, 7-0 swaps, 25-card mercy).
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  data-testid="variant-select-all-wild"
+                  onClick={() => handleSelectVariant('uno_all_wild')}
+                  className={`p-3 rounded-2xl text-left border transition-all ${
+                    variant === 'uno_all_wild'
+                      ? 'bg-gradient-to-br from-indigo-700/30 to-fuchsia-600/20 border-indigo-400 text-white shadow-glow'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                  }`}
+                >
+                  <div className="font-bold font-display text-sm text-white mb-0.5 flex items-center gap-1.5">
+                    All Wild
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-indigo-500/30 text-indigo-300 font-mono">112C</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 leading-tight">
+                    Mattel HHL33 rules (112 cards, every card wild, targeted draw 2, forced swap).
                   </div>
                 </button>
               </div>
@@ -176,6 +197,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
               <p className="text-[11px] text-slate-500">
                 {variant === 'uno_show_em_no_mercy'
                   ? 'UNO Show ’em No Mercy strictly supports 2 to 6 players.'
+                  : variant === 'uno_all_wild'
+                  ? 'UNO All Wild supports 2 to 10 players (default 6).'
                   : 'Mattel standard rooms support 2 to 10 players (default 6).'}
               </p>
             </div>

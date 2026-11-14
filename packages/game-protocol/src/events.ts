@@ -69,6 +69,8 @@ export const SOCKET_EVENTS = {
   GAME_CHOOSE_7S_SWAP: 'game:choose-7s-swap',
   GAME_CHOOSE_ROULETTE_COLOR: 'game:choose-roulette-color',
   GAME_ACCEPT_STACK_PENALTY: 'game:accept-stack-penalty',
+  GAME_CHOOSE_TARGETED_DRAW_TWO: 'game:choose-targeted-draw-two',
+  GAME_CHOOSE_FORCED_SWAP: 'game:choose-forced-swap',
   GAME_NEXT_ROUND: 'game:next-round',
 
   // Phase 4 & Phase 6 Gameplay Broadcasts: Server to Client
@@ -129,6 +131,16 @@ export type ChooseRouletteColorInput = z.infer<typeof chooseRouletteColorInputSc
 
 export const acceptStackPenaltyInputSchema = z.object({}).optional();
 export type AcceptStackPenaltyInput = z.infer<typeof acceptStackPenaltyInputSchema>;
+
+export const chooseTargetedDrawTwoInputSchema = z.object({
+  targetPlayerId: z.string().min(1, 'Target player ID is required'),
+});
+export type ChooseTargetedDrawTwoInput = z.infer<typeof chooseTargetedDrawTwoInputSchema>;
+
+export const chooseForcedSwapInputSchema = z.object({
+  targetPlayerId: z.string().min(1, 'Target player ID is required'),
+});
+export type ChooseForcedSwapInput = z.infer<typeof chooseForcedSwapInputSchema>;
 
 /**
  * Socket.IO client-to-server event signatures
@@ -238,6 +250,14 @@ export interface ClientToServerEvents {
   [SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY]: (
     payload: AcceptStackPenaltyInput,
     callback: (response: SocketAck<{ success: boolean; cardsDrawn: number; eliminated: boolean }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_TWO]: (
+    payload: ChooseTargetedDrawTwoInput,
+    callback: (response: SocketAck<{ success: boolean; targetPlayerId: string }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_CHOOSE_FORCED_SWAP]: (
+    payload: ChooseForcedSwapInput,
+    callback: (response: SocketAck<{ success: boolean; targetPlayerId: string }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_NEXT_ROUND]: (
     payload: Record<string, never> | undefined,
