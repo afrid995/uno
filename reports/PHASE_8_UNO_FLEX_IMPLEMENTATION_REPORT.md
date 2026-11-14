@@ -8,6 +8,7 @@
 **Phase:** Phase 8 — UNO Flex Official Variant Implementation  
 **Official Rule Authority:** Mattel UNO Flex Card Game (Product HNB00 / HMY99, `HNB00-Eng-2024.pdf`)  
 **Product Line Authority:** Mattel Inc., 2022/2024  
+**Phase 8 Implementation Commit:** `52e6f5a74ac63ec3e3dc26ebf6f94028017f7c14`  
 
 ---
 
