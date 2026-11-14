@@ -1,5 +1,5 @@
 import { GameState, GameConfig } from '../../game/game.types';
-import { Card, FlipSide } from '../../cards/card.types';
+import { Card, FlipSide, CardColor } from '../../cards/card.types';
 import { FlipDeckFactory } from './flip.deck';
 import { assertValidFlipGameState } from './flip.invariants';
 import { VariantRegistry } from '../variant.types';
@@ -64,6 +64,16 @@ export class FlipFixtureBuilder {
           hand: p.hand.map((c) => FlipDeckFactory.flipCard(c, 'DARK')),
         })),
         activeColor: state.topDiscardCard.darkFace?.color ?? 'teal',
+        pendingActionState: null,
+      };
+    }
+
+    if (state.pendingActionState?.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION') {
+      const defaultColor = state.activeSide === 'DARK' ? 'teal' : 'blue';
+      state = {
+        ...state,
+        activeColor: defaultColor,
+        pendingActionState: null,
       };
     }
 
@@ -101,7 +111,7 @@ export class FlipFixtureBuilder {
     const targetPlayer = state.players[targetPlayerIndex];
 
     // Determine target color for playability
-    const targetColor =
+    const targetColor: CardColor =
       state.activeColor ??
       state.topDiscardCard.color ??
       (activeSide === 'LIGHT' ? 'blue' : 'teal');
@@ -201,7 +211,7 @@ export class FlipFixtureBuilder {
         for (let i = 0; i < state.drawPile.length; i++) {
           if (i === flipCardIndex) continue;
           const c = state.drawPile[i];
-          if (c.color === flipColor && c.type === 'number') {
+          if (c.color === flipColor) {
             discardReplacementCard = c;
             needsDiscardTopSwap = true;
             break;
@@ -266,6 +276,7 @@ export class FlipFixtureBuilder {
       topDiscardCard: newTopDiscard,
       activeColor: newActiveColor,
       players: newPlayers,
+      pendingActionState: needsDiscardTopSwap ? null : state.pendingActionState,
     };
 
     assertValidFlipGameState(nextState);

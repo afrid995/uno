@@ -8,6 +8,8 @@ import { gameSessionManager } from '../../src/modules/game/game.session.manager'
 import { cancelAllCountdownTimersForTesting } from '../../src/sockets/roomSocketHandler';
 import { SOCKET_EVENTS, PlayerGameState } from '@uno-ultimate/game-protocol';
 import { NoMercyFixtureBuilder, assertValidNoMercyGameState } from '@uno-ultimate/game-engine';
+import { gamePersistenceService } from '../../src/modules/game/game.persistence.service';
+import request from 'supertest';
 
 describe('UNO Show \'em No Mercy — Server Socket.IO Multiplayer Integration Tests', () => {
   let httpServer: ReturnType<typeof createServer>;
@@ -287,5 +289,116 @@ describe('UNO Show \'em No Mercy — Server Socket.IO Multiplayer Integration Te
     // Match completes with P1 as winner
     expect(session.state.status).toBe('COMPLETED');
     expect(session.state.winner?.id).toBe(p1Id);
+
+    // Verify setAsideCards are persisted to PostgreSQL and recoverable
+    expect(session.state.setAsideCards?.length).toBeGreaterThanOrEqual(25);
+    const restoredState = await gamePersistenceService.loadLatestSnapshot(session.matchId);
+    expect(restoredState).not.toBeNull();
+    expect(restoredState!.setAsideCards?.length).toBe(session.state.setAsideCards!.length);
+  });
+
+  it('handles Wild Reverse Draw 4 rebound in 2-player mode and rejects stacking non-Draw cards', async () => {
+    const s1 = createClient(p1Token);
+    const s2 = createClient(p2Token);
+
+    await Promise.all([
+      new Promise<void>((res) => s1.on('connect', res)),
+      new Promise<void>((res) => s2.on('connect', res)),
+    ]);
+
+    const createAck = await new Promise<any>((resolve) => {
+      s1.emit(
+        SOCKET_EVENTS.ROOM_CREATE,
+        { maxPlayers: 2, settings: { variant: 'uno_show_em_no_mercy' } },
+        resolve
+      );
+    });
+    const roomCode = createAck.data.roomCode;
+
+    await new Promise<any>((resolve) => s2.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve));
+    await new Promise<any>((resolve) => s2.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve));
+
+    const p1StatePromise = new Promise<{ state: PlayerGameState }>((resolve) => s1.once(SOCKET_EVENTS.GAME_STATE, resolve));
+    const p2StatePromise = new Promise<{ state: PlayerGameState }>((resolve) => s2.once(SOCKET_EVENTS.GAME_STATE, resolve));
+    await new Promise<any>((resolve) => s1.emit(SOCKET_EVENTS.ROOM_START, { immediate: true }, resolve));
+    await Promise.all([p1StatePromise, p2StatePromise]);
+
+    const session = gameSessionManager.getSessionByRoomCode(roomCode)!;
+    session.state = { ...session.state, currentPlayerIndex: 0 };
+
+    // Inject Wild Reverse Draw 4 into P1's hand
+    const { nextState: sWithWrd4, card: wrd4 } = NoMercyFixtureBuilder.injectPlayableCard(
+      session.state,
+      p1Id,
+      'wild_reverse_draw_four'
+    );
+    session.state = sWithWrd4;
+
+    // P1 plays Wild Reverse Draw 4
+    const playAck = await new Promise<any>((resolve) => {
+      s1.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: wrd4.id, chosenColor: 'yellow' }, resolve);
+    });
+    expect(playAck.success).toBe(true);
+
+    // In 2-player, the penalty rebounds to P1!
+    expect(session.state.pendingActionState?.type).toBe('AWAITING_STACK_RESOLUTION');
+    if (session.state.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION') {
+      expect(session.state.pendingActionState.targetPlayerId).toBe(p1Id);
+      expect(session.state.pendingActionState.accumulatedPenalty).toBe(4);
+    }
+    expect(session.state.currentPlayerIndex).toBe(0);
+
+    // Now inject another Wild Reverse Draw 4 into P1's hand
+    const { nextState: sWithSecondWrd4, card: wrd4Second } = NoMercyFixtureBuilder.injectPlayableCard(
+      session.state,
+      p1Id,
+      'wild_reverse_draw_four'
+    );
+    session.state = sWithSecondWrd4;
+
+    // P1 attempts to stack Wild Reverse Draw 4 onto active Draw penalty -> MUST BE REJECTED!
+    const stackWrd4Ack = await new Promise<any>((resolve) => {
+      s1.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: wrd4Second.id, chosenColor: 'blue' }, resolve);
+    });
+    expect(stackWrd4Ack.success).toBe(false);
+    expect(stackWrd4Ack.error?.message).toMatch(/not an eligible Draw Card/);
+
+    // Now inject an eligible Draw Four (+4) into P1's hand
+    const { nextState: sWithD4, card: d4 } = NoMercyFixtureBuilder.injectPlayableCard(
+      session.state,
+      p1Id,
+      'draw_four'
+    );
+    session.state = sWithD4;
+
+    // P1 stacks Draw Four (+4 >= 4) -> ACCEPTED!
+    const stackD4Ack = await new Promise<any>((resolve) => {
+      s1.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: d4.id }, resolve);
+    });
+    expect(stackD4Ack.success).toBe(true);
+
+    // Penalty is now passed to P2 with 8 cards!
+    expect(session.state.pendingActionState?.type).toBe('AWAITING_STACK_RESOLUTION');
+    if (session.state.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION') {
+      expect(session.state.pendingActionState.targetPlayerId).toBe(p2Id);
+      expect(session.state.pendingActionState.accumulatedPenalty).toBe(8);
+    }
+    expect(session.state.currentPlayerIndex).toBe(1);
+  });
+
+  it('rejects /api/test/set-no-mercy-hand-size if targetCount exceeds 24 cards', async () => {
+    process.env.ENABLE_TEST_HELPERS = 'true';
+    process.env.TEST_HELPER_SECRET = 'a-very-long-test-helper-secret-key-1234';
+    const app = createApp();
+    const res = await request(app)
+      .post('/api/test/set-no-mercy-hand-size')
+      .set('X-Test-Helper-Secret', 'a-very-long-test-helper-secret-key-1234')
+      .send({
+        roomCode: 'NONEXIST',
+        targetCount: 25, // exceeds max 24
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error?.code).toBe('BAD_REQUEST');
   });
 });

@@ -2,6 +2,7 @@ import { Card } from '../cards/card.types';
 import { GameState } from '../game/game.types';
 import { PublicGameState, getPublicGameState } from './public-state';
 import { MoveValidator } from '../validation/move.validator';
+import { getNoMercyStackCardValue } from '../variants/no-mercy/no-mercy.constants';
 
 export interface PlayerPrivateView {
   readonly id: string;
@@ -29,11 +30,7 @@ export interface PlayerPrivateView {
 }
 
 function getNoMercyDrawValue(card: Card): number | null {
-  if (card.value === 'draw_two') return 2;
-  if (card.value === 'draw_four' || card.value === 'wild_reverse_draw_four') return 4;
-  if (card.value === 'wild_draw_six') return 6;
-  if (card.value === 'wild_draw_ten') return 10;
-  return null;
+  return getNoMercyStackCardValue(card.value);
 }
 
 export interface PlayerGameState extends PublicGameState {

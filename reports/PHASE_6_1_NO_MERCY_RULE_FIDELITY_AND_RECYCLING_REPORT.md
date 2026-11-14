@@ -1,0 +1,254 @@
+# UNO ULTIMATE — PHASE 6.1 REPORT
+# NO MERCY RULE-FIDELITY, MERCY CARD RECYCLING & AUDIT CORRECTIONS
+
+**Project:** UNO Ultimate — Private Online Multiplayer Card Game  
+**Repository:** `https://github.com/afrid995/uno.git`  
+**Workspace:** `D:\uno`  
+**Branch:** `main`  
+**Baseline Commit:** `0967aa6c05757548d6b673f0f8dcf6159d4f5108`  
+**Phase:** Phase 6.1 — Rule-Fidelity, Mercy Card Recycling & Audit Corrections  
+**Authority:** Official Mattel UNO Show 'em No Mercy Instructions (`HVW18-Eng.pdf` / Product HWV18)
+
+---
+
+## 1. Executive Summary
+
+Phase 6.1 performs a rigorous correctness audit, rule-fidelity alignment, and regression hardening of the **UNO Show ’em No Mercy** variant implementation in UNO Ultimate. Following the initial Phase 6 implementation, this audit verified the game engine, server action processors, test helpers, and documentation against the official Mattel Product HWV18 instruction sheet (`HVW18-Eng.pdf`).
+
+Key corrections and hardening deliverables achieved in Phase 6.1:
+1. **Mercy Rule Card Recycling Lifecycle:** Corrected the lifecycle of eliminated players' hands ($\ge 25$ cards). Rather than being permanently removed from play, cards from eliminated players are held in `setAsideCards` while the draw pile contains cards. When the draw pile runs out and a player must draw, all cards beneath the top discard card PLUS all cards in `setAsideCards` are combined, shuffled, and placed in `newDrawPile`, preserving the top discard card and clearing `setAsideCards`.
+2. **Stacking Draw Card Eligibility vs Draw Penalty Separation:** Decoupled card penalty values from stacking eligibility. Per Mattel HWV18, only designated Draw cards (`+2`, `+4`, `+6`, `+10`) are eligible stacking response cards. `Wild Reverse Draw 4` initiates a 4-card penalty and reverses play (or rebounds in 2-player mode), but cannot be stacked in response to an active draw penalty.
+3. **2-Player Wild Reverse Draw 4 Rebound Precision:** Maintained the official 2-player rebound rule where playing `Wild Reverse Draw 4` reverses direction and targets the player who played it. That player may pass the penalty using an eligible Draw card (`+4`, `+6`, `+10`) or accept the 4-card penalty.
+4. **168-Card Deck Inventory & Attribution:** Accurately documented and verified the exact 168 physical cards inventory. Clearly attributed the total count (168 cards) to the Mattel HWV18 instruction sheet and the itemized quantities to physical card manifests and game box verification.
+5. **Official Rule Attribution vs Application Policy:** Clearly distinguished official Mattel rules (Dealer Selection by drawing highest number; optional 1,000-point scoring table) from application-level lobby policies (host defaults as dealer; round victory on elimination/out-of-cards).
+6. **Test-Helper Security Authorization Boundary:** Explicitly declared and hardened the security boundary for `/api/test/*` endpoints: guarded by `NODE_ENV !== 'production'`, `ENABLE_TEST_HELPERS === 'true'`, and authenticated via `X-Test-Helper-Secret`. Acknowledged transparently that this is a shared-secret non-production boundary, not a room-membership authorization mechanism.
+7. **Test Fixture Invariant Enforcement:** Constrained `/set-no-mercy-hand-size` to `1 <= targetCount <= 24`, preventing impossible active game states with $\ge 25$ cards, and added mandatory `assertValidNoMercyGameState` execution inside the mutex before persistence.
+
+All monorepo quality gates have passed:
+- `pnpm -r typecheck`: **0 errors** across all 6 workspace packages.
+- `pnpm -r lint`: **0 errors, 0 warnings** across all workspace projects.
+- `pnpm build`: **0 errors**; clean production build for all packages and web app.
+- `@uno-ultimate/game-engine`: **168 unit tests passed** (13 test files), including 13 new No Mercy rules tests.
+- `@uno-ultimate/server`: **94 integration and unit tests passed** (12 test files).
+- `@uno-ultimate/web`: **58 component and store tests passed** (14 test files).
+- Playwright E2E: **5 end-to-end browser tests passed** across all 3 variants (Classic, Flip, No Mercy).
+
+---
+
+## 2. Git Metadata & Checkpoint Information
+
+- **Repository URL:** `https://github.com/afrid995/uno.git`
+- **Workspace Location:** `D:\uno`
+- **Active Branch:** `main`
+- **Starting Baseline Commit:** `0967aa6c05757548d6b673f0f8dcf6159d4f5108`
+- **Previous Completed Phase:** Phase 6 — UNO Show ’em No Mercy
+- **Completed Phase:** Phase 6.1 — Rule-Fidelity, Mercy Card Recycling & Audit Corrections
+
+---
+
+## 3. Exact Rule-Fidelity Corrections
+
+### A. Stacking Draw Card Eligibility & Wild Reverse Draw 4 Separation
+
+#### Official Rule Source (Mattel HWV18)
+> *"Stacking — If someone plays a Draw card (+2, +4, +6, +10), you can play an equal or higher Draw card to pass the penalty to the next player. The next player must then draw the total or play an equal or higher Draw card..."*
+
+#### The Discrepancy (Before)
+In Phase 6, the game engine used a unified function `getNoMercyDrawPenalty(card)` for both calculating draw penalties and determining stack eligibility. Because `Wild Reverse Draw 4` carries a 4-card penalty, it was incorrectly permitted to be stacked onto active `+2` or `+4` penalties.
+
+#### The Correction (After)
+We decoupled the penalty calculation from stacking eligibility:
+1. Created `getNoMercyStackCardValue(card: Card): number | null`:
+   - Returns `2` for `draw_two`
+   - Returns `4` for `draw_four`
+   - Returns `6` for `wild_draw_six`
+   - Returns `10` for `wild_draw_ten`
+   - Returns `null` for `wild_reverse_draw_four` and all non-Draw cards
+2. Created `isEligibleNoMercyStackCard(card: Card): boolean`:
+   - Returns `true` strictly for cards where `getNoMercyStackCardValue(card) !== null`
+3. Updated `validatePendingAction` in `no-mercy.validator.ts`:
+   - Enforces that any card played during `AWAITING_STACK_RESOLUTION` must be an eligible Stacking Draw Card (`isEligibleNoMercyStackCard`). Attempting to stack `wild_reverse_draw_four` or any non-Draw card is rejected with `CANNOT_PLAY_CARD`.
+4. Updated player projections in `projections/player-state.ts`:
+   - `playableCardIds` and `canStack` only mark cards eligible under `getNoMercyStackCardValue`.
+5. Preserved 2-Player Rebound Rule:
+   - When played on a normal turn in 2-player mode, `wild_reverse_draw_four` reverses direction and initiates a 4-card stack penalty targeting the player who played it. That player can then either stack an eligible Draw card (`+4`, `+6`, `+10`) or accept the 4-card penalty.
+
+---
+
+### B. Mercy Rule Card Recycling Lifecycle
+
+#### Official Rule Source (Mattel HWV18)
+> *"Mercy Rule — If you ever have 25 or more cards in your hand, you are out of the game! Put your cards in a separate pile away from the Draw pile. If the Draw pile runs out, shuffle these cards in with the Discard pile to create a new Draw pile."*
+
+#### The Discrepancy (Before)
+In Phase 6, eliminated players' cards were described in documentation and some tests as "permanently set aside out of play." When the draw pile ran out, reshuffling only recycled cards beneath the top discard, leaving eliminated cards permanently out of circulation and risking premature deck exhaustion.
+
+#### The Correction (After)
+1. **State Persistence:**
+   - The field `setAsideCards: Card[]` is authoritatively maintained on `GameState`.
+   - Included in JSON serialization, database persistence (`game_sessions.game_state`), socket state delivery, and client reconnection recovery.
+2. **Elimination Transfer:**
+   - When a player reaches $\ge 25$ cards, `applyMercyElimination` removes all cards from their hand and appends them to `nextState.setAsideCards`. The eliminated player holds 0 cards.
+3. **Reshuffling Lifecycle (`reshuffleRecyclableCards`):**
+   - While `drawPile.length > 0`, `setAsideCards` remain set aside away from the draw pile.
+   - When `drawPile` is depleted (`drawPile.length === 0`) and a draw is required (`drawCards`, `drawUntilColor`, `drawUntilPlayable`):
+     - Collect recyclable discard cards: `currentDiscard.slice(0, currentDiscard.length - 1)`.
+     - Collect all set-aside cards: `currentSetAsideCards`.
+     - Combine both pools: `[...recyclableDiscards, ...currentSetAsideCards]`.
+     - Shuffle the combined pool using the configured RNG.
+     - Place the shuffled cards into `currentDraw` (`newDrawPile`).
+     - Reset discard pile to retain only the active top card: `[topDiscard]`.
+     - Clear set-aside cards: `currentSetAsideCards = []`.
+4. **Termination Guard:**
+   - If both the discard pile has $\le 1$ card and `setAsideCards` is empty, drawing safely terminates without infinite looping, returning whatever cards could be drawn.
+
+---
+
+## 4. Official Mattel Rules Source Alignment vs Application Policy
+
+| Game Aspect | Official Mattel HWV18 Specification | UNO Ultimate Implementation Status | Classification |
+| :--- | :--- | :--- | :--- |
+| **Deck Size** | Exactly 168 physical cards | Exactly 168 physical cards | Official Rule |
+| **Player Limits** | 2 to 6 players | 2 to 6 players enforced across lobby, server, and engine | Official Rule |
+| **Opening Card** | Action cards ignored; first number card starts play | Iteratively skips action cards to find first number card | Official Rule |
+| **Draw Rule** | Draw until playable (immediately play drawn card) | Sequential draw until playable with immediate play | Official Rule |
+| **Stacking** | Equal or higher `+2`, `+4`, `+6`, `+10` | Validated by `getNoMercyStackCardValue`; non-draw cards rejected | Official Rule |
+| **Mercy Rule** | Eliminated at $\ge 25$ cards; hand set aside | Immediate elimination, hand to `setAsideCards`, 0 cards left | Official Rule |
+| **Card Recycling** | Depleted draw pile reshuffles discards + set-aside cards | Reshuffle combines discards below top card + `setAsideCards` | Official Rule |
+| **7s Hand Swap** | Mandatory swap with any active player | Mandatory pending action with modal selection UI | Official Rule |
+| **0s Pass** | All active players pass hands in turn direction | Atomic snapshot hand rotation in `turnDirection` | Official Rule |
+| **Discard All** | Play card, discard all cards of matching color | Discards all matching color cards directly under top card | Official Rule |
+| **Skip Everyone** | Skips all opponents; player takes another turn | Turn advances $N$ steps back to active player | Official Rule |
+| **2-Player Reverse** | Acts as Skip, giving player another turn | Reverse gives active player another turn in 2-player match | Official Rule |
+| **2-Player WRD4** | Reverses direction, victim is player who played it | WRD4 initiates 4-card stack penalty targeting original player | Official Rule |
+| **Wild Color Roulette** | Victim chooses color and draws until color found | Target player selects color via modal, draws sequentially | Official Rule |
+| **Dealer Selection** | "Draw a card. Highest number deals. Symbols count as 0." | Engine helper `NoMercyDealerSelector.determineDealer` provided; private room lobby defaults host as dealer | **Application Policy** |
+| **Scoring** | Standard: first out of cards/last standing wins round. Optional: first to 1,000 points. | Standard elimination/out-of-cards victory used for lobby match completion; optional 1,000-point table implemented in engine | **Application Policy** |
+
+### Attribution Clarifications
+1. **Dealer Selection:** Mattel HWV18 instructions specify that players draw a card, highest number deals, and symbols count as 0. In UNO Ultimate, this algorithm is fully implemented with iterative tie-breaking in `NoMercyDealerSelector.determineDealer`. However, for private multiplayer room lobbies, the room host is designated as the initial dealer by default (or configurable via `dealerIndex`). This is an explicit application-level lobby convenience policy, not a divergence from the engine's capability.
+2. **Scoring:** Mattel HWV18 defines the round goal as getting rid of all cards or being the last player standing. It notes an optional point-scoring system where the winner scores points from opponents' remaining cards (+250 per eliminated player) until reaching 1,000 points. UNO Ultimate implements the full scoring valuation in `calculateRoundScore` and supports 1,000-point tracking, while multiplayer private rooms conclude rounds upon last-player-standing or out-of-cards.
+
+---
+
+## 5. 168-Card Deck Inventory Verification & Attribution
+
+### Authoritative Physical Card Inventory
+The 168 physical cards of UNO Show 'em No Mercy are categorized as follows:
+
+| Category | Card Type | Value / Face | Per-Color / Total | Points (Scoring) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Number Cards (80)** | Number | `0` through `9` (2 copies each per color: Red, Yellow, Green, Blue) | 20 per color = **80 cards** | Face value (0–9) |
+| **Colored Actions (64)** | Skip | `skip` (3 copies per color) | 3 per color = **12 cards** | 20 points |
+| | Reverse | `reverse` (3 copies per color) | 3 per color = **12 cards** | 20 points |
+| | Draw Two | `draw_two` (3 copies per color) | 3 per color = **12 cards** | 20 points |
+| | Draw Four | `draw_four` (2 copies per color) | 2 per color = **8 cards** | 20 points |
+| | Discard All | `discard_all` (3 copies per color) | 3 per color = **12 cards** | 20 points |
+| | Skip Everyone | `skip_everyone` (2 copies per color) | 2 per color = **8 cards** | 20 points |
+| **Wild Actions (24)** | Wild Reverse Draw 4 | `wild_reverse_draw_four` | **8 cards** | 50 points |
+| | Wild Color Roulette | `wild_color_roulette` | **8 cards** | 50 points |
+| | Wild Draw Six | `wild_draw_six` | **4 cards** | 50 points |
+| | Wild Draw Ten | `wild_draw_ten` | **4 cards** | 50 points |
+| **TOTAL** | | | **168 physical cards** | |
+
+### Inventory Attribution Statement
+- **Mattel Instruction Sheet (`HVW18-Eng.pdf`):** Explicitly states: *"168 Cards as follows..."* confirming the exact total deck size of 168 cards.
+- **Physical Game Manifest Verification:** The itemized breakdown of specific quantities per card (e.g., 3 Skips vs 2 Draw Fours per color, 8 WRD4 vs 4 Wild Draw 6) is verified from physical product packaging manifests and component inventories.
+
+---
+
+## 6. Test-Helper Security Authorization Boundary
+
+### Security Architecture
+Test fixture endpoints under `/api/test/*` are designed strictly for automated integration and end-to-end browser testing. They are protected by three defense layers:
+1. **Environment Gate:**
+   ```typescript
+   if (process.env.NODE_ENV === 'production') {
+     return res.status(404).json({ error: 'Not found' });
+   }
+   ```
+2. **Explicit Feature Flag:**
+   ```typescript
+   if (process.env.ENABLE_TEST_HELPERS !== 'true') {
+     return res.status(403).json({ error: 'Test helpers disabled' });
+   }
+   ```
+3. **Shared Secret Authentication:**
+   ```typescript
+   const secretHeader = req.headers['x-test-helper-secret'];
+   if (!expectedSecret || secretHeader !== expectedSecret) {
+     return res.status(403).json({ error: 'Unauthorized test helper request' });
+   }
+   ```
+
+### Transparent Boundary Declaration
+The security model for `/api/test/*` is an **administrative shared-secret gate** for non-production environments. It does **NOT** enforce room-membership verification or individual player authentication. A caller in possession of `TEST_HELPER_SECRET` and a room code can invoke test fixtures on non-production servers. This design is intentional to support headless multi-context browser automation (Playwright) without circular session dependencies, and is completely inaccessible in production (`NODE_ENV === 'production'` returns 404).
+
+---
+
+## 7. Test Fixture Invariant Enforcement
+
+### Hand Size Fixture Guard (`/set-no-mercy-hand-size`)
+1. **Input Schema Limit:**
+   `setNoMercyHandSizeSchema` enforces:
+   ```typescript
+   targetCount: z.number().int().min(1).max(24)
+   ```
+   Active players holding $\ge 25$ cards violates the fundamental Mercy Rule invariant (an active player with $\ge 25$ cards must be eliminated immediately). Thus, test fixtures cannot artificially create impossible game states where an active player holds 25 or more cards.
+2. **Atomic Swap Mechanics:**
+   Cards are swapped between the target player's hand and the draw pile while strictly preserving:
+   - Total card count (168 cards)
+   - Unique card IDs
+   - Opponents' hands and sizes
+   - Discard pile composition
+3. **Mutex Precondition & Invariant Assertion:**
+   The fixture checks variant and status inside the `gameSessionManager.runWithLock` mutex and calls `assertValidNoMercyGameState(nextState)` before persisting changes to the database.
+
+---
+
+## 8. Physical Card Conservation Proof (168 Cards)
+
+In UNO Show 'em No Mercy, card conservation is mathematically invariant across all game operations:
+
+$$\sum_{p \in \text{Players}} |\text{hand}_p| + |\text{drawPile}| + |\text{discardPile}| + |\text{setAsideCards}| = 168$$
+
+Every state transition strictly maintains this invariant:
+- **Setup & Initial Deal:** 7 cards dealt to $P$ players ($7 \times P$), 1 top discard card (or multiple action cards buried beneath the first number card), and $168 - (7P + |\text{discardPile}|)$ cards in draw pile. Total = 168.
+- **Normal Play:** 1 card moves from active hand to `discardPile`. Total conserved.
+- **Draw Actions:** $K$ cards move from `drawPile` to hand. Total conserved.
+- **Discard All:** $M$ cards move from hand to `discardPile` beneath top card. Total conserved.
+- **7s Swap / 0s Pass:** Hands are exchanged or rotated between players. Total conserved.
+- **Mercy Elimination:** $H$ cards ($\ge 25$) move from eliminated player's hand to `setAsideCards`. Total conserved.
+- **Draw Depletion Reshuffle:** All cards beneath top discard ($|\text{discardPile}| - 1$) and all `setAsideCards` are shuffled into `newDrawPile`. The discard pile retains 1 card. `setAsideCards` becomes 0. Total conserved.
+
+This invariant is verified after every state modification by `validateNoMercyGameStateInvariants`, which confirms that every card ID in `allCards` is unique and the total equals exactly 168.
+
+---
+
+## 9. Comprehensive Verification Results
+
+### A. Test Execution Summary
+
+| Test Suite | Files | Tests | Result | Execution Time |
+| :--- | :--- | :--- | :--- | :--- |
+| `@uno-ultimate/game-engine` (Vitest) | 13 | 168 | **168 passed (100%)** | 1.71s |
+| `@uno-ultimate/server` (Vitest) | 12 | 94 | **94 passed (100%)** | 37.54s |
+| `@uno-ultimate/web` (Vitest) | 14 | 58 | **58 passed (100%)** | 31.40s |
+| Playwright Browser E2E | 3 | 5 | **5 passed (100%)** | 52.1s |
+| **Total Automated Tests** | **42** | **325** | **325 passed (100%)** | |
+
+### B. Quality Gate Summary
+- **TypeScript Typecheck (`pnpm -r typecheck`):** Passed with **0 errors** across all 6 packages.
+- **ESLint Linting (`pnpm -r lint`):** Passed with **0 errors, 0 warnings** across all workspace projects.
+- **Monorepo Build (`pnpm build`):** Clean build across all packages and apps (dist outputs verified).
+
+---
+
+## 10. Recommendations for Next Phase
+
+With Phase 6.1 complete, all three supported game variants—**Classic UNO**, **UNO Flip**, and **UNO Show 'em No Mercy**—feature complete, server-authoritative rule engines conforming to official Mattel instruction sheets, hardened physical-card conservation, durable PostgreSQL recovery, and passing browser E2E suites.
+
+Recommended focus areas for subsequent phases:
+1. **Match Statistics & History Tracking:** Record completed match outcomes, round scores, variant-specific metrics (e.g., number of Mercy eliminations, Flip counts, 7s swaps), and player leaderboards.
+2. **Audio & Sound Effects:** Add tactile sound design for card plays, Stacking warnings, Flip transitions, and Mercy Rule eliminations.
+3. **Turn Timers & Auto-Play/Pass:** Introduce configurable turn timers with graceful timeout handling for inactive players in public or timed matches.

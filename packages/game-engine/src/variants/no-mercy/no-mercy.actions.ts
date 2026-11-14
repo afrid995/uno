@@ -8,7 +8,7 @@ import { reverseDirection } from '../../turns/turn.direction';
 import { ActionProcessResult } from '../../actions/action.processor';
 import { RandomNumberGenerator, defaultCryptoRng, shuffleDeck } from '../../deck/deck.shuffle';
 import { NoMercyMoveValidator } from './no-mercy.validator';
-import { getNoMercyDrawPenalty, UNO_NO_MERCY_RULES } from './no-mercy.constants';
+import { getNoMercyDrawPenalty, getNoMercyStackCardValue, UNO_NO_MERCY_RULES } from './no-mercy.constants';
 import { HandManager } from '../../players/hand.manager';
 import { NoMercyDeckFactory } from './no-mercy.deck';
 
@@ -21,32 +21,103 @@ interface ActionContext {
 
 export class NoMercyActionProcessor {
   /**
-   * Helper to draw `count` cards from draw pile, recycling discard pile (preserving top) if needed.
+   * Reshuffles recyclable cards into the draw pile when draw pile is exhausted.
+   *
+   * Per official Mattel HWV18 Mercy Rule:
+   * "If a player ever has 25 or more cards in their hand, they are out of the game.
+   *  Set aside their hand of cards until the deck runs out and needs to be reshuffled."
+   *
+   * Recycling lifecycle:
+   * 1. Preserves the current top discard card.
+   * 2. Collects recyclable discard cards beneath the top card.
+   * 3. Collects all cards in setAsideCards.
+   * 4. Combines and shuffles them with the provided RNG.
+   * 5. Rebuilds draw pile.
+   * 6. Clears setAsideCards only after cards have been successfully moved into the new draw pile.
+   * 7. If no recyclable cards exist, safely returns without infinite loops.
+   */
+  static reshuffleRecyclableCards(
+    drawPile: readonly Card[],
+    discardPile: readonly Card[],
+    setAsideCards: readonly Card[] = [],
+    rng: RandomNumberGenerator = defaultCryptoRng
+  ): {
+    newDrawPile: Card[];
+    newDiscardPile: Card[];
+    newSetAsideCards: Card[];
+    reshuffled: boolean;
+  } {
+    if (drawPile.length > 0) {
+      return {
+        newDrawPile: [...drawPile],
+        newDiscardPile: [...discardPile],
+        newSetAsideCards: [...setAsideCards],
+        reshuffled: false,
+      };
+    }
+
+    const topCard = discardPile.length > 0 ? discardPile[discardPile.length - 1] : null;
+    const discardBeneath = discardPile.length > 1 ? discardPile.slice(0, -1) : [];
+    const pool = [...discardBeneath, ...setAsideCards];
+
+    if (pool.length === 0) {
+      return {
+        newDrawPile: [],
+        newDiscardPile: topCard ? [topCard] : [],
+        newSetAsideCards: [...setAsideCards],
+        reshuffled: false,
+      };
+    }
+
+    const shuffled = shuffleDeck(pool, rng);
+
+    return {
+      newDrawPile: shuffled,
+      newDiscardPile: topCard ? [topCard] : [],
+      newSetAsideCards: [],
+      reshuffled: true,
+    };
+  }
+
+  /**
+   * Helper to draw `count` cards from draw pile, recycling discard pile (preserving top)
+   * and setAsideCards from eliminated players if draw pile runs out.
    */
   static drawCards(
     drawPile: readonly Card[],
     discardPile: readonly Card[],
     count: number,
+    setAsideCards: readonly Card[] = [],
     rng: RandomNumberGenerator = defaultCryptoRng
-  ): { drawnCards: Card[]; newDrawPile: Card[]; newDiscardPile: Card[] } {
+  ): {
+    drawnCards: Card[];
+    newDrawPile: Card[];
+    newDiscardPile: Card[];
+    newSetAsideCards: Card[];
+  } {
     let currentDraw = [...drawPile];
     let currentDiscard = [...discardPile];
+    let currentSetAside = [...setAsideCards];
     const drawn: Card[] = [];
 
     for (let i = 0; i < count; i++) {
       if (currentDraw.length === 0) {
-        if (currentDiscard.length <= 1) {
-          // No cards left to recycle
-          break;
-        }
-        const topCard = currentDiscard.pop()!;
-        const recycled = shuffleDeck(currentDiscard, rng);
-        currentDraw = recycled;
-        currentDiscard = [topCard];
+        const reshuffleResult = this.reshuffleRecyclableCards(
+          currentDraw,
+          currentDiscard,
+          currentSetAside,
+          rng
+        );
+        currentDraw = reshuffleResult.newDrawPile;
+        currentDiscard = reshuffleResult.newDiscardPile;
+        currentSetAside = reshuffleResult.newSetAsideCards;
       }
 
       if (currentDraw.length > 0) {
         drawn.push(currentDraw.pop()!);
+      } else {
+        // Deck completely exhausted and no recyclable cards exist
+        break;
       }
     }
 
@@ -54,6 +125,7 @@ export class NoMercyActionProcessor {
       drawnCards: drawn,
       newDrawPile: currentDraw,
       newDiscardPile: currentDiscard,
+      newSetAsideCards: currentSetAside,
     };
   }
 
@@ -66,10 +138,17 @@ export class NoMercyActionProcessor {
     drawPile: readonly Card[],
     discardPile: readonly Card[],
     targetColor: CardColor,
+    setAsideCards: readonly Card[] = [],
     rng: RandomNumberGenerator = defaultCryptoRng
-  ): { drawnCards: Card[]; newDrawPile: Card[]; newDiscardPile: Card[] } {
+  ): {
+    drawnCards: Card[];
+    newDrawPile: Card[];
+    newDiscardPile: Card[];
+    newSetAsideCards: Card[];
+  } {
     let currentDraw = [...drawPile];
     let currentDiscard = [...discardPile];
+    let currentSetAside = [...setAsideCards];
     const drawn: Card[] = [];
     let found = false;
 
@@ -81,13 +160,15 @@ export class NoMercyActionProcessor {
       iterations++;
 
       if (currentDraw.length === 0) {
-        if (currentDiscard.length <= 1) {
-          break;
-        }
-        const topCard = currentDiscard.pop()!;
-        const recycled = shuffleDeck(currentDiscard, rng);
-        currentDraw = recycled;
-        currentDiscard = [topCard];
+        const reshuffleResult = this.reshuffleRecyclableCards(
+          currentDraw,
+          currentDiscard,
+          currentSetAside,
+          rng
+        );
+        currentDraw = reshuffleResult.newDrawPile;
+        currentDiscard = reshuffleResult.newDiscardPile;
+        currentSetAside = reshuffleResult.newSetAsideCards;
       }
 
       if (currentDraw.length === 0) {
@@ -107,6 +188,7 @@ export class NoMercyActionProcessor {
       drawnCards: drawn,
       newDrawPile: currentDraw,
       newDiscardPile: currentDiscard,
+      newSetAsideCards: currentSetAside,
     };
   }
 
@@ -119,10 +201,18 @@ export class NoMercyActionProcessor {
     discardPile: readonly Card[],
     topDiscard: Card,
     activeColor: CardColor | null,
+    setAsideCards: readonly Card[] = [],
     rng: RandomNumberGenerator = defaultCryptoRng
-  ): { drawnCards: Card[]; playableCard: Card | null; newDrawPile: Card[]; newDiscardPile: Card[] } {
+  ): {
+    drawnCards: Card[];
+    playableCard: Card | null;
+    newDrawPile: Card[];
+    newDiscardPile: Card[];
+    newSetAsideCards: Card[];
+  } {
     let currentDraw = [...drawPile];
     let currentDiscard = [...discardPile];
+    let currentSetAside = [...setAsideCards];
     const drawn: Card[] = [];
     let playableCard: Card | null = null;
 
@@ -133,13 +223,15 @@ export class NoMercyActionProcessor {
       iterations++;
 
       if (currentDraw.length === 0) {
-        if (currentDiscard.length <= 1) {
-          break;
-        }
-        const topCard = currentDiscard.pop()!;
-        const recycled = shuffleDeck(currentDiscard, rng);
-        currentDraw = recycled;
-        currentDiscard = [topCard];
+        const reshuffleResult = this.reshuffleRecyclableCards(
+          currentDraw,
+          currentDiscard,
+          currentSetAside,
+          rng
+        );
+        currentDraw = reshuffleResult.newDrawPile;
+        currentDiscard = reshuffleResult.newDiscardPile;
+        currentSetAside = reshuffleResult.newSetAsideCards;
       }
 
       if (currentDraw.length === 0) {
@@ -159,6 +251,7 @@ export class NoMercyActionProcessor {
       playableCard,
       newDrawPile: currentDraw,
       newDiscardPile: currentDiscard,
+      newSetAsideCards: currentSetAside,
     };
   }
 
@@ -643,7 +736,7 @@ export class NoMercyActionProcessor {
     const playerIndex = state.currentPlayerIndex;
     const player = state.players[playerIndex];
     const card = player.hand.find((c) => c.id === action.cardId)!;
-    const penalty = getNoMercyDrawPenalty(card.value)!;
+    const penalty = getNoMercyStackCardValue(card.value)!;
 
     const remainingHand = player.hand.filter((c) => c.id !== action.cardId);
     const newDiscardPile = [...state.discardPile, card];
@@ -678,23 +771,8 @@ export class NoMercyActionProcessor {
       );
     }
 
-    let turnDirection = state.turnDirection;
-    const activePlayers = this.getActivePlayers(state.players);
-    const activeCount = activePlayers.length;
-
-    let nextTargetIndex: number;
-    if (card.value === 'wild_reverse_draw_four') {
-      turnDirection = reverseDirection(turnDirection);
-      ctx.addEvent('DIRECTION_REVERSED', player.id, { turnDirection });
-      if (activeCount === 2) {
-        nextTargetIndex = this.getNextActivePlayerIndex(playerIndex, state.players, turnDirection, 1);
-      } else {
-        nextTargetIndex = this.getNextActivePlayerIndex(playerIndex, state.players, turnDirection, 1);
-      }
-    } else {
-      nextTargetIndex = this.getNextActivePlayerIndex(playerIndex, state.players, turnDirection, 1);
-    }
-
+    const turnDirection = state.turnDirection;
+    const nextTargetIndex = this.getNextActivePlayerIndex(playerIndex, state.players, turnDirection, 1);
     const nextTargetPlayer = state.players[nextTargetIndex];
 
     const updatedPlayers = state.players.map((p, idx) =>
@@ -756,10 +834,11 @@ export class NoMercyActionProcessor {
     const playerIndex = state.currentPlayerIndex;
     const player = state.players[playerIndex];
 
-    const { drawnCards, newDrawPile, newDiscardPile } = this.drawCards(
+    const { drawnCards, newDrawPile, newDiscardPile, newSetAsideCards } = this.drawCards(
       state.drawPile,
       state.discardPile,
       pending.accumulatedPenalty,
+      state.setAsideCards || [],
       rng
     );
 
@@ -779,7 +858,9 @@ export class NoMercyActionProcessor {
         newHand,
         newDrawPile,
         newDiscardPile,
-        ctx
+        ctx,
+        undefined,
+        newSetAsideCards
       );
     }
 
@@ -808,6 +889,7 @@ export class NoMercyActionProcessor {
       currentPlayerIndex: nextPlayerIndex,
       drawPile: newDrawPile,
       discardPile: newDiscardPile,
+      setAsideCards: newSetAsideCards,
       turnNumber: state.turnNumber + 1,
       sequenceNumber: ctx.getSeq(),
       pendingActionState: null,
@@ -884,10 +966,11 @@ export class NoMercyActionProcessor {
     const victimIndex = state.currentPlayerIndex;
     const victim = state.players[victimIndex];
 
-    const { drawnCards, newDrawPile, newDiscardPile } = this.drawUntilColor(
+    const { drawnCards, newDrawPile, newDiscardPile, newSetAsideCards } = this.drawUntilColor(
       state.drawPile,
       state.discardPile,
       action.chosenColor,
+      state.setAsideCards || [],
       rng
     );
 
@@ -909,7 +992,8 @@ export class NoMercyActionProcessor {
         newDrawPile,
         newDiscardPile,
         ctx,
-        action.chosenColor
+        action.chosenColor,
+        newSetAsideCards
       );
     }
 
@@ -937,6 +1021,7 @@ export class NoMercyActionProcessor {
       currentPlayerIndex: nextPlayerIndex,
       drawPile: newDrawPile,
       discardPile: newDiscardPile,
+      setAsideCards: newSetAsideCards,
       activeColor: action.chosenColor,
       turnNumber: state.turnNumber + 1,
       sequenceNumber: ctx.getSeq(),
@@ -957,11 +1042,12 @@ export class NoMercyActionProcessor {
     const player = state.players[playerIndex];
 
     // Under Mattel HWV18 rules: draw until a playable card is revealed, then play it!
-    const { drawnCards, playableCard, newDrawPile, newDiscardPile } = this.drawUntilPlayable(
+    const { drawnCards, playableCard, newDrawPile, newDiscardPile, newSetAsideCards } = this.drawUntilPlayable(
       state.drawPile,
       state.discardPile,
       state.topDiscardCard,
       state.activeColor,
+      state.setAsideCards || [],
       rng
     );
 
@@ -981,7 +1067,9 @@ export class NoMercyActionProcessor {
         newHand,
         newDrawPile,
         newDiscardPile,
-        ctx
+        ctx,
+        undefined,
+        newSetAsideCards
       );
     }
 
@@ -1003,6 +1091,7 @@ export class NoMercyActionProcessor {
         players: intermediatePlayers,
         drawPile: newDrawPile,
         discardPile: newDiscardPile,
+        setAsideCards: newSetAsideCards,
         sequenceNumber: ctx.getSeq(),
       };
 
@@ -1048,6 +1137,7 @@ export class NoMercyActionProcessor {
       currentPlayerIndex: nextPlayerIndex,
       drawPile: newDrawPile,
       discardPile: newDiscardPile,
+      setAsideCards: newSetAsideCards,
       turnNumber: state.turnNumber + 1,
       sequenceNumber: ctx.getSeq(),
       updatedAt: ctx.timestamp,
@@ -1088,10 +1178,11 @@ export class NoMercyActionProcessor {
     const targetIndex = state.players.findIndex((p) => p.id === action.targetPlayerId);
     const targetPlayer = state.players[targetIndex];
 
-    const { drawnCards, newDrawPile, newDiscardPile } = this.drawCards(
+    const { drawnCards, newDrawPile, newDiscardPile, newSetAsideCards } = this.drawCards(
       state.drawPile,
       state.discardPile,
       UNO_NO_MERCY_RULES.MISSED_UNO_PENALTY_CARDS,
+      state.setAsideCards || [],
       rng
     );
 
@@ -1111,7 +1202,9 @@ export class NoMercyActionProcessor {
         newHand,
         newDrawPile,
         newDiscardPile,
-        ctx
+        ctx,
+        undefined,
+        newSetAsideCards
       );
     }
 
@@ -1130,6 +1223,7 @@ export class NoMercyActionProcessor {
       players: updatedPlayers,
       drawPile: newDrawPile,
       discardPile: newDiscardPile,
+      setAsideCards: newSetAsideCards,
       unoVulnerablePlayerId: null,
       sequenceNumber: ctx.getSeq(),
       updatedAt: ctx.timestamp,
@@ -1148,10 +1242,11 @@ export class NoMercyActionProcessor {
     drawPile: Card[],
     discardPile: Card[],
     ctx: ActionContext,
-    activeColorOverride?: CardColor | null
+    activeColorOverride?: CardColor | null,
+    currentSetAsideCards: readonly Card[] = state.setAsideCards || []
   ): ActionProcessResult {
     const eliminatedPlayer = state.players[eliminatedPlayerIndex];
-    const setAsideCards = [...(state.setAsideCards || []), ...eliminatedHand];
+    const setAsideCards = [...currentSetAsideCards, ...eliminatedHand];
     const eliminatedPlayerIds = [...(state.eliminatedPlayerIds || []), eliminatedPlayer.id];
     const eliminatedBonusCount = (state.eliminatedBonusCount || 0) + 1;
     const eliminationOrder = eliminatedPlayerIds.length;

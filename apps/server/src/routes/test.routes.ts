@@ -113,7 +113,8 @@ const setNoMercyHandSizeSchema = z.object({
   roomCode: z.string().trim().min(1).max(10),
   targetPlayerId: z.string().uuid().optional(),
   targetUsername: z.string().optional(),
-  targetCount: z.number().int().min(1).max(50),
+  // Maximum active hand size capped at 24 to preserve active-player Mercy Rule validity (< 25)
+  targetCount: z.number().int().min(1).max(24),
 });
 
 /**
@@ -468,6 +469,7 @@ router.post('/set-no-mercy-hand-size', async (req: Request, res: Response) => {
         targetCount
       );
 
+      assertValidNoMercyGameState(nextState);
       await gamePersistenceService.persistActionBatch(activeSession.matchId, nextState, []);
       activeSession.state = nextState;
       gameStatePublisher.publishToAllParticipants(nextState, guestSockets);

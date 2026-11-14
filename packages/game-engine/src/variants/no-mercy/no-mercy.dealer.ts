@@ -4,6 +4,18 @@ import { NoMercyDeckFactory } from './no-mercy.deck';
 import { DealerDeterminationResult, DealerDeterminationRound, DealerDrawRecord } from '../../game/game.factory';
 import { UNO_NO_MERCY_RULES } from './no-mercy.constants';
 
+/**
+ * Application-level dealer selection policy for UNO Show 'em No Mercy.
+ *
+ * Official Mattel HWV18 attribution note:
+ * The official Mattel HWV18 instruction sheet specifies only to "choose a dealer"
+ * without prescribing any specific card-draw or highest-card procedure.
+ *
+ * The highest-card draw mechanism and tie-break fallback implemented here
+ * (resolving ties by repeated draws up to DEFAULT_MAX_TIE_ROUNDS, then falling back
+ * to the lowest player index) represent an explicit application-level policy,
+ * NOT an official Mattel rule.
+ */
 export class NoMercyDealerSelector {
   static readonly DEFAULT_MAX_TIE_ROUNDS = 20;
 

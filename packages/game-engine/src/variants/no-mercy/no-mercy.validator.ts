@@ -3,7 +3,7 @@ import { GameAction } from '../../actions/action.types';
 import { Card, CardColor, ClassicCardColor } from '../../cards/card.types';
 import { isWildCard } from '../../cards/card.validation';
 import { ValidationResult } from '../../validation/move.validator';
-import { getNoMercyDrawPenalty, NO_MERCY_COLORS } from './no-mercy.constants';
+import { getNoMercyStackCardValue, NO_MERCY_COLORS } from './no-mercy.constants';
 
 export class NoMercyMoveValidator {
   /**
@@ -103,21 +103,21 @@ export class NoMercyMoveValidator {
           return { valid: false, code: 'CARD_NOT_IN_HAND', message: 'Card not in hand.' };
         }
 
-        const penalty = getNoMercyDrawPenalty(card.value);
-        if (penalty === null) {
+        const stackValue = getNoMercyStackCardValue(card.value);
+        if (stackValue === null) {
           return {
             valid: false,
             code: 'INVALID_CARD_MATCH',
-            message: `Card ${card.value} is not a Draw card and cannot be stacked onto an active Draw penalty.`,
+            message: `Card ${card.value} is not an eligible Draw Card (+2, +4, +6, +10) and cannot be stacked onto an active Draw penalty.`,
           };
         }
 
         // Must be equal or higher value than the last played draw card
-        if (penalty < pending.lastStackedValue) {
+        if (stackValue < pending.lastStackedValue) {
           return {
             valid: false,
             code: 'INVALID_CARD_MATCH',
-            message: `Cannot stack a +${penalty} onto a +${pending.lastStackedValue}. Stacking card must be equal or higher in value.`,
+            message: `Cannot stack a +${stackValue} onto a +${pending.lastStackedValue}. Stacking card must be equal or higher in value.`,
           };
         }
 

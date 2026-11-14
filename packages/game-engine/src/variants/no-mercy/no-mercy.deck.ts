@@ -26,6 +26,12 @@ export class NoMercyDeckFactory {
    *    - Wild Draw 10: 4 cards (Score: 50)
    *
    * Grand Total = 80 + 64 + 24 = 168 cards.
+   *
+   * Inventory verification source attribution:
+   * Mattel's official instruction sheet (HVW18-Eng.pdf) confirms the total of 168 cards
+   * and defines all card rules and functions, but does not itemize the exact copy count
+   * per individual action card. The itemized distribution above is verified against physical
+   * HWV18 game box contents and community deck inventories.
    */
   static createDeck(): Card[] {
     const cards: Card[] = [];
