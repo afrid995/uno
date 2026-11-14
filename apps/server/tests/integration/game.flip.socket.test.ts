@@ -108,8 +108,9 @@ describe('UNO Flip Multiplayer Integration & Persistence Tests', () => {
     const { state: p1Initial } = await p1InitialPromise;
     const { state: p2Initial } = await p2InitialPromise;
 
-    expect(p1Initial.activeSide).toBe('LIGHT');
-    expect(p2Initial.activeSide).toBe('LIGHT');
+    // Both players receive synchronized initial side (per GDR44, starts LIGHT unless opening card is Flip)
+    expect(p1Initial.activeSide).toBe(p2Initial.activeSide);
+    expect(['LIGHT', 'DARK']).toContain(p1Initial.activeSide);
     expect(p1Initial.self.hand.length).toBeGreaterThanOrEqual(7);
     expect(p2Initial.self.hand.length).toBeGreaterThanOrEqual(7);
 
@@ -128,6 +129,7 @@ describe('UNO Flip Multiplayer Integration & Persistence Tests', () => {
 
     session!.state = {
       ...session!.state,
+      activeSide: 'LIGHT',
       topDiscardCard: blueDiscard,
       discardPile: [blueDiscard],
       activeColor: 'blue',

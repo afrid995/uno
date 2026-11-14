@@ -10,6 +10,7 @@ import {
   validateFlipGameStateInvariants,
 } from '@uno-ultimate/game-engine';
 import { timingSafeSecretCompare } from '../utils/crypto';
+import { AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 
 const router: Router = Router();
@@ -101,7 +102,8 @@ const injectStartingWildSchema = z.object({
  * POST /api/test/inject-flip-card
  * Safely injects a playable Flip card into the active player's hand by swapping
  * with an existing card from within the game's canonical 112-card inventory.
- * Protected by match mutex and committed to PostgreSQL before in-memory state update.
+ * Protected by match mutex with state-dependent preconditions verified under lock,
+ * and committed to PostgreSQL before in-memory state update.
  */
 router.post('/inject-flip-card', async (req: Request, res: Response) => {
   const parseResult = injectFlipCardSchema.safeParse(req.body);
@@ -127,40 +129,33 @@ router.post('/inject-flip-card', async (req: Request, res: Response) => {
     return;
   }
 
-  if (session.state.variant !== 'uno_flip') {
-    res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_VARIANT', message: 'Test fixture is only valid for UNO Flip matches.' },
-    });
-    return;
-  }
-
-  if (session.state.status !== 'IN_PROGRESS') {
-    res.status(400).json({
-      success: false,
-      error: { code: 'MATCH_NOT_ACTIVE', message: 'Match must be IN_PROGRESS to apply test fixtures.' },
-    });
-    return;
-  }
-
   try {
     const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
-      // 1. Compute state mutation with pure fixture helper (preserves 112 cards & unique IDs)
+      // 1. Locked state-dependent precondition checks (guards against concurrent match completion/mutation)
+      if (activeSession.state.variant !== 'uno_flip') {
+        throw new AppError(400, 'INVALID_VARIANT', 'Test fixture is only valid for UNO Flip matches.');
+      }
+
+      if (activeSession.state.status !== 'IN_PROGRESS') {
+        throw new AppError(400, 'MATCH_NOT_ACTIVE', 'Match must be IN_PROGRESS to apply test fixtures.');
+      }
+
+      // 2. Compute state mutation with pure fixture helper (preserves 112 cards & unique IDs)
       const { nextState, injectedCard } = FlipFixtureBuilder.injectPlayableFlipCard(
         activeSession.state,
         targetPlayerId
       );
 
-      // 2. Validate strict invariants
+      // 3. Validate strict invariants
       assertValidFlipGameState(nextState);
 
-      // 3. Persist to database FIRST (if this fails, activeSession.state is unchanged)
+      // 4. Persist to database FIRST (if this fails, activeSession.state is unchanged)
       await gamePersistenceService.persistActionBatch(activeSession.matchId, nextState, []);
 
-      // 4. Update in-memory state ONLY AFTER successful database commit
+      // 5. Update in-memory state ONLY AFTER successful database commit
       activeSession.state = nextState;
 
-      // 5. Broadcast updated state to all connected participants
+      // 6. Broadcast updated state to all connected participants
       gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
 
       logger.info('Test helper: Flip card injected safely', {
@@ -181,6 +176,13 @@ router.post('/inject-flip-card', async (req: Request, res: Response) => {
       data: outcome,
     });
   } catch (err: unknown) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        success: false,
+        error: { code: err.code, message: err.message },
+      });
+      return;
+    }
     const message = (err as Error).message || 'Failed to inject Flip card';
     logger.error('Error injecting Flip card fixture', { error: message });
     res.status(500).json({
@@ -194,6 +196,7 @@ router.post('/inject-flip-card', async (req: Request, res: Response) => {
  * POST /api/test/inject-starting-wild
  * Safely establishes an opening Starting Wild card state by swapping a physical
  * Wild card from the draw pile onto the discard pile, strictly preserving all 112 cards.
+ * Protected by match mutex with state-dependent preconditions verified under lock.
  */
 router.post('/inject-starting-wild', async (req: Request, res: Response) => {
   const parseResult = injectStartingWildSchema.safeParse(req.body);
@@ -219,37 +222,30 @@ router.post('/inject-starting-wild', async (req: Request, res: Response) => {
     return;
   }
 
-  if (session.state.variant !== 'uno_flip') {
-    res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_VARIANT', message: 'Test fixture is only valid for UNO Flip matches.' },
-    });
-    return;
-  }
-
-  if (session.state.status !== 'IN_PROGRESS') {
-    res.status(400).json({
-      success: false,
-      error: { code: 'MATCH_NOT_ACTIVE', message: 'Match must be IN_PROGRESS to apply test fixtures.' },
-    });
-    return;
-  }
-
   try {
     const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
-      // 1. Compute mutated state with pure fixture helper (preserves 112 cards & unique IDs)
+      // 1. Locked state-dependent precondition checks (guards against concurrent match completion/mutation)
+      if (activeSession.state.variant !== 'uno_flip') {
+        throw new AppError(400, 'INVALID_VARIANT', 'Test fixture is only valid for UNO Flip matches.');
+      }
+
+      if (activeSession.state.status !== 'IN_PROGRESS') {
+        throw new AppError(400, 'MATCH_NOT_ACTIVE', 'Match must be IN_PROGRESS to apply test fixtures.');
+      }
+
+      // 2. Compute mutated state with pure fixture helper (preserves 112 cards & unique IDs)
       const { nextState, wildCard } = FlipFixtureBuilder.injectStartingWild(activeSession.state);
 
-      // 2. Validate strict invariants
+      // 3. Validate strict invariants
       assertValidFlipGameState(nextState);
 
-      // 3. Persist to database FIRST
+      // 4. Persist to database FIRST
       await gamePersistenceService.persistActionBatch(activeSession.matchId, nextState, []);
 
-      // 4. Update in-memory state ONLY AFTER successful database commit
+      // 5. Update in-memory state ONLY AFTER successful database commit
       activeSession.state = nextState;
 
-      // 5. Broadcast to connected participants
+      // 6. Broadcast to connected participants
       gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
 
       logger.info('Test helper: Starting Wild state injected safely', {
@@ -273,6 +269,13 @@ router.post('/inject-starting-wild', async (req: Request, res: Response) => {
       data: outcome,
     });
   } catch (err: unknown) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({
+        success: false,
+        error: { code: err.code, message: err.message },
+      });
+      return;
+    }
     const message = (err as Error).message || 'Failed to inject Starting Wild';
     logger.error('Error injecting Starting Wild fixture', { error: message });
     res.status(500).json({
@@ -286,6 +289,7 @@ router.post('/inject-starting-wild', async (req: Request, res: Response) => {
  * GET /api/test/verify-invariants/:roomCode
  * Verifies that the current in-memory and database game state satisfies all UNO Flip invariants:
  * exact 112 physical card conservation, ID uniqueness, dual-face integrity, and active-side representations.
+ * Protected by match mutex to verify a stable snapshot.
  */
 router.get('/verify-invariants/:roomCode', async (req: Request, res: Response) => {
   const roomCode = req.params.roomCode;
@@ -298,19 +302,32 @@ router.get('/verify-invariants/:roomCode', async (req: Request, res: Response) =
     return;
   }
 
-  const validation = validateFlipGameStateInvariants(session.state);
-  const totalCards =
-    session.state.players.reduce((sum, p) => sum + p.hand.length, 0) +
-    session.state.drawPile.length +
-    session.state.discardPile.length;
+  try {
+    const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      const validation = validateFlipGameStateInvariants(activeSession.state);
+      const totalCards =
+        activeSession.state.players.reduce((sum, p) => sum + p.hand.length, 0) +
+        activeSession.state.drawPile.length +
+        activeSession.state.discardPile.length;
 
-  res.json({
-    success: validation.valid,
-    valid: validation.valid,
-    totalCards,
-    activeSide: session.state.activeSide,
-    errors: validation.errors,
-  });
+      return {
+        success: validation.valid,
+        valid: validation.valid,
+        totalCards,
+        activeSide: activeSession.state.activeSide,
+        errors: validation.errors,
+      };
+    });
+
+    res.json(outcome);
+  } catch (err: unknown) {
+    const message = (err as Error).message || 'Failed to verify invariants';
+    logger.error('Error verifying invariants', { error: message });
+    res.status(500).json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message },
+    });
+  }
 });
 
 export default router;

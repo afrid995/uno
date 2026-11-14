@@ -99,22 +99,36 @@ test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
     await expect(pageAlice.locator('[data-testid="game-board"]')).toBeVisible();
     await expect(pageBob.locator('[data-testid="game-board"]')).toBeVisible();
 
-    // Both players see LIGHT SIDE badge
+    // Both players see initial side badge (LIGHT SIDE unless opening card was a Flip card per Mattel GDR44)
     const aliceSideBadge = pageAlice.locator('[data-testid="active-side-badge"]');
     const bobSideBadge = pageBob.locator('[data-testid="active-side-badge"]');
     await expect(aliceSideBadge).toBeVisible();
     await expect(bobSideBadge).toBeVisible();
-    await expect(aliceSideBadge).toContainText('LIGHT SIDE');
-    await expect(bobSideBadge).toContainText('LIGHT SIDE');
 
-    // Verify 7 cards dealt to each
+    const initialSideText = (await aliceSideBadge.textContent()) || '';
+    const isInitiallyLight = initialSideText.includes('LIGHT SIDE');
+    const firstFlippedSide = isInitiallyLight ? 'DARK SIDE' : 'LIGHT SIDE';
+    const firstFlippedCardSide = isInitiallyLight ? 'DARK' : 'LIGHT';
+    const secondFlippedSide = isInitiallyLight ? 'LIGHT SIDE' : 'DARK SIDE';
+
+    // Verify initial cards dealt (at least 7 cards per player; 8 if victim of opening Draw One)
     const aliceHand = pageAlice.locator('[data-testid="player-hand"] [data-testid="playing-card"]');
     const bobHand = pageBob.locator('[data-testid="player-hand"] [data-testid="playing-card"]');
-    await expect(aliceHand).toHaveCount(7);
-    await expect(bobHand).toHaveCount(7);
+    expect(await aliceHand.count()).toBeGreaterThanOrEqual(7);
+    expect(await bobHand.count()).toBeGreaterThanOrEqual(7);
+
+    // If the opening card was a Starting Wild card, the designated player chooses starting color to unblock play
+    for (const page of [pageAlice, pageBob]) {
+      const startingWildModal = page.locator('text=Starting Wild Card');
+      if (await startingWildModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await page.locator('[data-testid="wild-color-blue"]').click();
+        await expect(startingWildModal).not.toBeVisible({ timeout: 5000 });
+        break;
+      }
+    }
 
     // -------------------------------------------------------------
-    // Step 5: Inject and Play Light Flip Card -> Flips to Dark Side
+    // Step 5: Inject and Play Flip Card -> Flips to opposite Side
     // -------------------------------------------------------------
     const injectFlipRes = await fetch('http://localhost:4000/api/test/inject-flip-card', {
       method: 'POST',
@@ -141,16 +155,16 @@ test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
     await expect(flipCard).toBeVisible({ timeout: 5000 });
     await flipCard.click();
 
-    // Both players' screens must now transition to DARK SIDE!
-    await expect(aliceSideBadge).toContainText('DARK SIDE', { timeout: 10000 });
-    await expect(bobSideBadge).toContainText('DARK SIDE', { timeout: 10000 });
+    // Both players' screens must now transition to the flipped side!
+    await expect(aliceSideBadge).toContainText(firstFlippedSide, { timeout: 10000 });
+    await expect(bobSideBadge).toContainText(firstFlippedSide, { timeout: 10000 });
 
-    // Verify cards in hand now expose DARK side
-    await expect(pageAlice.locator('[data-testid="player-hand"] [data-card-side="DARK"]').first()).toBeVisible();
-    await expect(pageBob.locator('[data-testid="player-hand"] [data-card-side="DARK"]').first()).toBeVisible();
+    // Verify cards in hand now expose the flipped side
+    await expect(pageAlice.locator(`[data-testid="player-hand"] [data-card-side="${firstFlippedCardSide}"]`).first()).toBeVisible();
+    await expect(pageBob.locator(`[data-testid="player-hand"] [data-card-side="${firstFlippedCardSide}"]`).first()).toBeVisible();
 
     // -------------------------------------------------------------
-    // Step 6: Inject and Play Dark Flip Card -> Flips Back to Light Side
+    // Step 6: Inject and Play second Flip Card -> Flips back to initial Side
     // -------------------------------------------------------------
     const injectDarkFlipRes = await fetch('http://localhost:4000/api/test/inject-flip-card', {
       method: 'POST',
@@ -175,16 +189,16 @@ test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
     await expect(darkFlipCard).toBeVisible({ timeout: 5000 });
     await darkFlipCard.click();
 
-    // Both players' screens transition back to LIGHT SIDE!
-    await expect(aliceSideBadge).toContainText('LIGHT SIDE', { timeout: 10000 });
-    await expect(bobSideBadge).toContainText('LIGHT SIDE', { timeout: 10000 });
+    // Both players' screens transition back to second side!
+    await expect(aliceSideBadge).toContainText(secondFlippedSide, { timeout: 10000 });
+    await expect(bobSideBadge).toContainText(secondFlippedSide, { timeout: 10000 });
 
     // -------------------------------------------------------------
     // Step 7: Page refresh recovery
     // -------------------------------------------------------------
     await pageBob.reload();
     await expect(pageBob.locator('[data-testid="game-board"]')).toBeVisible({ timeout: 15000 });
-    await expect(pageBob.locator('[data-testid="active-side-badge"]')).toContainText('LIGHT SIDE');
+    await expect(pageBob.locator('[data-testid="active-side-badge"]')).toContainText(secondFlippedSide);
     const bobRestoredCards = pageBob.locator('[data-testid="player-hand"] [data-testid="playing-card"]');
     const count = await bobRestoredCards.count();
     expect(count).toBeGreaterThanOrEqual(6);
