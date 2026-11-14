@@ -8,7 +8,9 @@
 **Baseline Commit:** `0967aa6c05757548d6b673f0f8dcf6159d4f5108`  
 **Phase 6.1 Implementation Commit:** `a04c7b0526226371f8966477e828a1c8e6138e83`  
 **Phase 6.1 Published HEAD:** `cbf545a90647fa51e2fe0c07da8cfe98f2e159fc`  
-**Phase:** Phase 6.1 / 6.1.1 — Rule-Fidelity, Mercy Card Recycling & Regression Hardening  
+**Phase 6.1.1 Final Published HEAD:** `2e44de9270b00e7e171e558e2e5e994d62042ad4`  
+**Phase 6.1.2 Final Published Commit:** `37fdf14ba5f24520e93d73688285b11fe0d42a13`  
+**Phase:** Phase 6.1 / 6.1.1 / 6.1.2 — Rule-Fidelity, Mercy Card Recycling & Regression Hardening  
 **Authority:** Official Mattel UNO Show 'em No Mercy Instructions (`HVW18-Eng.pdf` / Product HWV18)
 
 ---
@@ -31,7 +33,7 @@ All monorepo quality gates have passed:
 - `pnpm -r typecheck`: **0 errors** across all 6 workspace packages.
 - `pnpm -r lint`: **0 errors, 0 warnings** across all workspace projects.
 - `pnpm build`: **0 errors**; clean production build for all packages and web app.
-- `@uno-ultimate/game-engine`: **172 unit tests passed** (13 test files), including 17 new No Mercy rules tests.
+- `@uno-ultimate/game-engine`: **174 unit tests passed** (13 test files), including 13 rules tests added in Phase 6.1, 4 new deterministic roulette regression tests added in Phase 6.1.1, and 2 starting Wild fixture tests added in Phase 6.1.2.
 - `@uno-ultimate/server`: **94 integration and unit tests passed** (12 test files).
 - `@uno-ultimate/web`: **58 component and store tests passed** (14 test files).
 - Playwright E2E: **5 end-to-end browser tests passed** across all 3 variants (Classic, Flip, No Mercy).
@@ -43,12 +45,14 @@ All monorepo quality gates have passed:
 - **Repository URL:** `https://github.com/afrid995/uno.git`
 - **Workspace Location:** `D:\uno`
 - **Active Branch:** `main`
-- **Starting Baseline Commit:** `0967aa6c05757548d6b673f0f8dcf6159d4f5108`
+- **Phase 6.1 Starting Baseline Commit:** `0967aa6c05757548d6b673f0f8dcf6159d4f5108`
 - **Phase 6.1 Intermediate Implementation Commit:** `a04c7b0526226371f8966477e828a1c8e6138e83` (contained core engine, socket, and test updates)
 - **Phase 6.1 Final Published HEAD:** `cbf545a90647fa51e2fe0c07da8cfe98f2e159fc` (recorded initial publication report metadata)
-- **Commit History Clarification:** Commit `a04c7b0526226371f8966477e828a1c8e6138e83` is an earlier Phase 6.1 commit containing the gameplay and test changes; commit `cbf545a90647fa51e2fe0c07da8cfe98f2e159fc` is the verified final published HEAD of Phase 6.1 that recorded the published report metadata.
+- **Phase 6.1.1 Final Published HEAD:** `2e44de9270b00e7e171e558e2e5e994d62042ad4` (baseline for Phase 6.1.2 audit)
+- **Phase 6.1.2 Final Published Commit:** `37fdf14ba5f24520e93d73688285b11fe0d42a13`
+- **Commit History Clarification:** Commit `a04c7b0526226371f8966477e828a1c8e6138e83` is an earlier Phase 6.1 commit containing the gameplay and test changes; commit `cbf545a90647fa51e2fe0c07da8cfe98f2e159fc` is the verified final published HEAD of Phase 6.1; commit `2e44de9270b00e7e171e558e2e5e994d62042ad4` is the verified final published HEAD of Phase 6.1.1; commit `37fdf14ba5f24520e93d73688285b11fe0d42a13` is the verified published commit of Phase 6.1.2.
 - **Previous Completed Phase:** Phase 6 — UNO Show ’em No Mercy
-- **Completed Phase:** Phase 6.1 / 6.1.1 — Rule-Fidelity, Mercy Card Recycling & Regression Hardening
+- **Completed Phase:** Phase 6.1 / 6.1.1 / 6.1.2 — Rule-Fidelity, Mercy Card Recycling & Regression Hardening
 
 ---
 
@@ -123,7 +127,7 @@ Phase 6.1.1 added Suite 11 to `packages/game-engine/tests/no-mercy.rules.test.ts
 4. **Complete Card Accumulation:** Every single revealed card—including all drawn wild cards, mismatched colored cards, and cards drawn after draw-pile depletion/reshuffling—is added to the victim's hand in exact draw order.
 5. **Set-Aside Card Recycling during Roulette Exhaustion:** When the draw pile runs out while drawing during Roulette, `reshuffleRecyclableCards` combines discard cards beneath the top card and all `setAsideCards` into a new draw pile, empties `setAsideCards`, and continues drawing until a non-Wild matching card is revealed.
 6. **Mercy Elimination via Roulette:** If accumulating cards during Roulette causes the victim's hand to reach $\ge 25$ cards, the Mercy Rule triggers immediately, transferring all cards to `setAsideCards` and eliminating the player.
-7. **Strict Card Conservation:** Every test asserts `assertValidNoMercyGameState`, verifying that exactly 168 physical cards exist and all card IDs remain strictly unique.
+7. **Strict Card Conservation:** In all full-game fixture tests (Tests 1–3), `assertValidNoMercyGameState` strictly verifies that exactly 168 physical cards exist and all card IDs remain unique. The direct helper unit test (Test 4) verifies draw order, Wild non-match handling, termination, and card retention on synthetic card arrays without an invariant check.
 
 ---
 
@@ -176,7 +180,7 @@ The 168 physical cards of UNO Show 'em No Mercy are categorized as follows:
 
 ### Inventory Attribution Statement
 - **Mattel Instruction Sheet (`HVW18-Eng.pdf`):** Confirms the official 168-card total ("168 Cards as follows...") and details all action and wild card functions, but does not provide an itemized copy count table for individual action or wild cards.
-- **Implementation Inventory Verification:** The exact per-card quantities implemented in `NoMercyDeckFactory` (80 numbers consisting of 2 sets of 0–9 across 4 colors; 64 colored actions consisting of 3 Skips, 3 Reverses, 3 Draw Twos, 2 Draw Fours, 3 Discard Alls, 2 Skip Everyones per color; and 24 wild cards consisting of 8 Wild Reverse Draw 4, 8 Wild Color Roulette, 4 Wild Draw 6, and 4 Wild Draw 10) represent the verified implementation inventory, confirmed against retail Mattel HWV18 physical game deck examinations and verified product manifests.
+- **Implementation Inventory Attribution:** The exact per-card quantities implemented in `NoMercyDeckFactory` (80 numbers consisting of 2 sets of 0–9 across 4 colors; 64 colored actions consisting of 3 Skips, 3 Reverses, 3 Draw Twos, 2 Draw Fours, 3 Discard Alls, 2 Skip Everyones per color; and 24 wild cards consisting of 8 Wild Reverse Draw 4, 8 Wild Color Roulette, 4 Wild Draw 6, and 4 Wild Draw 10) represent the **verified implementation inventory generated by `NoMercyDeckFactory`**. Per prompt requirements, external physical-deck examination or independent manifest verification claims have been removed as those external artifacts are not stored in the repository.
 
 ---
 
@@ -254,11 +258,11 @@ This invariant is verified after every state modification by `validateNoMercyGam
 
 | Test Suite | Files | Tests | Result | Execution Time |
 | :--- | :--- | :--- | :--- | :--- |
-| `@uno-ultimate/game-engine` (Vitest) | 13 | 172 | **172 passed (100%)** | 1.68s |
+| `@uno-ultimate/game-engine` (Vitest) | 13 | 174 | **174 passed (100%)** | 1.62s |
 | `@uno-ultimate/server` (Vitest) | 12 | 94 | **94 passed (100%)** | 37.54s |
 | `@uno-ultimate/web` (Vitest) | 14 | 58 | **58 passed (100%)** | 31.40s |
 | Playwright Browser E2E | 3 | 5 | **5 passed (100%)** | 52.1s |
-| **Total Automated Tests** | **42** | **329** | **329 passed (100%)** | |
+| **Total Automated Tests** | **42** | **331** | **331 passed (100%)** | |
 
 ### B. Quality Gate Summary
 - **TypeScript Typecheck (`pnpm -r typecheck`):** Passed with **0 errors** across all 6 packages.

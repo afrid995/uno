@@ -118,7 +118,12 @@ export class FlipFixtureBuilder {
 
     // Check if target player already holds a matching Flip card
     const existingMatchingFlip = targetPlayer.hand.find(
-      (c) => c.value === 'flip' && (c.color === targetColor || state.topDiscardCard.value === 'flip')
+      (c) =>
+        c.value === 'flip' &&
+        (c.color === targetColor ||
+          state.topDiscardCard.value === 'flip' ||
+          state.topDiscardCard.value === 'wild' ||
+          state.pendingActionState?.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION')
     );
 
     if (existingMatchingFlip) {

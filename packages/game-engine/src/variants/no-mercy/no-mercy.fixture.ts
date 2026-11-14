@@ -61,27 +61,56 @@ export class NoMercyFixtureBuilder {
       return { nextState: state, card: existing };
     }
 
-    // Find in draw pile
+    // Find matching card across existing inventory: drawPile -> opponents -> deep discard
     const drawCardIndex = state.drawPile.findIndex(predicate);
-    if (drawCardIndex === -1) {
-      throw new Error('No matching card found in draw pile to swap.');
-    }
-
-    const cardToInject = state.drawPile[drawCardIndex];
+    let cardToInject: Card | null = null;
+    const nextDrawPile = [...state.drawPile];
+    const nextDiscardPile = [...state.discardPile];
+    const nextPlayers = state.players.map((p) => ({ ...p, hand: [...p.hand] }));
     const cardToEvict = player.hand[0];
 
-    const nextDrawPile = [...state.drawPile];
-    nextDrawPile[drawCardIndex] = cardToEvict;
+    if (drawCardIndex !== -1) {
+      cardToInject = state.drawPile[drawCardIndex];
+      nextDrawPile[drawCardIndex] = cardToEvict;
+    } else {
+      // Search in opponents' hands
+      let foundOpponentIdx = -1;
+      let foundCardIdx = -1;
+      for (let i = 0; i < state.players.length; i++) {
+        if (i === playerIndex) continue;
+        const cIdx = state.players[i].hand.findIndex(predicate);
+        if (cIdx !== -1) {
+          foundOpponentIdx = i;
+          foundCardIdx = cIdx;
+          break;
+        }
+      }
+
+      if (foundOpponentIdx !== -1) {
+        cardToInject = state.players[foundOpponentIdx].hand[foundCardIdx];
+        nextPlayers[foundOpponentIdx].hand[foundCardIdx] = cardToEvict;
+      } else if (state.discardPile.length > 1) {
+        // Search in deep discard pile (excluding top discard card)
+        const discIdx = state.discardPile.slice(0, state.discardPile.length - 1).findIndex(predicate);
+        if (discIdx !== -1) {
+          cardToInject = state.discardPile[discIdx];
+          nextDiscardPile[discIdx] = cardToEvict;
+        }
+      }
+    }
+
+    if (!cardToInject) {
+      throw new Error('No matching card found in existing game inventory to swap.');
+    }
 
     const nextHand = [cardToInject, ...player.hand.slice(1)];
-    const nextPlayers = state.players.map((p, idx) =>
-      idx === playerIndex ? { ...p, hand: nextHand } : p
-    );
+    nextPlayers[playerIndex] = { ...player, hand: nextHand };
 
     const nextState: GameState = {
       ...state,
       players: nextPlayers,
       drawPile: nextDrawPile,
+      discardPile: nextDiscardPile,
     };
 
     assertValidNoMercyGameState(nextState);

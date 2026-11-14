@@ -7,6 +7,7 @@ import {
   GameState,
   Card,
 } from '../src';
+import { FlipMoveValidator } from '../src/variants/flip/flip.validator';
 
 describe('UNO Flip Fixture Builder & Invariant Validation (Phase 5.2)', () => {
   describe('Fixture Generation & Physical Card Conservation', () => {
@@ -192,6 +193,152 @@ describe('UNO Flip Fixture Builder & Invariant Validation (Phase 5.2)', () => {
 
       // 7. Passes full invariant assertion
       expect(() => assertValidFlipGameState(nextState)).not.toThrow();
+    });
+  });
+
+  describe('Starting Wild Resolution via Flip Card Injection (Phase 6.1.2 Audit)', () => {
+    it('resolves starting Wild state when target player already holds a matching Flip card (Path 1)', () => {
+      const baseState = FlipFixtureBuilder.createInitialGameFixture({ activeSide: 'LIGHT' });
+      const { nextState: wildState } = FlipFixtureBuilder.injectStartingWild(baseState);
+
+      // Verify prerequisite starting Wild state
+      expect(wildState.pendingActionState?.type).toBe('AWAITING_STARTING_WILD_COLOR_SELECTION');
+      expect(wildState.activeColor).toBeNull();
+      expect(wildState.topDiscardCard.value).toBe('wild');
+
+      const activePlayerId = wildState.players[wildState.currentPlayerIndex].id;
+      const activePlayerIdx = wildState.currentPlayerIndex;
+
+      // Ensure active player deterministically holds a Flip card in hand
+      const targetPlayer = wildState.players[activePlayerIdx];
+      let stateWithFlipInHand: GameState = wildState;
+      let heldFlipCard = targetPlayer.hand.find((c) => c.value === 'flip');
+
+      if (!heldFlipCard) {
+        // Swap a Flip card from drawPile into player's hand at index 0
+        const flipIdx = wildState.drawPile.findIndex((c) => c.value === 'flip');
+        expect(flipIdx).toBeGreaterThanOrEqual(0);
+        heldFlipCard = wildState.drawPile[flipIdx];
+        const swapOut = targetPlayer.hand[0];
+
+        const newDrawPile = [...wildState.drawPile];
+        newDrawPile[flipIdx] = swapOut;
+
+        const newPlayers = wildState.players.map((p, idx) =>
+          idx === activePlayerIdx
+            ? { ...p, hand: [heldFlipCard!, ...p.hand.slice(1)] }
+            : p
+        );
+
+        stateWithFlipInHand = {
+          ...wildState,
+          drawPile: newDrawPile,
+          players: newPlayers,
+        };
+      }
+
+      assertValidFlipGameState(stateWithFlipInHand);
+
+      // Inject playable Flip card when player already holds one
+      const { nextState, injectedCard } = FlipFixtureBuilder.injectPlayableFlipCard(
+        stateWithFlipInHand,
+        activePlayerId
+      );
+
+      // 1. Injected card matches held Flip card
+      expect(injectedCard.id).toBe(heldFlipCard!.id);
+      expect(injectedCard.value).toBe('flip');
+
+      // 2. activeColor is resolved to the Flip card's color
+      expect(nextState.activeColor).toBe(injectedCard.color);
+      expect(nextState.activeColor).not.toBeNull();
+
+      // 3. Stale starting-Wild pending action is cleared
+      expect(nextState.pendingActionState).toBeNull();
+
+      // 4. Injected card is at index 0
+      expect(nextState.players[activePlayerIdx].hand[0].id).toBe(injectedCard.id);
+
+      // 5. Card conservation and invariant validity
+      expect(() => assertValidFlipGameState(nextState)).not.toThrow();
+
+      // 6. Flip card is legally playable immediately on top discard
+      const validation = FlipMoveValidator.validate(nextState, {
+        type: 'PLAY_CARD',
+        playerId: activePlayerId,
+        cardId: injectedCard.id,
+      });
+      expect(validation.valid).toBe(true);
+    });
+
+    it('resolves starting Wild state when a Flip card must be located and swapped into target hand (Path 2)', () => {
+      const baseState = FlipFixtureBuilder.createInitialGameFixture({ activeSide: 'LIGHT' });
+      const { nextState: wildState } = FlipFixtureBuilder.injectStartingWild(baseState);
+
+      expect(wildState.pendingActionState?.type).toBe('AWAITING_STARTING_WILD_COLOR_SELECTION');
+      expect(wildState.activeColor).toBeNull();
+
+      const activePlayerId = wildState.players[wildState.currentPlayerIndex].id;
+      const activePlayerIdx = wildState.currentPlayerIndex;
+      const targetPlayer = wildState.players[activePlayerIdx];
+
+      // Ensure target player holds NO Flip cards by swapping any held Flip cards into drawPile
+      const newDrawPile = [...wildState.drawPile];
+      const nonFlipDrawCards = newDrawPile.filter((c) => c.value !== 'flip');
+
+      let currentHand = [...targetPlayer.hand];
+      let drawSwapIdx = 0;
+      for (let i = 0; i < currentHand.length; i++) {
+        if (currentHand[i].value === 'flip') {
+          const replacement = nonFlipDrawCards[drawSwapIdx++];
+          const dpIdx = newDrawPile.findIndex((c) => c.id === replacement.id);
+          newDrawPile[dpIdx] = currentHand[i];
+          currentHand[i] = replacement;
+        }
+      }
+
+      const stateWithoutFlipInHand: GameState = {
+        ...wildState,
+        drawPile: newDrawPile,
+        players: wildState.players.map((p, idx) =>
+          idx === activePlayerIdx ? { ...p, hand: currentHand } : p
+        ),
+      };
+      assertValidFlipGameState(stateWithoutFlipInHand);
+      expect(stateWithoutFlipInHand.players[activePlayerIdx].hand.some((c) => c.value === 'flip')).toBe(false);
+
+      // Inject playable Flip card (must locate in inventory and swap)
+      const { nextState, injectedCard } = FlipFixtureBuilder.injectPlayableFlipCard(
+        stateWithoutFlipInHand,
+        activePlayerId
+      );
+
+      // 1. Injected card is a Flip card
+      expect(injectedCard.value).toBe('flip');
+
+      // 2. activeColor is resolved to the Flip card's color
+      expect(nextState.activeColor).toBe(injectedCard.color);
+      expect(nextState.activeColor).not.toBeNull();
+
+      // 3. Stale starting-Wild pending action is cleared
+      expect(nextState.pendingActionState).toBeNull();
+
+      // 4. Injected card is at index 0 of active player's hand
+      expect(nextState.players[activePlayerIdx].hand[0].id).toBe(injectedCard.id);
+
+      // 5. Hand size is preserved
+      expect(nextState.players[activePlayerIdx].hand).toHaveLength(targetPlayer.hand.length);
+
+      // 6. Card conservation and invariant validity
+      expect(() => assertValidFlipGameState(nextState)).not.toThrow();
+
+      // 7. Legally playable immediately on top discard
+      const validation = FlipMoveValidator.validate(nextState, {
+        type: 'PLAY_CARD',
+        playerId: activePlayerId,
+        cardId: injectedCard.id,
+      });
+      expect(validation.valid).toBe(true);
     });
   });
 
