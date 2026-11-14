@@ -5,6 +5,64 @@ import { assertValidNoMercyGameState } from '../src/variants/no-mercy/no-mercy.i
 import { GameState } from '../src/game/game.types';
 import { Card } from '../src/cards/card.types';
 
+/**
+ * Deterministically swaps two physical cards by ID across any game zones
+ * (draw pile, discard pile, or player hands) while strictly preserving total cards
+ * and unique card identities.
+ */
+function swapTwoCardsInState(state: GameState, idA: string, idB: string): GameState {
+  if (idA === idB) return state;
+
+  type Location =
+    | { type: 'draw'; index: number }
+    | { type: 'discard'; index: number }
+    | { type: 'hand'; playerIndex: number; cardIndex: number };
+
+  const findLoc = (id: string): Location => {
+    const dIdx = state.drawPile.findIndex((c) => c.id === id);
+    if (dIdx !== -1) return { type: 'draw', index: dIdx };
+    const discIdx = state.discardPile.findIndex((c) => c.id === id);
+    if (discIdx !== -1) return { type: 'discard', index: discIdx };
+    for (let p = 0; p < state.players.length; p++) {
+      const hIdx = state.players[p].hand.findIndex((c) => c.id === id);
+      if (hIdx !== -1) return { type: 'hand', playerIndex: p, cardIndex: hIdx };
+    }
+    throw new Error(`Card ${id} not found in state`);
+  };
+
+  const locA = findLoc(idA);
+  const locB = findLoc(idB);
+
+  const getCard = (loc: Location): Card => {
+    if (loc.type === 'draw') return state.drawPile[loc.index];
+    if (loc.type === 'discard') return state.discardPile[loc.index];
+    return state.players[loc.playerIndex].hand[loc.cardIndex];
+  };
+
+  const cardA = getCard(locA);
+  const cardB = getCard(locB);
+
+  const nextDrawPile = [...state.drawPile];
+  const nextDiscardPile = [...state.discardPile];
+  const nextPlayers = state.players.map((p) => ({ ...p, hand: [...p.hand] }));
+
+  const setCard = (loc: Location, card: Card) => {
+    if (loc.type === 'draw') nextDrawPile[loc.index] = card;
+    else if (loc.type === 'discard') nextDiscardPile[loc.index] = card;
+    else nextPlayers[loc.playerIndex].hand[loc.cardIndex] = card;
+  };
+
+  setCard(locA, cardB);
+  setCard(locB, cardA);
+
+  return {
+    ...state,
+    drawPile: nextDrawPile,
+    discardPile: nextDiscardPile,
+    players: nextPlayers,
+  };
+}
+
 describe('No Mercy Fixture Builder — swapCardIntoHand Fallback Regression Tests (Phase 6.1.3)', () => {
   describe('Path 1: Draw Pile Swap', () => {
     it('swaps a card from the draw pile into the target player hand when present in draw pile', () => {
@@ -114,7 +172,110 @@ describe('No Mercy Fixture Builder — swapCardIntoHand Fallback Regression Test
       assertValidNoMercyGameState(nextState);
     });
 
-    it('searches across multiple opponents in player order and swaps from the correct opponent', () => {
+    it('selects the first matching opponent in player-array iteration order when multiple opponents hold competing matching cards (Phase 6.1.4)', () => {
+      const state = NoMercyFixtureBuilder.createInitialGameFixture({
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+          { id: 'p3', username: 'Charlie' },
+          { id: 'p4', username: 'Dave' },
+        ],
+      });
+
+      // In UNO Show 'em No Mercy, there are exactly 2 copies of 'skip_everyone' in blue:
+      // 'nm_blue_skip_everyone_copy_1' and 'nm_blue_skip_everyone_copy_2'.
+      // Both have identical value ('skip_everyone'), color ('blue'), and type ('action'), but unique physical IDs.
+      const cardForBobId = 'nm_blue_skip_everyone_copy_1';
+      const cardForCharlieId = 'nm_blue_skip_everyone_copy_2';
+
+      // Deterministically arrange state:
+      // Swap cardForBobId into Bob's hand (index 1) at slot 0
+      const stateWithBob = swapTwoCardsInState(state, cardForBobId, state.players[1].hand[0].id);
+      // Swap cardForCharlieId into Charlie's hand (index 2) at slot 0
+      const arrangedState = swapTwoCardsInState(
+        stateWithBob,
+        cardForCharlieId,
+        stateWithBob.players[2].hand[0].id
+      );
+
+      // Verify arranged state conforms to full 168-card invariants
+      assertValidNoMercyGameState(arrangedState);
+
+      const predicate = (c: Card) => c.value === 'skip_everyone' && c.color === 'blue';
+
+      const cardForBob = arrangedState.players[1].hand[0];
+      const cardForCharlie = arrangedState.players[2].hand[0];
+
+      // Precondition Assertions:
+      // 1. Both cards satisfy the predicate with different unique IDs but same value and color
+      expect(predicate(cardForBob)).toBe(true);
+      expect(predicate(cardForCharlie)).toBe(true);
+      expect(cardForBob.id).toBe(cardForBobId);
+      expect(cardForCharlie.id).toBe(cardForCharlieId);
+      expect(cardForBob.id).not.toBe(cardForCharlieId);
+      expect(cardForBob.value).toBe(cardForCharlie.value);
+      expect(cardForBob.color).toBe(cardForCharlie.color);
+
+      // 2. Target player Alice (p1, index 0) holds no cards matching the predicate
+      expect(arrangedState.players[0].hand.some(predicate)).toBe(false);
+
+      // 3. Draw pile holds no cards matching the predicate
+      expect(arrangedState.drawPile.some(predicate)).toBe(false);
+
+      // 4. Discard pile holds no cards matching the predicate
+      expect(arrangedState.discardPile.some(predicate)).toBe(false);
+
+      // 5. Dave (p4, index 3) holds no cards matching the predicate
+      expect(arrangedState.players[3].hand.some(predicate)).toBe(false);
+
+      // 6. At least two opponents (Bob at index 1 and Charlie at index 2) hold cards matching the predicate
+      expect(arrangedState.players[1].hand.some(predicate)).toBe(true);
+      expect(arrangedState.players[2].hand.some(predicate)).toBe(true);
+
+      const aliceInitialHand = [...arrangedState.players[0].hand];
+      const aliceEvictedCard = aliceInitialHand[0];
+      const charlieInitialHandSnapshot = arrangedState.players[2].hand.map((c) => c.id);
+      const daveInitialHandSnapshot = arrangedState.players[3].hand.map((c) => c.id);
+
+      // Execute swap targeting Alice (p1)
+      const { nextState, card: injectedCard } = NoMercyFixtureBuilder.swapCardIntoHand(
+        arrangedState,
+        'p1',
+        predicate
+      );
+
+      // Core Verification Assertions:
+      // 1. The helper selects the first matching opponent in documented player-array iteration order:
+      //    Bob (index 1) is evaluated before Charlie (index 2), so Bob's card (cardForBobId) is selected.
+      expect(injectedCard.id).toBe(cardForBobId);
+      expect(nextState.players[0].hand[0].id).toBe(cardForBobId);
+
+      // 2. The target player's evicted card moves to that selected opponent (Bob at index 1)
+      expect(nextState.players[1].hand[0].id).toBe(aliceEvictedCard.id);
+      expect(nextState.players[1].hand.some(predicate)).toBe(false);
+
+      // 3. The later matching opponent (Charlie at index 2) remains completely unchanged, retaining cardForCharlieId
+      expect(nextState.players[2].hand[0].id).toBe(cardForCharlieId);
+      expect(nextState.players[2].hand.map((c) => c.id)).toEqual(charlieInitialHandSnapshot);
+
+      // 4. Later non-matching opponent (Dave at index 3) also remains completely unchanged
+      expect(nextState.players[3].hand.map((c) => c.id)).toEqual(daveInitialHandSnapshot);
+
+      // 5. All hand sizes remain strictly unchanged (all 7 cards)
+      expect(nextState.players[0].hand.length).toBe(7);
+      expect(nextState.players[1].hand.length).toBe(7);
+      expect(nextState.players[2].hand.length).toBe(7);
+      expect(nextState.players[3].hand.length).toBe(7);
+
+      // 6. Draw pile and discard pile remain untouched
+      expect(nextState.drawPile.length).toBe(arrangedState.drawPile.length);
+      expect(nextState.discardPile.length).toBe(arrangedState.discardPile.length);
+
+      // 7. Strict 168 physical cards conservation and ID uniqueness
+      assertValidNoMercyGameState(nextState);
+    });
+
+    it('iterates past non-matching opponents in player order to swap from a later opponent', () => {
       const state = NoMercyFixtureBuilder.createInitialGameFixture({
         players: [
           { id: 'p1', username: 'Alice' },
@@ -309,15 +470,19 @@ describe('No Mercy Fixture Builder — swapCardIntoHand Fallback Regression Test
       expect(JSON.stringify(state)).toBe(stateSnapshot);
     });
 
-    it('throws an error if targetPlayerId does not exist in state', () => {
+    it('throws an error and preserves input state immutably if targetPlayerId does not exist in state', () => {
       const state = NoMercyFixtureBuilder.createInitialGameFixture();
+      const stateSnapshot = JSON.stringify(state);
 
       expect(() =>
         NoMercyFixtureBuilder.swapCardIntoHand(state, 'unknown_player', () => true)
       ).toThrow('Player unknown_player not found in state.');
+
+      // Original state was not mutated (byte-for-byte serialization equality)
+      expect(JSON.stringify(state)).toBe(stateSnapshot);
     });
 
-    it('throws an error if target player has an empty hand', () => {
+    it('throws an error and preserves input state immutably if target player has an empty hand', () => {
       const state = NoMercyFixtureBuilder.createInitialGameFixture();
       const emptyHandState: GameState = {
         ...state,
@@ -325,10 +490,14 @@ describe('No Mercy Fixture Builder — swapCardIntoHand Fallback Regression Test
         players: state.players.map((p, idx) => (idx === 0 ? { ...p, hand: [] } : p)),
       };
       assertValidNoMercyGameState(emptyHandState);
+      const stateSnapshot = JSON.stringify(emptyHandState);
 
       expect(() =>
         NoMercyFixtureBuilder.swapCardIntoHand(emptyHandState, 'p1', () => true)
       ).toThrow('Player p1 has no cards to swap.');
+
+      // Original state was not mutated (byte-for-byte serialization equality)
+      expect(JSON.stringify(emptyHandState)).toBe(stateSnapshot);
     });
   });
 });
