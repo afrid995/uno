@@ -6,6 +6,7 @@
 **Workspace:** `D:\uno`  
 **Branch:** `main`  
 **Baseline Commit:** `0967aa6c05757548d6b673f0f8dcf6159d4f5108`  
+**Published Commit:** `a04c7b0526226371f8966477e828a1c8e6138e83`  
 **Phase:** Phase 6.1 — Rule-Fidelity, Mercy Card Recycling & Audit Corrections  
 **Authority:** Official Mattel UNO Show 'em No Mercy Instructions (`HVW18-Eng.pdf` / Product HWV18)
 
@@ -41,6 +42,7 @@ All monorepo quality gates have passed:
 - **Workspace Location:** `D:\uno`
 - **Active Branch:** `main`
 - **Starting Baseline Commit:** `0967aa6c05757548d6b673f0f8dcf6159d4f5108`
+- **Completed Commit:** `a04c7b0526226371f8966477e828a1c8e6138e83`
 - **Previous Completed Phase:** Phase 6 — UNO Show ’em No Mercy
 - **Completed Phase:** Phase 6.1 — Rule-Fidelity, Mercy Card Recycling & Audit Corrections
 
