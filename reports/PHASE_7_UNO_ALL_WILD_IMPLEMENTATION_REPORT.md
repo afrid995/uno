@@ -8,7 +8,7 @@
 **Phase:** Phase 7 — UNO All Wild Official Variant Implementation  
 **Official Rule Authority:** Mattel UNO All Wild Card Game (Product HHL33, `HHL33-UNO Wild-Eng.pdf`)  
 **Official Reference:** `https://service.mattel.com/instruction_sheets/HHL33-UNO%20Wild-Eng.pdf`  
-**Target Published HEAD:** *(Recorded upon final commit and push)*
+**Phase 7 Implementation Commit:** `bdb653d7faf672160827e2bb9827ecb665e3fce9`  
 
 ---
 
@@ -318,8 +318,7 @@ Preservation of all previous variants was strictly maintained:
 | Milestone | Commit / Checkpoint | Description | Verification Gate |
 | :--- | :--- | :--- | :--- |
 | **Baseline** | `2b9521b65ded90c3b58adf12a4c68d34e5454907` | Clean working tree on `main` branch matching `origin/main` | Clean status |
-| **Phase 7 Implementation** | *(Current worktree)* | Complete UNO All Wild engine, deck, actions, protocol, server, UI, tests | All gates pass |
-| **Final HEAD** | *(Recorded upon git push)* | Monorepo commit and remote push | Pending |
+| **Phase 7 Implementation** | `bdb653d7faf672160827e2bb9827ecb665e3fce9` | Complete UNO All Wild engine, deck, actions, protocol, server, UI, tests | All gates pass |
 
 ### Monorepo Verification Summary
 ```bash
