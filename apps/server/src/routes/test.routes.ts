@@ -9,14 +9,20 @@ import {
   assertValidFlipGameState,
   validateFlipGameStateInvariants,
 } from '@uno-ultimate/game-engine';
+import { timingSafeSecretCompare } from '../utils/crypto';
 import { logger } from '../utils/logger';
 
 const router: Router = Router();
 
 // -------------------------------------------------------------
-// Security Gate: Reject if in production OR if ENABLE_TEST_HELPERS is not 'true'
+// Security Gate:
+// 1. Reject if in production (NODE_ENV === 'production')
+// 2. Reject if ENABLE_TEST_HELPERS is not 'true'
+// 3. Reject if server-side TEST_HELPER_SECRET is missing or weak (< 16 chars)
+// 4. Reject if request header X-Test-Helper-Secret is missing or does not match
 // -------------------------------------------------------------
-router.use((_req: Request, res: Response, next) => {
+router.use((req: Request, res: Response, next) => {
+  // Gate 1 & 2: Environment checks
   if (process.env.NODE_ENV === 'production' || process.env.ENABLE_TEST_HELPERS !== 'true') {
     res.status(403).json({
       success: false,
@@ -27,6 +33,57 @@ router.use((_req: Request, res: Response, next) => {
     });
     return;
   }
+
+  // Gate 3: Server-side secret validation (fail closed)
+  const configuredSecret = process.env.TEST_HELPER_SECRET;
+  if (!configuredSecret || typeof configuredSecret !== 'string' || configuredSecret.trim().length < 16) {
+    logger.warn('Test helper endpoint accessed but TEST_HELPER_SECRET is missing or insufficiently strong', {
+      path: req.path,
+    });
+    res.status(403).json({
+      success: false,
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Test helper endpoints are not configured.',
+      },
+    });
+    return;
+  }
+
+  // Gate 4: Request authentication header verification
+  const providedSecret = req.header('X-Test-Helper-Secret');
+  if (!providedSecret) {
+    logger.warn('Unauthorized test helper request: missing X-Test-Helper-Secret header', {
+      path: req.path,
+      method: req.method,
+    });
+    res.status(401).json({
+      success: false,
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Missing test helper secret header.',
+      },
+    });
+    return;
+  }
+
+  // Constant-time comparison
+  const isValid = timingSafeSecretCompare(providedSecret, configuredSecret);
+  if (!isValid) {
+    logger.warn('Unauthorized test helper request: invalid X-Test-Helper-Secret header', {
+      path: req.path,
+      method: req.method,
+    });
+    res.status(401).json({
+      success: false,
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Invalid test helper secret.',
+      },
+    });
+    return;
+  }
+
   next();
 });
 

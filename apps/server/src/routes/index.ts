@@ -22,6 +22,17 @@ if (process.env.NODE_ENV !== 'production') {
       });
       return;
     }
+    const secret = process.env.TEST_HELPER_SECRET;
+    if (!secret || typeof secret !== 'string' || secret.trim().length < 16) {
+      res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Test helper secret is not configured or insufficiently strong.',
+        },
+      });
+      return;
+    }
     testRoutes(req, res, next);
   });
 }

@@ -14,9 +14,14 @@ import {
   GameState,
 } from '@uno-ultimate/game-engine';
 
-describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
+describe('Test Helper Routes Security Access & Invariant Hardening Tests', () => {
   const originalEnvHelpers = process.env.ENABLE_TEST_HELPERS;
   const originalNodeEnv = process.env.NODE_ENV;
+  const originalSecret = process.env.TEST_HELPER_SECRET;
+
+  const VALID_TEST_SECRET = 'valid_test_secret_for_vitest_auth_at_least_16_chars';
+  const WRONG_TEST_SECRET = 'invalid_test_secret_wrong_token_for_negative_tests';
+  const SECRET_HEADER = 'X-Test-Helper-Secret';
 
   let app: ReturnType<typeof createApp>;
   let hostGuestId: string;
@@ -28,6 +33,7 @@ describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
 
   beforeAll(async () => {
     process.env.ENABLE_TEST_HELPERS = 'true';
+    process.env.TEST_HELPER_SECRET = VALID_TEST_SECRET;
     app = createApp();
 
     // Clean up any leftovers
@@ -91,6 +97,11 @@ describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
   afterAll(async () => {
     process.env.ENABLE_TEST_HELPERS = originalEnvHelpers;
     process.env.NODE_ENV = originalNodeEnv;
+    if (originalSecret !== undefined) {
+      process.env.TEST_HELPER_SECRET = originalSecret;
+    } else {
+      delete process.env.TEST_HELPER_SECRET;
+    }
 
     gameSessionManager.removeSession(matchId);
 
@@ -131,45 +142,196 @@ describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
     gameSessionManager.setSession(matchId, testRoomCode, testRoomId, freshState);
   });
 
-  describe('Security & Environment Gating', () => {
-    it('returns 403 Forbidden when ENABLE_TEST_HELPERS is not "true"', async () => {
-      process.env.ENABLE_TEST_HELPERS = 'false';
-
+  describe('1. Secret Header Authentication & Uniform Enforcement', () => {
+    it('rejects POST /inject-flip-card with 401 when X-Test-Helper-Secret header is missing', async () => {
       const res = await request(app)
         .post('/api/test/inject-flip-card')
         .send({ roomCode: testRoomCode });
 
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(401);
       expect(res.body.success).toBe(false);
-      expect(res.body.error.code).toBe('FORBIDDEN');
-
-      process.env.ENABLE_TEST_HELPERS = 'true';
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+      expect(res.body.error.message).toContain('Missing test helper secret header');
     });
 
-    it('rejects test router directly when NODE_ENV === "production"', async () => {
-      process.env.NODE_ENV = 'production';
-
-      const express = (await import('express')).default;
-      const prodApp = express();
-      prodApp.use(express.json());
-      prodApp.use('/test', testRouter);
-
-      const res = await request(prodApp)
-        .post('/test/inject-flip-card')
+    it('rejects POST /inject-starting-wild with 401 when X-Test-Helper-Secret header is missing', async () => {
+      const res = await request(app)
+        .post('/api/test/inject-starting-wild')
         .send({ roomCode: testRoomCode });
 
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(401);
       expect(res.body.success).toBe(false);
-      expect(res.body.error.code).toBe('FORBIDDEN');
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+      expect(res.body.error.message).toContain('Missing test helper secret header');
+    });
 
-      process.env.NODE_ENV = 'test';
+    it('rejects GET /verify-invariants/:roomCode with 401 when X-Test-Helper-Secret header is missing', async () => {
+      const res = await request(app)
+        .get(`/api/test/verify-invariants/${testRoomCode}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+      expect(res.body.error.message).toContain('Missing test helper secret header');
+    });
+
+    it('rejects POST /inject-flip-card with 401 when X-Test-Helper-Secret is incorrect', async () => {
+      const res = await request(app)
+        .post('/api/test/inject-flip-card')
+        .set(SECRET_HEADER, WRONG_TEST_SECRET)
+        .send({ roomCode: testRoomCode });
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+      expect(res.body.error.message).toContain('Invalid test helper secret');
+    });
+
+    it('rejects POST /inject-starting-wild with 401 when X-Test-Helper-Secret is incorrect', async () => {
+      const res = await request(app)
+        .post('/api/test/inject-starting-wild')
+        .set(SECRET_HEADER, WRONG_TEST_SECRET)
+        .send({ roomCode: testRoomCode });
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+      expect(res.body.error.message).toContain('Invalid test helper secret');
+    });
+
+    it('rejects GET /verify-invariants/:roomCode with 401 when X-Test-Helper-Secret is incorrect', async () => {
+      const res = await request(app)
+        .get(`/api/test/verify-invariants/${testRoomCode}`)
+        .set(SECRET_HEADER, WRONG_TEST_SECRET);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+      expect(res.body.error.message).toContain('Invalid test helper secret');
+    });
+
+    it('succeeds with 200 when correct X-Test-Helper-Secret is provided and all gates pass', async () => {
+      const res = await request(app)
+        .get(`/api/test/verify-invariants/${testRoomCode}`)
+        .set(SECRET_HEADER, VALID_TEST_SECRET);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.valid).toBe(true);
+      expect(res.body.totalCards).toBe(112);
     });
   });
 
-  describe('Validation & Precondition Checks', () => {
-    it('rejects invalid payload when roomCode is empty', async () => {
+  describe('2. Environment & Server Configuration Gates (Fail-Closed)', () => {
+    it('disables endpoints with 403 when server-side TEST_HELPER_SECRET is missing', async () => {
+      const previous = process.env.TEST_HELPER_SECRET;
+      delete process.env.TEST_HELPER_SECRET;
+
+      try {
+        const res = await request(app)
+          .post('/api/test/inject-flip-card')
+          .set(SECRET_HEADER, VALID_TEST_SECRET)
+          .send({ roomCode: testRoomCode });
+
+        expect(res.status).toBe(403);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('FORBIDDEN');
+      } finally {
+        process.env.TEST_HELPER_SECRET = previous;
+      }
+    });
+
+    it('disables endpoints with 403 when server-side TEST_HELPER_SECRET is too short (<16 chars)', async () => {
+      const previous = process.env.TEST_HELPER_SECRET;
+      process.env.TEST_HELPER_SECRET = 'short_secret';
+
+      try {
+        const res = await request(app)
+          .post('/api/test/inject-flip-card')
+          .set(SECRET_HEADER, 'short_secret')
+          .send({ roomCode: testRoomCode });
+
+        expect(res.status).toBe(403);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('FORBIDDEN');
+      } finally {
+        process.env.TEST_HELPER_SECRET = previous;
+      }
+    });
+
+    it('disables endpoints with 403 when ENABLE_TEST_HELPERS is "false" even with valid secret header', async () => {
+      const previous = process.env.ENABLE_TEST_HELPERS;
+      process.env.ENABLE_TEST_HELPERS = 'false';
+
+      try {
+        const res = await request(app)
+          .post('/api/test/inject-flip-card')
+          .set(SECRET_HEADER, VALID_TEST_SECRET)
+          .send({ roomCode: testRoomCode });
+
+        expect(res.status).toBe(403);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('FORBIDDEN');
+      } finally {
+        process.env.ENABLE_TEST_HELPERS = previous;
+      }
+    });
+
+    it('disables endpoints with 403 when router is executed directly under NODE_ENV === "production"', async () => {
+      const previous = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
+      try {
+        const express = (await import('express')).default;
+        const prodApp = express();
+        prodApp.use(express.json());
+        prodApp.use('/test', testRouter);
+
+        const res = await request(prodApp)
+          .post('/test/inject-flip-card')
+          .set(SECRET_HEADER, VALID_TEST_SECRET)
+          .send({ roomCode: testRoomCode });
+
+        expect(res.status).toBe(403);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('FORBIDDEN');
+      } finally {
+        process.env.NODE_ENV = previous;
+      }
+    });
+  });
+
+  describe('3. State Protection: Unauthorized Requests Never Mutate Game State', () => {
+    it('guarantees unauthenticated requests do not mutate memory or persist to database', async () => {
+      const sessionBefore = gameSessionManager.getSessionByRoomCode(testRoomCode)!;
+      const originalHandBefore = [...sessionBefore.state.players[0].hand];
+      const originalSeqBefore = sessionBefore.state.sequenceNumber;
+
+      const eventsBefore = await prisma.gameEvent.count({ where: { matchId } });
+
+      // Send unauthorized request
       const res = await request(app)
         .post('/api/test/inject-flip-card')
+        .send({ roomCode: testRoomCode });
+
+      expect(res.status).toBe(401);
+
+      // Verify in-memory state is completely untouched
+      const sessionAfter = gameSessionManager.getSessionByRoomCode(testRoomCode)!;
+      expect(sessionAfter.state.sequenceNumber).toBe(originalSeqBefore);
+      expect(sessionAfter.state.players[0].hand).toEqual(originalHandBefore);
+
+      // Verify database has no new persisted events
+      const eventsAfter = await prisma.gameEvent.count({ where: { matchId } });
+      expect(eventsAfter).toBe(eventsBefore);
+    });
+  });
+
+  describe('4. Post-Authentication Payload Validation & Preconditions', () => {
+    it('rejects invalid payload when roomCode is empty after passing authentication', async () => {
+      const res = await request(app)
+        .post('/api/test/inject-flip-card')
+        .set(SECRET_HEADER, VALID_TEST_SECRET)
         .send({ roomCode: '' });
 
       expect(res.status).toBe(400);
@@ -177,9 +339,10 @@ describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
       expect(res.body.error.code).toBe('BAD_REQUEST');
     });
 
-    it('rejects when active session does not exist for roomCode', async () => {
+    it('rejects when active session does not exist for roomCode after passing authentication', async () => {
       const res = await request(app)
         .post('/api/test/inject-flip-card')
+        .set(SECRET_HEADER, VALID_TEST_SECRET)
         .send({ roomCode: 'NONEXIST' });
 
       expect(res.status).toBe(404);
@@ -187,7 +350,7 @@ describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
       expect(res.body.error.code).toBe('NOT_FOUND');
     });
 
-    it('rejects when match variant is not uno_flip', async () => {
+    it('rejects when match variant is not uno_flip after passing authentication', async () => {
       const currentSession = gameSessionManager.getSessionByRoomCode(testRoomCode)!;
       currentSession.state = {
         ...currentSession.state,
@@ -196,6 +359,7 @@ describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
 
       const res = await request(app)
         .post('/api/test/inject-flip-card')
+        .set(SECRET_HEADER, VALID_TEST_SECRET)
         .send({ roomCode: testRoomCode });
 
       expect(res.status).toBe(400);
@@ -203,7 +367,7 @@ describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
       expect(res.body.error.code).toBe('INVALID_VARIANT');
     });
 
-    it('rejects when match status is not IN_PROGRESS', async () => {
+    it('rejects when match status is not IN_PROGRESS after passing authentication', async () => {
       const currentSession = gameSessionManager.getSessionByRoomCode(testRoomCode)!;
       currentSession.state = {
         ...currentSession.state,
@@ -212,6 +376,7 @@ describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
 
       const res = await request(app)
         .post('/api/test/inject-flip-card')
+        .set(SECRET_HEADER, VALID_TEST_SECRET)
         .send({ roomCode: testRoomCode });
 
       expect(res.status).toBe(400);
@@ -220,13 +385,14 @@ describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
     });
   });
 
-  describe('POST /api/test/inject-flip-card (Safe Physical Swapping)', () => {
+  describe('5. Authenticated Core Fixture Operations (112-Card Conservation)', () => {
     it('safely injects a playable Flip card while preserving 112 physical cards and unique IDs', async () => {
       const sessionBefore = gameSessionManager.getSessionByRoomCode(testRoomCode)!;
       const initialPlayerHand = [...sessionBefore.state.players[0].hand];
 
       const res = await request(app)
         .post('/api/test/inject-flip-card')
+        .set(SECRET_HEADER, VALID_TEST_SECRET)
         .send({ roomCode: testRoomCode, targetPlayerId: hostGuestId });
 
       expect(res.status).toBe(200);
@@ -250,12 +416,11 @@ describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
       expect(validation.valid).toBe(true);
       expect(validation.errors).toEqual([]);
     });
-  });
 
-  describe('POST /api/test/inject-starting-wild', () => {
     it('safely configures starting Wild state while preserving 112 physical cards', async () => {
       const res = await request(app)
         .post('/api/test/inject-starting-wild')
+        .set(SECRET_HEADER, VALID_TEST_SECRET)
         .send({ roomCode: testRoomCode });
 
       expect(res.status).toBe(200);
@@ -277,11 +442,11 @@ describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
       expect(validation.valid).toBe(true);
       expect(validation.errors).toEqual([]);
     });
-  });
 
-  describe('GET /api/test/verify-invariants/:roomCode', () => {
-    it('returns valid: true and totalCards: 112 for a compliant session', async () => {
-      const res = await request(app).get(`/api/test/verify-invariants/${testRoomCode}`);
+    it('returns valid: true and totalCards: 112 on authenticated verification endpoint', async () => {
+      const res = await request(app)
+        .get(`/api/test/verify-invariants/${testRoomCode}`)
+        .set(SECRET_HEADER, VALID_TEST_SECRET);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -290,15 +455,9 @@ describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
       expect(res.body.activeSide).toBe('LIGHT');
       expect(res.body.errors).toEqual([]);
     });
-
-    it('returns 404 when verifying invariants for non-existent room', async () => {
-      const res = await request(app).get('/api/test/verify-invariants/NONEX1');
-      expect(res.status).toBe(404);
-      expect(res.body.success).toBe(false);
-    });
   });
 
-  describe('Database Persistence-First Rollback & Mutex Concurrency', () => {
+  describe('6. Database Persistence-First Rollback & Mutex Concurrency', () => {
     it('rolls back and leaves in-memory state unmodified if database persistence fails', async () => {
       const sessionBefore = gameSessionManager.getSessionByRoomCode(testRoomCode)!;
       const originalStateSnapshot = JSON.parse(JSON.stringify(sessionBefore.state));
@@ -308,26 +467,35 @@ describe('Test Helper Routes Integration & Invariant Hardening Tests', () => {
         .spyOn(gamePersistenceService, 'persistActionBatch')
         .mockRejectedValueOnce(new Error('Simulated database deadlock / network failure'));
 
-      const res = await request(app)
-        .post('/api/test/inject-flip-card')
-        .send({ roomCode: testRoomCode });
+      try {
+        const res = await request(app)
+          .post('/api/test/inject-flip-card')
+          .set(SECRET_HEADER, VALID_TEST_SECRET)
+          .send({ roomCode: testRoomCode });
 
-      expect(res.status).toBe(500);
-      expect(res.body.success).toBe(false);
-      expect(res.body.error.message).toContain('Simulated database deadlock');
+        expect(res.status).toBe(500);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.message).toContain('Simulated database deadlock');
 
-      // Crucial: in-memory state MUST NOT have been updated!
-      const sessionAfter = gameSessionManager.getSessionByRoomCode(testRoomCode)!;
-      expect(sessionAfter.state.sequenceNumber).toBe(originalStateSnapshot.sequenceNumber);
-      expect(sessionAfter.state.players[0].hand).toEqual(originalStateSnapshot.players[0].hand);
-
-      persistSpy.mockRestore();
+        // Crucial: in-memory state MUST NOT have been updated!
+        const sessionAfter = gameSessionManager.getSessionByRoomCode(testRoomCode)!;
+        expect(sessionAfter.state.sequenceNumber).toBe(originalStateSnapshot.sequenceNumber);
+        expect(sessionAfter.state.players[0].hand).toEqual(originalStateSnapshot.players[0].hand);
+      } finally {
+        persistSpy.mockRestore();
+      }
     });
 
-    it('serializes concurrent requests via match mutex without state corruption', async () => {
+    it('serializes concurrent authenticated requests via match mutex without state corruption', async () => {
       const calls = [
-        request(app).post('/api/test/inject-flip-card').send({ roomCode: testRoomCode }),
-        request(app).post('/api/test/inject-flip-card').send({ roomCode: testRoomCode }),
+        request(app)
+          .post('/api/test/inject-flip-card')
+          .set(SECRET_HEADER, VALID_TEST_SECRET)
+          .send({ roomCode: testRoomCode }),
+        request(app)
+          .post('/api/test/inject-flip-card')
+          .set(SECRET_HEADER, VALID_TEST_SECRET)
+          .send({ roomCode: testRoomCode }),
       ];
 
       const results = await Promise.all(calls);

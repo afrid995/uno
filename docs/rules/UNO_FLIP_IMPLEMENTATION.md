@@ -213,3 +213,11 @@ The `validateFlipGameStateInvariants` engine method verifies:
 ### 11.4 Invariant Verification Endpoint
 During automated E2E tests, `GET /api/test/verify-invariants/:roomCode` inspects the active game state on the server, guaranteeing that no test helper ever introduces card duplication, card loss, or corrupted state.
 
+### 11.5 Test Helper Access Security & Authentication Gate
+To eliminate unauthorized tampering with matches in environments where test helpers are enabled, all test endpoints enforce a strict four-condition authentication and enablement gate:
+1. `NODE_ENV !== 'production'`: Endpoints are completely unmounted in production, responding with HTTP 404.
+2. `ENABLE_TEST_HELPERS === 'true'`: Explicit flag required in the server environment.
+3. `TEST_HELPER_SECRET`: High-entropy server secret ($\ge 16$ characters) must be configured; missing or weak secrets fail closed with HTTP 403.
+4. `X-Test-Helper-Secret`: Every request must present the matching secret in this header. The server compares secrets in constant time using `timingSafeSecretCompare` with SHA-256 digests to prevent timing attacks. Missing or mismatched headers are rejected with HTTP 401 Unauthorized.
+
+

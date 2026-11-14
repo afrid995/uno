@@ -1,5 +1,10 @@
 import { test, expect, BrowserContext, Page } from '@playwright/test';
 
+const getTestHelperHeaders = () => ({
+  'Content-Type': 'application/json',
+  'X-Test-Helper-Secret': process.env.TEST_HELPER_SECRET || '',
+});
+
 test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
   let contextAlice: BrowserContext;
   let contextBob: BrowserContext;
@@ -113,13 +118,15 @@ test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
     // -------------------------------------------------------------
     const injectFlipRes = await fetch('http://localhost:4000/api/test/inject-flip-card', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getTestHelperHeaders(),
       body: JSON.stringify({ roomCode }),
     });
     expect(injectFlipRes.ok).toBe(true);
 
     // Assert server-side invariant integrity (112 cards strictly conserved)
-    const verifyRes1 = await fetch(`http://localhost:4000/api/test/verify-invariants/${roomCode}`);
+    const verifyRes1 = await fetch(`http://localhost:4000/api/test/verify-invariants/${roomCode}`, {
+      headers: getTestHelperHeaders(),
+    });
     expect(verifyRes1.ok).toBe(true);
     const verifyData1 = await verifyRes1.json();
     expect(verifyData1.valid).toBe(true);
@@ -147,13 +154,15 @@ test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
     // -------------------------------------------------------------
     const injectDarkFlipRes = await fetch('http://localhost:4000/api/test/inject-flip-card', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getTestHelperHeaders(),
       body: JSON.stringify({ roomCode }),
     });
     expect(injectDarkFlipRes.ok).toBe(true);
 
     // Assert server-side invariant integrity (112 cards strictly conserved)
-    const verifyRes2 = await fetch(`http://localhost:4000/api/test/verify-invariants/${roomCode}`);
+    const verifyRes2 = await fetch(`http://localhost:4000/api/test/verify-invariants/${roomCode}`, {
+      headers: getTestHelperHeaders(),
+    });
     expect(verifyRes2.ok).toBe(true);
     const verifyData2 = await verifyRes2.json();
     expect(verifyData2.valid).toBe(true);
@@ -234,13 +243,15 @@ test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
     // -------------------------------------------------------------
     const injectWildRes = await fetch('http://localhost:4000/api/test/inject-starting-wild', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getTestHelperHeaders(),
       body: JSON.stringify({ roomCode }),
     });
     expect(injectWildRes.ok).toBe(true);
 
     // Assert server-side invariant integrity (112 cards strictly conserved)
-    const verifyWildRes = await fetch(`http://localhost:4000/api/test/verify-invariants/${roomCode}`);
+    const verifyWildRes = await fetch(`http://localhost:4000/api/test/verify-invariants/${roomCode}`, {
+      headers: getTestHelperHeaders(),
+    });
     expect(verifyWildRes.ok).toBe(true);
     const verifyWildData = await verifyWildRes.json();
     expect(verifyWildData.valid).toBe(true);

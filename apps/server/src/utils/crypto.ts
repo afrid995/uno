@@ -35,3 +35,24 @@ export function timingSafeCompare(a: string, b: string): boolean {
     return false;
   }
 }
+
+/**
+ * Constant-time comparison for secrets (e.g. API keys or test helper secrets).
+ * Hashes both inputs with SHA-256 before comparison to ensure fixed-length buffers
+ * and eliminate string-length timing leaks.
+ */
+export function timingSafeSecretCompare(provided: string, expected: string): boolean {
+  try {
+    if (typeof provided !== 'string' || typeof expected !== 'string') {
+      return false;
+    }
+    if (provided.length === 0 || expected.length === 0) {
+      return false;
+    }
+    const hashProvided = crypto.createHash('sha256').update(provided, 'utf8').digest();
+    const hashExpected = crypto.createHash('sha256').update(expected, 'utf8').digest();
+    return crypto.timingSafeEqual(hashProvided, hashExpected);
+  } catch {
+    return false;
+  }
+}

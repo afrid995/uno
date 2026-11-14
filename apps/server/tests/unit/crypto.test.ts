@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { generateSessionToken, hashSessionToken, timingSafeCompare } from '../../src/utils/crypto';
+import {
+  generateSessionToken,
+  hashSessionToken,
+  timingSafeCompare,
+  timingSafeSecretCompare,
+} from '../../src/utils/crypto';
 
 describe('Crypto Utilities', () => {
   it('generates a 64-character hexadecimal session token with 256 bits of entropy', () => {
@@ -44,5 +49,31 @@ describe('Crypto Utilities', () => {
 
   it('returns false when string lengths differ without throwing', () => {
     expect(timingSafeCompare('short', 'much_longer_string')).toBe(false);
+  });
+
+  describe('timingSafeSecretCompare', () => {
+    it('returns true for matching secrets', () => {
+      const secret = 'strong_test_helper_secret_1234567890';
+      expect(timingSafeSecretCompare(secret, secret)).toBe(true);
+    });
+
+    it('returns false for mismatched secrets of identical length', () => {
+      const secretA = 'strong_test_helper_secret_1234567890';
+      const secretB = 'strong_test_helper_secret_1234567891';
+      expect(timingSafeSecretCompare(secretA, secretB)).toBe(false);
+    });
+
+    it('returns false for secrets of differing lengths without throwing', () => {
+      expect(timingSafeSecretCompare('short', 'much_longer_secret_for_tests')).toBe(false);
+      expect(timingSafeSecretCompare('much_longer_secret_for_tests', 'short')).toBe(false);
+    });
+
+    it('returns false safely for empty or non-string inputs', () => {
+      expect(timingSafeSecretCompare('', 'some_secret')).toBe(false);
+      expect(timingSafeSecretCompare('some_secret', '')).toBe(false);
+      expect(timingSafeSecretCompare('', '')).toBe(false);
+      expect(timingSafeSecretCompare(null as any, 'some_secret')).toBe(false);
+      expect(timingSafeSecretCompare('some_secret', undefined as any)).toBe(false);
+    });
   });
 });

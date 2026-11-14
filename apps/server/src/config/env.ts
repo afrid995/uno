@@ -40,6 +40,10 @@ const envSchema = z.object({
     .optional()
     .transform((val) => val === 'true')
     .default('false'),
+  TEST_HELPER_SECRET: z
+    .string()
+    .min(16, 'TEST_HELPER_SECRET must be at least 16 characters long')
+    .optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
