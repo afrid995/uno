@@ -40,7 +40,7 @@ Phase 6.1.4 addresses the remaining audit findings from Phase 6.1.3:
 | **Phase 6.1.2 Intermediate Commit** | `37fdf14ba5f24520e93d73688285b11fe0d42a13` | Intermediate working commit during Phase 6.1.2 audit |
 | **Phase 6.1.2 Final Published HEAD** | `45af9ccbd8f5b58cea66ce6d2b14c37001eeb2bc` | Final verified published HEAD of Phase 6.1.2 |
 | **Phase 6.1.3 Published HEAD** | `9eede9cf3fd0c4df2a78893864017669934d1ce6` | Metadata alignment & No Mercy fixture regression tests (Phase 6.1.4 baseline) |
-| **Phase 6.1.4 Final Published HEAD** | *(Recorded upon git push)* | Fixture test evidence & historical report accuracy |
+| **Phase 6.1.4 Final Published HEAD** | `f042e0d96cdc42aa8367293a41df1e496650cab4` | Fixture test evidence & historical report accuracy |
 
 ---
 
