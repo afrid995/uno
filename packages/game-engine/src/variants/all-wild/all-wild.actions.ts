@@ -134,19 +134,6 @@ export class AllWildActionProcessor {
       remainingCards: nextHand.length,
     });
 
-    // Check if this play wins the round
-    if (nextHand.length === 0) {
-      return this.handleRoundVictory(
-        state,
-        playerIndex,
-        updatedPlayers,
-        nextDrawPile,
-        nextDiscard,
-        nextTopDiscardCard,
-        ctx
-      );
-    }
-
     const playerCount = updatedPlayers.length;
 
     // Execute card action
@@ -290,6 +277,21 @@ export class AllWildActionProcessor {
       default:
         nextPlayerIndex = this.getNextPlayerIndex(playerIndex, playerCount, nextTurnDirection, 1);
         break;
+    }
+
+    // If the played card emptied the player's hand and no pending target selection is required,
+    // evaluate round victory immediately after executing the card's action effects.
+    if (nextHand.length === 0 && !pendingActionState) {
+      return this.handleRoundVictory(
+        state,
+        playerIndex,
+        updatedPlayers,
+        nextDrawPile,
+        nextDiscard,
+        nextTopDiscardCard,
+        ctx,
+        nextTurnDirection
+      );
     }
 
     const nextState: GameState = {
@@ -497,6 +499,21 @@ export class AllWildActionProcessor {
       cardsDrawn: 2,
     });
 
+    // Check if any player has 0 cards (e.g. source player played Targeted Draw Two as their final card)
+    const winnerIndex = nextPlayers.findIndex((p) => p.hand.length === 0);
+    if (winnerIndex !== -1) {
+      return this.handleRoundVictory(
+        state,
+        winnerIndex,
+        nextPlayers,
+        drawRes.nextDrawPile,
+        drawRes.nextDiscardPile,
+        state.topDiscardCard,
+        ctx,
+        state.turnDirection
+      );
+    }
+
     const nextState: GameState = {
       ...state,
       players: nextPlayers,
@@ -528,18 +545,6 @@ export class AllWildActionProcessor {
     const newSourceHand = [...targetPlayer.hand];
     const newTargetHand = [...sourcePlayer.hand];
 
-    // Check UNO obligations after swap:
-    // If either player ends with 1 card, they must announce UNO immediately.
-    let nextUnoVulnerable: string | null = null;
-    const sourceHasUno = newSourceHand.length === 1;
-    const targetHasUno = newTargetHand.length === 1;
-
-    if (sourceHasUno) {
-      nextUnoVulnerable = sourcePlayer.id;
-    } else if (targetHasUno) {
-      nextUnoVulnerable = targetPlayer.id;
-    }
-
     const updatedSource: Player = {
       ...sourcePlayer,
       hand: newSourceHand,
@@ -558,6 +563,40 @@ export class AllWildActionProcessor {
       return p;
     });
 
+    ctx.addEvent('HANDS_FORCED_SWAPPED', sourcePlayerId, {
+      sourcePlayerId,
+      targetPlayerId,
+      sourceNewHandSize: newSourceHand.length,
+      targetNewHandSize: newTargetHand.length,
+    });
+
+    // Check if any player has 0 cards (e.g. if hands were swapped with an empty hand)
+    const winnerIndex = nextPlayers.findIndex((p) => p.hand.length === 0);
+    if (winnerIndex !== -1) {
+      return this.handleRoundVictory(
+        state,
+        winnerIndex,
+        nextPlayers,
+        [...state.drawPile],
+        [...state.discardPile],
+        state.topDiscardCard,
+        ctx,
+        state.turnDirection
+      );
+    }
+
+    // Check UNO obligations after swap (when game continues):
+    // If either player ends with 1 card, they must announce UNO immediately.
+    let nextUnoVulnerable: string | null = null;
+    const sourceHasUno = newSourceHand.length === 1;
+    const targetHasUno = newTargetHand.length === 1;
+
+    if (sourceHasUno) {
+      nextUnoVulnerable = sourcePlayer.id;
+    } else if (targetHasUno) {
+      nextUnoVulnerable = targetPlayer.id;
+    }
+
     // Advance turn normally to the next player from the source player
     const nextPlayerIndex = this.getNextPlayerIndex(
       sourceIndex,
@@ -565,13 +604,6 @@ export class AllWildActionProcessor {
       state.turnDirection,
       1
     );
-
-    ctx.addEvent('HANDS_FORCED_SWAPPED', sourcePlayerId, {
-      sourcePlayerId,
-      targetPlayerId,
-      sourceNewHandSize: newSourceHand.length,
-      targetNewHandSize: newTargetHand.length,
-    });
 
     const nextState: GameState = {
       ...state,
@@ -661,7 +693,8 @@ export class AllWildActionProcessor {
     drawPile: Card[],
     discardPile: Card[],
     topDiscardCard: Card,
-    ctx: ActionContext
+    ctx: ActionContext,
+    turnDirection: TurnDirection = state.turnDirection
   ): ActionProcessResult {
     const winnerPlayer = players[winnerIndex];
 
@@ -707,6 +740,8 @@ export class AllWildActionProcessor {
       drawPile,
       discardPile,
       topDiscardCard,
+      turnDirection,
+      currentPlayerIndex: winnerIndex,
       roundWinner,
       winner: matchWinner,
       pendingActionState: null,

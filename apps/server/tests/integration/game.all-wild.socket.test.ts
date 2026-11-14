@@ -249,4 +249,162 @@ describe('UNO All Wild — Server Socket.IO Multiplayer Integration Tests', () =
     expect(resolvedSession.state.pendingActionState).toBeNull();
     assertValidAllWildGameState(resolvedSession.state);
   });
+
+  it('resolves final-card Targeted Draw Two and final-card Forced Swap over Socket.IO and updates DB state', async () => {
+    const s1 = createClient(p1Token);
+    const s2 = createClient(p2Token);
+
+    await Promise.all([
+      new Promise<void>((res) => s1.on('connect', () => res())),
+      new Promise<void>((res) => s2.on('connect', () => res())),
+    ]);
+
+    // 1. Create Room & Start Match
+    const createRes = await new Promise<{ success: boolean; data?: { roomCode: string } }>((res) => {
+      s1.emit(
+        SOCKET_EVENTS.ROOM_CREATE,
+        { maxPlayers: 2, settings: { variant: 'uno_all_wild' } },
+        (response: any) => res(response)
+      );
+    });
+    const roomCode = createRes.data!.roomCode;
+
+    await new Promise((res) => s2.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, res));
+    await new Promise((res) => s2.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, res));
+    await new Promise((res) => s1.emit(SOCKET_EVENTS.ROOM_START, {}, res));
+
+    await new Promise<void>((res) => {
+      const check = setInterval(() => {
+        const sess = gameSessionManager.getSessionByRoomCode(roomCode);
+        if (sess && sess.state.status === 'IN_PROGRESS') {
+          clearInterval(check);
+          res();
+        }
+      }, 50);
+    });
+
+    const session = gameSessionManager.getSessionByRoomCode(roomCode)!;
+    const activePlayerId = session.state.players[session.state.currentPlayerIndex].id;
+    const otherPlayerId = session.state.players.find((p) => p.id !== activePlayerId)!.id;
+    const activeSocket = activePlayerId === p1Id ? s1 : s2;
+
+    // Set active player hand to 1 card: Wild Targeted Draw Two
+    const s1Hand = AllWildFixtureBuilder.setHandSize(session.state, activePlayerId, 1);
+    const { nextState: sWithTd2, card: td2Card } = AllWildFixtureBuilder.injectPlayableCard(
+      s1Hand,
+      activePlayerId,
+      'wild_targeted_draw_two'
+    );
+    session.state = sWithTd2;
+
+    // Play final Targeted Draw Two
+    const playRes = await new Promise<{ success: boolean }>((res) => {
+      activeSocket.emit(
+        SOCKET_EVENTS.GAME_PLAY_CARD,
+        { cardId: td2Card.id },
+        (response: any) => res(response)
+      );
+    });
+    expect(playRes.success).toBe(true);
+
+    // Verify intermediate state: IN_PROGRESS with AWAITING_TARGETED_DRAW_TWO_SELECTION
+    const midSession = gameSessionManager.getSessionByRoomCode(roomCode)!;
+    expect(midSession.state.status).toBe('IN_PROGRESS');
+    expect(midSession.state.pendingActionState?.type).toBe('AWAITING_TARGETED_DRAW_TWO_SELECTION');
+    expect(midSession.state.players.find((p) => p.id === activePlayerId)!.hand).toHaveLength(0);
+
+    // Choose target
+    const chooseTargetRes = await new Promise<{ success: boolean }>((res) => {
+      activeSocket.emit(
+        SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_TWO,
+        { targetPlayerId: otherPlayerId },
+        (response: any) => res(response)
+      );
+    });
+    expect(chooseTargetRes.success).toBe(true);
+
+    // Verify completed state: ROUND_OVER, active player won!
+    const wonSession = gameSessionManager.getSessionByRoomCode(roomCode)!;
+    expect(['ROUND_OVER', 'COMPLETED']).toContain(wonSession.state.status);
+    expect(wonSession.state.roundWinner?.id).toBe(activePlayerId);
+    expect(wonSession.state.pendingActionState).toBeNull();
+    assertValidAllWildGameState(wonSession.state);
+
+    // Verify DB persistence
+    const persisted = await gamePersistenceService.loadLatestSnapshot(session.matchId);
+    expect(persisted).toBeDefined();
+    expect(persisted?.roundWinner?.id).toBe(activePlayerId);
+
+    // 2. Now Test Final Forced Swap in a fresh match
+    const createRes2 = await new Promise<{ success: boolean; data?: { roomCode: string } }>((res) => {
+      s1.emit(
+        SOCKET_EVENTS.ROOM_CREATE,
+        { maxPlayers: 2, settings: { variant: 'uno_all_wild' } },
+        (response: any) => res(response)
+      );
+    });
+    const roomCode2 = createRes2.data!.roomCode;
+
+    await new Promise((res) => s2.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode: roomCode2 }, res));
+    await new Promise((res) => s2.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, res));
+    await new Promise((res) => s1.emit(SOCKET_EVENTS.ROOM_START, {}, res));
+
+    await new Promise<void>((res) => {
+      const check = setInterval(() => {
+        const sess = gameSessionManager.getSessionByRoomCode(roomCode2);
+        if (sess && sess.state.status === 'IN_PROGRESS') {
+          clearInterval(check);
+          res();
+        }
+      }, 50);
+    });
+
+    const session2 = gameSessionManager.getSessionByRoomCode(roomCode2)!;
+    const activeId2 = session2.state.players[session2.state.currentPlayerIndex].id;
+    const targetId2 = session2.state.players.find((p) => p.id !== activeId2)!.id;
+    const activeSocket2 = activeId2 === p1Id ? s1 : s2;
+
+    // Set active player to 1 card: Wild Forced Swap, target to 3 cards
+    const s2HandA = AllWildFixtureBuilder.setHandSize(session2.state, activeId2, 1);
+    const s2HandB = AllWildFixtureBuilder.setHandSize(s2HandA, targetId2, 3);
+    const { nextState: sWithSwap, card: swapCard } = AllWildFixtureBuilder.injectPlayableCard(
+      s2HandB,
+      activeId2,
+      'wild_forced_swap'
+    );
+    session2.state = sWithSwap;
+
+    // Play final Forced Swap
+    const playSwapRes = await new Promise<{ success: boolean }>((res) => {
+      activeSocket2.emit(
+        SOCKET_EVENTS.GAME_PLAY_CARD,
+        { cardId: swapCard.id },
+        (response: any) => res(response)
+      );
+    });
+    expect(playSwapRes.success).toBe(true);
+
+    const midSession2 = gameSessionManager.getSessionByRoomCode(roomCode2)!;
+    expect(midSession2.state.status).toBe('IN_PROGRESS');
+    expect(midSession2.state.pendingActionState?.type).toBe('AWAITING_FORCED_SWAP_SELECTION');
+
+    // Choose target for swap
+    const chooseSwapRes = await new Promise<{ success: boolean }>((res) => {
+      activeSocket2.emit(
+        SOCKET_EVENTS.GAME_CHOOSE_FORCED_SWAP,
+        { targetPlayerId: targetId2 },
+        (response: any) => res(response)
+      );
+    });
+    expect(chooseSwapRes.success).toBe(true);
+
+    // Target player received 0 cards, so target player WINS!
+    const wonSession2 = gameSessionManager.getSessionByRoomCode(roomCode2)!;
+    expect(['ROUND_OVER', 'COMPLETED']).toContain(wonSession2.state.status);
+    expect(wonSession2.state.roundWinner?.id).toBe(targetId2);
+    expect(wonSession2.state.roundWinner?.id).not.toBe(activeId2);
+    expect(wonSession2.state.players.find((p) => p.id === activeId2)!.hand).toHaveLength(3);
+    expect(wonSession2.state.players.find((p) => p.id === targetId2)!.hand).toHaveLength(0);
+    assertValidAllWildGameState(wonSession2.state);
+  }, 30000);
 });
