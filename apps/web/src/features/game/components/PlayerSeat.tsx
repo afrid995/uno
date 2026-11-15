@@ -83,6 +83,31 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
 
       {/* Status Badges */}
       <div className="mt-1.5 flex flex-col gap-1 items-center">
+        {/* UNO Teams Team Badge */}
+        {player.teamId && (
+          <div
+            data-testid="player-team-badge"
+            data-team-id={player.teamId}
+            className={`px-2 py-0.5 rounded-full text-[9px] font-black border tracking-wider ${
+              player.teamId === 'team_1'
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+            }`}
+          >
+            {player.teamId === 'team_1' ? 'TEAM 1' : 'TEAM 2'}
+          </div>
+        )}
+
+        {/* UNO Teams Out of Cards / Waiting Badge */}
+        {player.isOut && (
+          <div
+            data-testid="player-out-badge"
+            className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-[9px] font-black text-amber-300 tracking-wider"
+          >
+            WAITING FOR PARTNER
+          </div>
+        )}
+
         {/* UNO Flex Power Card Badge */}
         {!isEliminated && player.powerCardStatus && (
           <div

@@ -70,6 +70,15 @@ export * from './variants/flex/flex.actions';
 export * from './variants/flex/flex.adapter';
 export * from './variants/flex/flex.invariants';
 export * from './variants/flex/flex.fixture';
+export * from './variants/teams/teams.constants';
+export * from './variants/teams/teams.types';
+export * from './variants/teams/teams.deck';
+export * from './variants/teams/teams.dealer';
+export * from './variants/teams/teams.validator';
+export * from './variants/teams/teams.actions';
+export * from './variants/teams/teams.adapter';
+export * from './variants/teams/teams.invariants';
+export * from './variants/teams/teams.fixture';
 
 // Testing utilities
 export * from './testing/deterministic-random';

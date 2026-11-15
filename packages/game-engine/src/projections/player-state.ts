@@ -29,6 +29,12 @@ export interface PlayerPrivateView {
   readonly canChooseTargetedDrawTwo?: boolean;
   readonly canChooseTargetedDrawFour?: boolean;
   readonly canChooseForcedSwap?: boolean;
+  readonly canTeamInitialPass?: boolean;
+  readonly canTeamCardPass?: boolean;
+  readonly canTeamHandSplit?: boolean;
+  readonly teamHandSplitCount?: number;
+  readonly teamId?: string;
+  readonly isOut?: boolean;
   readonly isEliminated?: boolean;
 }
 
@@ -151,14 +157,38 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     state.pendingActionState?.type === 'AWAITING_FORCED_SWAP_SELECTION' &&
     state.pendingActionState.sourcePlayerId === playerId;
 
-  const canDraw = !player.isEliminated && isCurrentTurn && !player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
-  const canPass = !player.isEliminated && isCurrentTurn && player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
+  const canTeamInitialPass =
+    state.pendingActionState?.type === 'AWAITING_TEAM_INITIAL_PASS' &&
+    !state.pendingActionState.selections[playerId];
 
-  // Player can call UNO if they hold 1 or 2 cards and haven't declared it yet
-  const canCallUno = !player.isEliminated && player.hand.length <= 2 && !player.hasDeclaredUno;
+  const canTeamCardPass =
+    state.pendingActionState?.type === 'AWAITING_TEAM_CARD_PASS' &&
+    (state.pendingActionState.player1Id === playerId || state.pendingActionState.player2Id === playerId) &&
+    !state.pendingActionState.selections[playerId];
 
-  // Catching UNO is valid if someone else is currently vulnerable
-  const canCatchUno = !player.isEliminated && !!(state.unoVulnerablePlayerId && state.unoVulnerablePlayerId !== playerId);
+  const canTeamHandSplit =
+    state.pendingActionState?.type === 'AWAITING_TEAM_HAND_SPLIT' &&
+    state.pendingActionState.giverPlayerId === playerId;
+
+  const teamHandSplitCount =
+    state.pendingActionState?.type === 'AWAITING_TEAM_HAND_SPLIT'
+      ? state.pendingActionState.cardsCountToPass
+      : undefined;
+
+  const canDraw = !player.isEliminated && !player.isOut && isCurrentTurn && !player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
+  const canPass = !player.isEliminated && !player.isOut && isCurrentTurn && player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
+
+  const partner = state.variant === 'uno_teams' && player.teamId
+    ? state.players.find((p) => p.teamId === player.teamId && p.id !== player.id)
+    : undefined;
+  const partnerCanCallUno = partner && !partner.isEliminated && partner.hand.length <= 2 && !partner.hasDeclaredUno;
+
+  // Player can call UNO if they hold 1 or 2 cards and haven't declared it yet, or if partner holds 1 or 2 cards in UNO Teams
+  const canCallUno = (!player.isEliminated && player.hand.length <= 2 && !player.hasDeclaredUno) || !!partnerCanCallUno;
+
+  // Catching UNO is valid if someone else is currently vulnerable (in UNO Teams, partner cannot catch partner)
+  const isPartnerVulnerable = partner && state.unoVulnerablePlayerId === partner.id;
+  const canCatchUno = !player.isEliminated && !!(state.unoVulnerablePlayerId && state.unoVulnerablePlayerId !== playerId && !isPartnerVulnerable);
 
   const canResolveWildDrawFour = isVictimOfWdf;
   const canResolveWildDrawTwo = isVictimOfWd2;
@@ -189,6 +219,12 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     canChooseTargetedDrawTwo,
     canChooseTargetedDrawFour,
     canChooseForcedSwap,
+    canTeamInitialPass,
+    canTeamCardPass,
+    canTeamHandSplit,
+    teamHandSplitCount,
+    teamId: player.teamId,
+    isOut: player.isOut,
     isEliminated: player.isEliminated,
   };
 

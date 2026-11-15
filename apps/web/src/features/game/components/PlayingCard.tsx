@@ -84,6 +84,12 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         if (card.value === 'wild_forced_swap') {
           return 'from-slate-950 via-emerald-950 to-slate-900 border-emerald-400 text-white shadow-emerald-500/30';
         }
+        if (card.value === 'wild_team_play') {
+          return 'from-slate-950 via-cyan-950 to-slate-900 border-cyan-400 text-white shadow-cyan-500/30';
+        }
+        if (card.value === 'wild_team_draw_four') {
+          return 'from-slate-950 via-blue-950 to-slate-900 border-blue-400 text-white shadow-blue-500/30';
+        }
         if (card.value === 'wild_all_flip') {
           return 'from-slate-950 via-teal-950 to-slate-900 border-teal-400 text-white shadow-teal-500/30';
         }
@@ -169,6 +175,10 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         return '+2🎯';
       case 'flex_wild_all_draw':
         return '+2👥';
+      case 'wild_team_play':
+        return 'TEAM ⇄';
+      case 'wild_team_draw_four':
+        return '+4👥';
       default:
         return card.value;
     }
@@ -206,6 +216,10 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         return 'TARGET +2';
       case 'flex_wild_all_draw':
         return 'ALL DRAW 2';
+      case 'wild_team_play':
+        return 'TEAM PLAY';
+      case 'wild_team_draw_four':
+        return 'TEAM DRAW 4';
       default:
         return getDisplayValue();
     }
@@ -239,6 +253,7 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
       data-card-side={card.currentSide || 'LIGHT'}
       data-card-flex-color={card.flexColor}
       data-has-flip-icon={card.hasFlipIcon ? 'true' : undefined}
+      data-has-passing-symbol={card.hasPassingSymbol ? 'true' : undefined}
       data-is-playable={isPlayable}
       whileHover={isPlayable && onClick ? { scale: 1.08, y: -8 } : {}}
       whileTap={isPlayable && onClick ? { scale: 0.95 } : {}}
@@ -253,15 +268,26 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
       } ${className}`}
     >
       {/* Corner value - Top Left */}
-      <div className="font-display font-black text-xs sm:text-sm tracking-tight leading-none flex items-center">
-        <span>{displayVal}</span>
-        {card.hasFlipIcon && (
+      <div className="font-display font-black text-xs sm:text-sm tracking-tight leading-none flex flex-col items-start">
+        <div className="flex items-center">
+          <span>{displayVal}</span>
+          {card.hasFlipIcon && (
+            <span
+              data-testid="card-flip-icon"
+              title="Flip Power Card"
+              className="ml-0.5 text-amber-300 font-bold text-[10px] sm:text-xs"
+            >
+              ↷
+            </span>
+          )}
+        </div>
+        {card.hasPassingSymbol && (
           <span
-            data-testid="card-flip-icon"
-            title="Flip Power Card"
-            className="ml-0.5 text-amber-300 font-bold text-[10px] sm:text-xs"
+            data-testid="card-passing-symbol"
+            title="Pass Card with Partner"
+            className="text-cyan-300 font-bold text-[9px] sm:text-[10px] leading-tight"
           >
-            ↷
+            ⇄
           </span>
         )}
       </div>
@@ -312,6 +338,8 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
                 'flex_wild_all_draw',
                 'flex_reverse',
                 'flex_skip',
+                'wild_team_play',
+                'wild_team_draw_four',
               ].includes(card.value)
                 ? 'text-[10px] sm:text-xs tracking-wider'
                 : 'text-lg sm:text-2xl'
@@ -323,11 +351,18 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
       </div>
 
       {/* Corner value - Bottom Right */}
-      <div className="font-display font-black text-xs sm:text-sm tracking-tight leading-none text-right rotate-180 flex items-center justify-start">
-        <span>{displayVal}</span>
-        {card.hasFlipIcon && (
-          <span className="ml-0.5 text-amber-300 font-bold text-[10px] sm:text-xs">
-            ↷
+      <div className="font-display font-black text-xs sm:text-sm tracking-tight leading-none text-right rotate-180 flex flex-col items-start">
+        <div className="flex items-center">
+          <span>{displayVal}</span>
+          {card.hasFlipIcon && (
+            <span className="ml-0.5 text-amber-300 font-bold text-[10px] sm:text-xs">
+              ↷
+            </span>
+          )}
+        </div>
+        {card.hasPassingSymbol && (
+          <span className="text-cyan-300 font-bold text-[9px] sm:text-[10px] leading-tight">
+            ⇄
           </span>
         )}
       </div>

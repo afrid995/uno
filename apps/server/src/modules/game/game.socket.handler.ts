@@ -13,6 +13,9 @@ import {
   chooseTargetedDrawTwoInputSchema,
   chooseTargetedDrawFourInputSchema,
   chooseForcedSwapInputSchema,
+  teamInitialPassInputSchema,
+  teamCardPassInputSchema,
+  teamSplitHandPassInputSchema,
   CardColor,
 } from '@uno-ultimate/game-protocol';
 import { ERROR_CODES } from '@uno-ultimate/shared';
@@ -152,12 +155,13 @@ export function registerGameHandlers(
   });
 
   // 4. Handle game:uno (call UNO)
-  socket.on(SOCKET_EVENTS.GAME_UNO, async (_payload, callback) => {
+  socket.on(SOCKET_EVENTS.GAME_UNO, async (payload, callback) => {
     try {
       const guestId = getAuthenticatedGuestId();
       const roomCode = getActiveRoomCode();
+      const targetPlayerId = (payload as { targetPlayerId?: string } | undefined)?.targetPlayerId;
 
-      const { nextState } = await gameService.callUno(guestId, roomCode);
+      const { nextState } = await gameService.callUno(guestId, roomCode, targetPlayerId);
 
       gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
 
@@ -643,7 +647,87 @@ export function registerGameHandlers(
     }
   });
 
-  // 19. Handle game:next-round
+  // 19. Handle game:team-initial-pass
+  socket.on(SOCKET_EVENTS.GAME_TEAM_INITIAL_PASS, async (payload, callback) => {
+    try {
+      const guestId = getAuthenticatedGuestId();
+      const roomCode = getActiveRoomCode();
+      const validated = await teamInitialPassInputSchema.parseAsync(payload);
+
+      const { nextState } = await gameService.teamInitialPass(
+        guestId,
+        roomCode,
+        validated.cardId
+      );
+
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      const allPassed = !nextState.pendingActionState;
+      callback({
+        success: true,
+        data: { success: true, allPassed },
+      });
+    } catch (err: unknown) {
+      const message = (err as Error).message || 'Failed to submit initial team pass';
+      const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      callback({ success: false, error: { code, message } });
+    }
+  });
+
+  // 20. Handle game:team-card-pass
+  socket.on(SOCKET_EVENTS.GAME_TEAM_CARD_PASS, async (payload, callback) => {
+    try {
+      const guestId = getAuthenticatedGuestId();
+      const roomCode = getActiveRoomCode();
+      const validated = await teamCardPassInputSchema.parseAsync(payload);
+
+      const { nextState } = await gameService.teamCardPass(
+        guestId,
+        roomCode,
+        validated.cardId
+      );
+
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      const allPassed = !nextState.pendingActionState;
+      callback({
+        success: true,
+        data: { success: true, allPassed },
+      });
+    } catch (err: unknown) {
+      const message = (err as Error).message || 'Failed to submit team card pass';
+      const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      callback({ success: false, error: { code, message } });
+    }
+  });
+
+  // 21. Handle game:team-split-hand-pass
+  socket.on(SOCKET_EVENTS.GAME_TEAM_SPLIT_HAND_PASS, async (payload, callback) => {
+    try {
+      const guestId = getAuthenticatedGuestId();
+      const roomCode = getActiveRoomCode();
+      const validated = await teamSplitHandPassInputSchema.parseAsync(payload);
+
+      const { nextState } = await gameService.teamSplitHandPass(
+        guestId,
+        roomCode,
+        validated.cardIds
+      );
+
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      callback({
+        success: true,
+        data: { success: true, cardsPassed: validated.cardIds.length },
+      });
+    } catch (err: unknown) {
+      const message = (err as Error).message || 'Failed to submit team split hand pass';
+      const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      callback({ success: false, error: { code, message } });
+    }
+  });
+
+  // 22. Handle game:next-round
   socket.on(SOCKET_EVENTS.GAME_NEXT_ROUND, async (_payload, callback) => {
     try {
       const guestId = getAuthenticatedGuestId();

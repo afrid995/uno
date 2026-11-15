@@ -44,6 +44,9 @@ interface GameStateStore {
   chooseTargetedDrawTwo: (targetPlayerId: string) => Promise<boolean>;
   chooseTargetedDrawFour: (targetPlayerId: string) => Promise<boolean>;
   chooseForcedSwap: (targetPlayerId: string) => Promise<boolean>;
+  teamInitialPass: (cardId: string) => Promise<boolean>;
+  teamCardPass: (cardId: string) => Promise<boolean>;
+  teamSplitHandPass: (cardIds: string[]) => Promise<boolean>;
   startNextRound: () => Promise<boolean>;
 
   openWildColorPicker: (card: Card) => void;
@@ -378,6 +381,57 @@ export const useGameStore = create<GameStateStore>((set) => ({
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to swap hands' });
+          resolve(false);
+        }
+      });
+    });
+  },
+
+  teamInitialPass: async (cardId: string) => {
+    set({ isActionLoading: true, error: null });
+    const socket = socketManager.getSocket();
+
+    return new Promise<boolean>((resolve) => {
+      socket.emit(SOCKET_EVENTS.GAME_TEAM_INITIAL_PASS, { cardId }, (res) => {
+        set({ isActionLoading: false });
+        if (res.success) {
+          resolve(true);
+        } else {
+          set({ error: res.error?.message || 'Failed to pass initial card' });
+          resolve(false);
+        }
+      });
+    });
+  },
+
+  teamCardPass: async (cardId: string) => {
+    set({ isActionLoading: true, error: null });
+    const socket = socketManager.getSocket();
+
+    return new Promise<boolean>((resolve) => {
+      socket.emit(SOCKET_EVENTS.GAME_TEAM_CARD_PASS, { cardId }, (res) => {
+        set({ isActionLoading: false });
+        if (res.success) {
+          resolve(true);
+        } else {
+          set({ error: res.error?.message || 'Failed to pass card to teammate' });
+          resolve(false);
+        }
+      });
+    });
+  },
+
+  teamSplitHandPass: async (cardIds: string[]) => {
+    set({ isActionLoading: true, error: null });
+    const socket = socketManager.getSocket();
+
+    return new Promise<boolean>((resolve) => {
+      socket.emit(SOCKET_EVENTS.GAME_TEAM_SPLIT_HAND_PASS, { cardIds }, (res) => {
+        set({ isActionLoading: false });
+        if (res.success) {
+          resolve(true);
+        } else {
+          set({ error: res.error?.message || 'Failed to pass split hand cards' });
           resolve(false);
         }
       });

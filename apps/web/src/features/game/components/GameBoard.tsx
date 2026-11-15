@@ -17,6 +17,7 @@ import { TargetedDrawTwoModal } from './TargetedDrawTwoModal';
 import { TargetedDrawFourModal } from './TargetedDrawFourModal';
 import { ForcedSwapModal } from './ForcedSwapModal';
 import { FlexCardChoiceModal } from './FlexCardChoiceModal';
+import { TeamPassModal } from './TeamPassModal';
 import { StackPenaltyBanner } from './StackPenaltyBanner';
 import { AlertCircle, RotateCcw, RotateCw, Skull } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,6 +42,9 @@ export const GameBoard: React.FC = () => {
     chooseTargetedDrawTwo,
     chooseTargetedDrawFour,
     chooseForcedSwap,
+    teamInitialPass,
+    teamCardPass,
+    teamSplitHandPass,
     clearError,
   } = useGameStore();
 
@@ -199,6 +203,24 @@ export const GameBoard: React.FC = () => {
                   }`}
                 >
                   {selfPublic.powerCardStatus === 'green_check' ? '✓ POWER ACTIVE' : '✗ POWER USED'}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* UNO Teams Variant Badge */}
+          {gameState.variant === 'uno_teams' && (
+            <div
+              data-testid="uno-teams-badge"
+              className="flex items-center gap-2 px-3 py-1 rounded-xl font-display font-black text-xs tracking-wider border shadow-md bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-950 border-blue-400 text-blue-300 shadow-blue-950/60"
+            >
+              <span>👥 UNO TEAMS</span>
+              {selfPublic?.teamId && (
+                <span
+                  data-testid="self-team-badge"
+                  className="px-1.5 py-0.5 rounded text-[10px] font-mono border bg-blue-500/30 text-blue-300 border-blue-400"
+                >
+                  {selfPublic.teamId.toUpperCase().replace('_', ' ')}
                 </span>
               )}
             </div>
@@ -428,6 +450,30 @@ export const GameBoard: React.FC = () => {
         onChooseRegular={handleChooseRegular}
         onChooseFlex={handleChooseFlex}
         onClose={() => setSelectedCardForFlexChoice(null)}
+      />
+
+      {/* UNO Teams Card Passing Modal */}
+      <TeamPassModal
+        isOpen={!!self.canTeamInitialPass || !!self.canTeamCardPass || !!self.canTeamHandSplit}
+        mode={
+          self.canTeamInitialPass
+            ? 'INITIAL_PASS'
+            : self.canTeamCardPass
+            ? 'PASSING_SYMBOL'
+            : 'HAND_SPLIT'
+        }
+        hand={self.hand}
+        cardsCountToPass={self.canTeamHandSplit ? (self.teamHandSplitCount ?? 1) : 1}
+        isLoading={isActionLoading}
+        onSubmitPass={async (cardIds) => {
+          if (self.canTeamInitialPass) {
+            await teamInitialPass(cardIds[0]);
+          } else if (self.canTeamCardPass) {
+            await teamCardPass(cardIds[0]);
+          } else if (self.canTeamHandSplit) {
+            await teamSplitHandPass(cardIds);
+          }
+        }}
       />
 
       <RoundResultModal />

@@ -23,4 +23,8 @@ export interface Player {
   readonly eliminationOrder?: number;
   /** State of player's Power Card in UNO Flex (green checkmark or red X) */
   readonly powerCardStatus?: PowerCardStatus;
+  /** Team identifier for UNO Teams (e.g. 'team_1', 'team_2') */
+  readonly teamId?: string;
+  /** Whether the player has emptied their hand and is waiting or out of the game */
+  readonly isOut?: boolean;
 }

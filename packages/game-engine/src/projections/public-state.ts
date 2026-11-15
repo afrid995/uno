@@ -11,6 +11,8 @@ export interface PublicPlayer {
   readonly score: number;
   readonly isEliminated?: boolean;
   readonly powerCardStatus?: PowerCardStatus;
+  readonly teamId?: string;
+  readonly isOut?: boolean;
 }
 
 export interface PublicPendingWildDrawFour {
@@ -74,6 +76,33 @@ export interface PublicPendingForcedSwap {
   readonly sourcePlayerId: string;
 }
 
+export interface PublicPendingTeamInitialPass {
+  readonly type: 'AWAITING_TEAM_INITIAL_PASS';
+  readonly completedPlayerIds: readonly string[];
+}
+
+export interface PublicPendingTeamCardPass {
+  readonly type: 'AWAITING_TEAM_CARD_PASS';
+  readonly player1Id: string;
+  readonly player2Id: string;
+  readonly completedPlayerIds: readonly string[];
+}
+
+export interface PublicPendingTeamHandSplit {
+  readonly type: 'AWAITING_TEAM_HAND_SPLIT';
+  readonly giverPlayerId: string;
+  readonly receiverPlayerId: string;
+  readonly cardsCountToPass: number;
+  readonly reason: 'GOING_OUT' | 'TAGGING_BACK_IN';
+}
+
+export interface PublicPendingWildTeamPlay {
+  readonly type: 'AWAITING_WILD_TEAM_PLAY';
+  readonly playedByPlayerId: string;
+  readonly partnerPlayerId: string;
+  readonly chosenColor: CardColor;
+}
+
 export type PublicPendingActionState =
   | PublicPendingWildDrawFour
   | PublicPendingWildDrawTwo
@@ -84,7 +113,11 @@ export type PublicPendingActionState =
   | PublicPendingColorRoulette
   | PublicPendingTargetedDrawTwo
   | PublicPendingTargetedDrawFour
-  | PublicPendingForcedSwap;
+  | PublicPendingForcedSwap
+  | PublicPendingTeamInitialPass
+  | PublicPendingTeamCardPass
+  | PublicPendingTeamHandSplit
+  | PublicPendingWildTeamPlay;
 
 export interface PublicGameState {
   readonly id: string;
@@ -180,6 +213,33 @@ export function getPublicGameState(state: GameState): PublicGameState {
         type: 'AWAITING_FORCED_SWAP_SELECTION',
         sourcePlayerId: state.pendingActionState.sourcePlayerId,
       };
+    } else if (state.pendingActionState.type === 'AWAITING_TEAM_INITIAL_PASS') {
+      pendingActionState = {
+        type: 'AWAITING_TEAM_INITIAL_PASS',
+        completedPlayerIds: Object.keys(state.pendingActionState.selections),
+      };
+    } else if (state.pendingActionState.type === 'AWAITING_TEAM_CARD_PASS') {
+      pendingActionState = {
+        type: 'AWAITING_TEAM_CARD_PASS',
+        player1Id: state.pendingActionState.player1Id,
+        player2Id: state.pendingActionState.player2Id,
+        completedPlayerIds: Object.keys(state.pendingActionState.selections),
+      };
+    } else if (state.pendingActionState.type === 'AWAITING_TEAM_HAND_SPLIT') {
+      pendingActionState = {
+        type: 'AWAITING_TEAM_HAND_SPLIT',
+        giverPlayerId: state.pendingActionState.giverPlayerId,
+        receiverPlayerId: state.pendingActionState.receiverPlayerId,
+        cardsCountToPass: state.pendingActionState.cardsCountToPass,
+        reason: state.pendingActionState.reason,
+      };
+    } else if (state.pendingActionState.type === 'AWAITING_WILD_TEAM_PLAY') {
+      pendingActionState = {
+        type: 'AWAITING_WILD_TEAM_PLAY',
+        playedByPlayerId: state.pendingActionState.playedByPlayerId,
+        partnerPlayerId: state.pendingActionState.partnerPlayerId,
+        chosenColor: state.pendingActionState.chosenColor,
+      };
     }
   }
 
@@ -199,6 +259,8 @@ export function getPublicGameState(state: GameState): PublicGameState {
       score: p.score,
       isEliminated: p.isEliminated,
       powerCardStatus: p.powerCardStatus,
+      teamId: p.teamId,
+      isOut: p.isOut,
     })),
     playerOrder: state.playerOrder,
     currentPlayerIndex: state.currentPlayerIndex,

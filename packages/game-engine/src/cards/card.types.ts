@@ -47,12 +47,15 @@ export type AllWildActionCardValue =
 
 export type AllWildCardValue = 'wild' | AllWildActionCardValue;
 
+export type TeamsWildCardValue = 'wild_team_play' | 'wild_team_draw_four';
+
 export type WildCardValue =
   | ClassicWildCardValue
   | FlipWildCardValue
   | FlexWildCardValue
   | NoMercyWildCardValue
-  | AllWildActionCardValue;
+  | AllWildActionCardValue
+  | TeamsWildCardValue;
 
 export type CardValue = NumberCardValue | ActionCardValue | WildCardValue;
 
@@ -88,6 +91,8 @@ export interface Card {
   readonly flexColor?: CardColor | null;
   /** Optional flip icon indicator for UNO Flex classic number cards */
   readonly hasFlipIcon?: boolean;
+  /** Optional passing symbol indicator for UNO Teams number cards */
+  readonly hasPassingSymbol?: boolean;
 }
 
 export interface PhysicalFlipCard extends Card {
@@ -112,6 +117,10 @@ export function isFlexCard(card: Card): boolean {
       card.value === 'flex_wild_target_draw_two' ||
       card.value === 'flex_wild_all_draw')
   );
+}
+
+export function isTeamsCard(card: Card): boolean {
+  return card.variant === 'uno_teams';
 }
 
 export const CLASSIC_CARD_COLORS: readonly ClassicCardColor[] = ['red', 'yellow', 'green', 'blue'] as const;
@@ -170,4 +179,6 @@ export const ALL_WILD_VALUES: readonly WildCardValue[] = [
   'wild_skip_two',
   'wild_targeted_draw_two',
   'wild_forced_swap',
+  'wild_team_play',
+  'wild_team_draw_four',
 ] as const;

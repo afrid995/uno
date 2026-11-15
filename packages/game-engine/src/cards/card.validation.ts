@@ -42,6 +42,12 @@ export const wildCardValueSchema = z.enum([
   'wild_skip_two',
   'wild_targeted_draw_two',
   'wild_forced_swap',
+  'wild_all_flip',
+  'flex_wild_draw_four',
+  'flex_wild_target_draw_two',
+  'flex_wild_all_draw',
+  'wild_team_play',
+  'wild_team_draw_four',
 ]);
 
 export const cardValueSchema = z.union([

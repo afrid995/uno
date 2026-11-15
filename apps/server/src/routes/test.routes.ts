@@ -17,6 +17,7 @@ import {
   FlexFixtureBuilder,
   assertValidFlexGameState,
   validateFlexGameStateInvariants,
+  validateTeamsGameStateInvariants,
 } from '@uno-ultimate/game-engine';
 import { timingSafeSecretCompare } from '../utils/crypto';
 import { AppError } from '../middleware/errorHandler';
@@ -997,6 +998,44 @@ router.get(['/verify-flex-invariants/:roomCode', '/verify-flex-invariants'], asy
   try {
     const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
       const validation = validateFlexGameStateInvariants(activeSession.state);
+      const totalCards =
+        activeSession.state.players.reduce((sum, p) => sum + p.hand.length, 0) +
+        activeSession.state.drawPile.length +
+        activeSession.state.discardPile.length;
+
+      return {
+        success: validation.valid,
+        valid: validation.valid,
+        totalCards,
+        errors: validation.errors,
+      };
+    });
+
+    res.json(outcome);
+  } catch (err: unknown) {
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: (err as Error).message } });
+  }
+});
+
+/**
+ * GET /api/test/verify-teams-invariants/:roomCode
+ */
+router.get(['/verify-teams-invariants/:roomCode', '/verify-teams-invariants'], async (req: Request, res: Response) => {
+  const roomCode = req.params.roomCode || (req.query.roomCode as string);
+  if (!roomCode) {
+    res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'roomCode required' } });
+    return;
+  }
+
+  const session = gameSessionManager.getSessionByRoomCode(roomCode);
+  if (!session) {
+    res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Session not found' } });
+    return;
+  }
+
+  try {
+    const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      const validation = validateTeamsGameStateInvariants(activeSession.state);
       const totalCards =
         activeSession.state.players.reduce((sum, p) => sum + p.hand.length, 0) +
         activeSession.state.drawPile.length +

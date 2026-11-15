@@ -72,6 +72,9 @@ export const SOCKET_EVENTS = {
   GAME_CHOOSE_TARGETED_DRAW_TWO: 'game:choose-targeted-draw-two',
   GAME_CHOOSE_TARGETED_DRAW_FOUR: 'game:choose-targeted-draw-four',
   GAME_CHOOSE_FORCED_SWAP: 'game:choose-forced-swap',
+  GAME_TEAM_INITIAL_PASS: 'game:team-initial-pass',
+  GAME_TEAM_CARD_PASS: 'game:team-card-pass',
+  GAME_TEAM_SPLIT_HAND_PASS: 'game:team-split-hand-pass',
   GAME_NEXT_ROUND: 'game:next-round',
 
   // Phase 4 & Phase 6 Gameplay Broadcasts: Server to Client
@@ -149,6 +152,21 @@ export const chooseForcedSwapInputSchema = z.object({
   targetPlayerId: z.string().min(1, 'Target player ID is required'),
 });
 export type ChooseForcedSwapInput = z.infer<typeof chooseForcedSwapInputSchema>;
+
+export const teamInitialPassInputSchema = z.object({
+  cardId: z.string().min(1, 'Card ID is required'),
+});
+export type TeamInitialPassInput = z.infer<typeof teamInitialPassInputSchema>;
+
+export const teamCardPassInputSchema = z.object({
+  cardId: z.string().min(1, 'Card ID is required'),
+});
+export type TeamCardPassInput = z.infer<typeof teamCardPassInputSchema>;
+
+export const teamSplitHandPassInputSchema = z.object({
+  cardIds: z.array(z.string().min(1)).min(1, 'At least one card ID is required'),
+});
+export type TeamSplitHandPassInput = z.infer<typeof teamSplitHandPassInputSchema>;
 
 /**
  * Socket.IO client-to-server event signatures
@@ -270,6 +288,18 @@ export interface ClientToServerEvents {
   [SOCKET_EVENTS.GAME_CHOOSE_FORCED_SWAP]: (
     payload: ChooseForcedSwapInput,
     callback: (response: SocketAck<{ success: boolean; targetPlayerId: string }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_TEAM_INITIAL_PASS]: (
+    payload: TeamInitialPassInput,
+    callback: (response: SocketAck<{ success: boolean; allPassed: boolean }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_TEAM_CARD_PASS]: (
+    payload: TeamCardPassInput,
+    callback: (response: SocketAck<{ success: boolean; allPassed: boolean }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_TEAM_SPLIT_HAND_PASS]: (
+    payload: TeamSplitHandPassInput,
+    callback: (response: SocketAck<{ success: boolean; cardsPassed: number }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_NEXT_ROUND]: (
     payload: Record<string, never> | undefined,

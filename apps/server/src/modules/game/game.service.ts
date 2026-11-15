@@ -53,6 +53,14 @@ export class GameService {
           'UNO Flex requires between 2 and 8 players.'
         );
       }
+    } else if (variant === 'uno_teams') {
+      if (members.length < 4 || members.length > 8 || members.length % 2 !== 0) {
+        throw new AppError(
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.BAD_REQUEST,
+          'UNO Teams requires 4, 6, or 8 players (teams of 2).'
+        );
+      }
     } else {
       if (members.length < 2 || members.length > 10) {
         throw new AppError(
@@ -170,10 +178,11 @@ export class GameService {
     });
   }
 
-  async callUno(guestId: string, roomCode: string): Promise<ActionProcessResult> {
+  async callUno(guestId: string, roomCode: string, targetPlayerId?: string): Promise<ActionProcessResult> {
     return this.executeAction(roomCode, {
       type: 'CALL_UNO',
       playerId: guestId,
+      targetPlayerId,
     });
   }
 
@@ -328,6 +337,42 @@ export class GameService {
       type: 'CHOOSE_FORCED_SWAP_TARGET',
       playerId: guestId,
       targetPlayerId,
+    });
+  }
+
+  async teamInitialPass(
+    guestId: string,
+    roomCode: string,
+    cardId: string
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'TEAM_INITIAL_PASS',
+      playerId: guestId,
+      cardId,
+    });
+  }
+
+  async teamCardPass(
+    guestId: string,
+    roomCode: string,
+    cardId: string
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'TEAM_CARD_PASS',
+      playerId: guestId,
+      cardId,
+    });
+  }
+
+  async teamSplitHandPass(
+    guestId: string,
+    roomCode: string,
+    cardIds: string[]
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'TEAM_SPLIT_HAND_PASS',
+      playerId: guestId,
+      cardIds,
     });
   }
 

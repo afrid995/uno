@@ -19,6 +19,9 @@ export type GameActionType =
   | 'CHOOSE_TARGETED_DRAW_TWO_TARGET'
   | 'CHOOSE_TARGETED_DRAW_FOUR_TARGET'
   | 'CHOOSE_FORCED_SWAP_TARGET'
+  | 'TEAM_INITIAL_PASS'
+  | 'TEAM_CARD_PASS'
+  | 'TEAM_SPLIT_HAND_PASS'
   | 'START_NEXT_ROUND';
 
 export type PlayCardMode = 'regular' | 'flex';
@@ -48,6 +51,8 @@ export interface PassTurnAction {
 export interface CallUnoAction {
   readonly type: 'CALL_UNO';
   readonly playerId: string;
+  /** Optional target player ID if calling UNO on behalf of teammate in UNO Teams */
+  readonly targetPlayerId?: string;
 }
 
 export interface ChallengeUnoFailureAction {
@@ -127,6 +132,24 @@ export interface ChooseForcedSwapTargetAction {
   readonly targetPlayerId: string;
 }
 
+export interface TeamInitialPassAction {
+  readonly type: 'TEAM_INITIAL_PASS';
+  readonly playerId: string;
+  readonly cardId: string;
+}
+
+export interface TeamCardPassAction {
+  readonly type: 'TEAM_CARD_PASS';
+  readonly playerId: string;
+  readonly cardId: string;
+}
+
+export interface TeamSplitHandPassAction {
+  readonly type: 'TEAM_SPLIT_HAND_PASS';
+  readonly playerId: string;
+  readonly cardIds: readonly string[];
+}
+
 export interface StartNextRoundAction {
   readonly type: 'START_NEXT_ROUND';
   readonly triggeredByPlayerId: string;
@@ -151,6 +174,9 @@ export type GameAction =
   | ChooseTargetedDrawTwoTargetAction
   | ChooseTargetedDrawFourTargetAction
   | ChooseForcedSwapTargetAction
+  | TeamInitialPassAction
+  | TeamCardPassAction
+  | TeamSplitHandPassAction
   | StartNextRoundAction;
 
 export interface GameEventRecord {

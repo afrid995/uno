@@ -81,6 +81,35 @@ export interface PendingForcedSwapState {
   readonly sourcePlayerId: string;
 }
 
+export interface PendingTeamInitialPassState {
+  readonly type: 'AWAITING_TEAM_INITIAL_PASS';
+  /** Map of playerId to cardId chosen to pass to partner */
+  readonly selections: Readonly<Record<string, string>>;
+}
+
+export interface PendingTeamCardPassState {
+  readonly type: 'AWAITING_TEAM_CARD_PASS';
+  readonly player1Id: string;
+  readonly player2Id: string;
+  readonly selections: Readonly<Record<string, string>>;
+}
+
+export interface PendingTeamHandSplitState {
+  readonly type: 'AWAITING_TEAM_HAND_SPLIT';
+  readonly giverPlayerId: string;
+  readonly receiverPlayerId: string;
+  readonly cardsCountToPass: number;
+  readonly reason: 'GOING_OUT' | 'TAGGING_BACK_IN';
+  readonly nextPlayerTurnIndex?: number;
+}
+
+export interface PendingWildTeamPlayState {
+  readonly type: 'AWAITING_WILD_TEAM_PLAY';
+  readonly playedByPlayerId: string;
+  readonly partnerPlayerId: string;
+  readonly chosenColor: CardColor;
+}
+
 export type PendingActionState =
   | PendingWildDrawFourState
   | PendingWildDrawTwoState
@@ -91,7 +120,11 @@ export type PendingActionState =
   | PendingColorRouletteState
   | PendingTargetedDrawTwoState
   | PendingTargetedDrawFourState
-  | PendingForcedSwapState;
+  | PendingForcedSwapState
+  | PendingTeamInitialPassState
+  | PendingTeamCardPassState
+  | PendingTeamHandSplitState
+  | PendingWildTeamPlayState;
 
 export interface GameWinner {
   readonly id: string;
