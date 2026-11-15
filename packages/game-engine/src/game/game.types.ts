@@ -110,6 +110,31 @@ export interface PendingWildTeamPlayState {
   readonly chosenColor: CardColor;
 }
 
+export interface AttackLaunchResultDetail {
+  readonly playerId: string;
+  readonly cardsLaunched: number;
+  readonly totalPresses: number;
+  readonly timestamp: number;
+}
+
+export interface AttackLauncherState {
+  /** Internal tension level (0 to 4), builds up when 0 cards launch */
+  readonly tension: number;
+  /** Last launch result: how many cards launched, who pressed it, and stream count */
+  readonly lastLaunchResult?: AttackLaunchResultDetail;
+}
+
+export interface PendingAttackTargetState {
+  readonly type: 'AWAITING_ATTACK_TARGET_SELECTION';
+  readonly playedByPlayerId: string;
+  readonly chosenColor: CardColor;
+}
+
+export interface PendingStartingAttackState {
+  readonly type: 'AWAITING_STARTING_ATTACK_SELECTION';
+  readonly designatedPlayerId: string;
+}
+
 export type PendingActionState =
   | PendingWildDrawFourState
   | PendingWildDrawTwoState
@@ -124,7 +149,9 @@ export type PendingActionState =
   | PendingTeamInitialPassState
   | PendingTeamCardPassState
   | PendingTeamHandSplitState
-  | PendingWildTeamPlayState;
+  | PendingWildTeamPlayState
+  | PendingAttackTargetState
+  | PendingStartingAttackState;
 
 export interface GameWinner {
   readonly id: string;
@@ -192,6 +219,8 @@ export interface GameState {
   readonly eliminatedPlayerIds?: readonly string[];
   /** Number of players eliminated during the current hand (for 250pt winner bonus) */
   readonly eliminatedBonusCount?: number;
+  /** Authoritative state of virtual launcher for UNO Attack */
+  readonly attackLauncherState?: AttackLauncherState;
   /** ISO timestamp when match was created */
   readonly createdAt: string;
   /** ISO timestamp of latest state update */

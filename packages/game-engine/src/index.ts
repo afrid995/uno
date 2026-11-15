@@ -79,6 +79,16 @@ export * from './variants/teams/teams.actions';
 export * from './variants/teams/teams.adapter';
 export * from './variants/teams/teams.invariants';
 export * from './variants/teams/teams.fixture';
+export * from './variants/attack/attack.constants';
+export * from './variants/attack/attack.types';
+export * from './variants/attack/attack.deck';
+export * from './variants/attack/attack.dealer';
+export * from './variants/attack/attack.launcher';
+export * from './variants/attack/attack.validator';
+export * from './variants/attack/attack.actions';
+export * from './variants/attack/attack.adapter';
+export * from './variants/attack/attack.invariants';
+export * from './variants/attack/attack.fixture';
 
 // Testing utilities
 export * from './testing/deterministic-random';

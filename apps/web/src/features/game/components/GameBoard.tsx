@@ -18,6 +18,8 @@ import { TargetedDrawFourModal } from './TargetedDrawFourModal';
 import { ForcedSwapModal } from './ForcedSwapModal';
 import { FlexCardChoiceModal } from './FlexCardChoiceModal';
 import { TeamPassModal } from './TeamPassModal';
+import { AttackLauncher } from './AttackLauncher';
+import { AttackTargetModal } from './AttackTargetModal';
 import { StackPenaltyBanner } from './StackPenaltyBanner';
 import { AlertCircle, RotateCcw, RotateCw, Skull } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -42,6 +44,7 @@ export const GameBoard: React.FC = () => {
     chooseTargetedDrawTwo,
     chooseTargetedDrawFour,
     chooseForcedSwap,
+    chooseAttackTarget,
     teamInitialPass,
     teamCardPass,
     teamSplitHandPass,
@@ -68,6 +71,7 @@ export const GameBoard: React.FC = () => {
   const currentTurnPlayer = players.find((p) => p.id === currentTurnGuestId);
   const isMyTurn = self.isCurrentTurn;
   const isAllWild = gameState.variant === 'uno_all_wild';
+  const isUnoAttack = gameState.variant === 'uno_attack';
   const pendingStack =
     gameState.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION'
       ? gameState.pendingActionState
@@ -133,7 +137,7 @@ export const GameBoard: React.FC = () => {
         {/* Turn indicator badge */}
         <div className="flex items-center gap-2">
           {isMyTurn ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-400/20 border border-amber-400 text-amber-300 font-bold text-xs sm:text-sm animate-pulse shadow-glow-amber">
+            <div data-testid="your-turn-badge" className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-400/20 border border-amber-400 text-amber-300 font-bold text-xs sm:text-sm animate-pulse shadow-glow-amber">
               <span className="w-2 h-2 rounded-full bg-amber-400" />
               <span>YOUR TURN</span>
             </div>
@@ -225,6 +229,16 @@ export const GameBoard: React.FC = () => {
               )}
             </div>
           )}
+
+          {/* UNO Attack Variant Badge */}
+          {isUnoAttack && (
+            <div
+              data-testid="uno-attack-badge"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl font-display font-black text-xs tracking-wider border shadow-md bg-gradient-to-r from-red-950 via-rose-950 to-slate-950 border-red-500 text-red-300 shadow-red-950/60 shadow-lg"
+            >
+              <span>💥 UNO ATTACK</span>
+            </div>
+          )}
         </div>
 
         {/* Scoreboard popover */}
@@ -293,15 +307,27 @@ export const GameBoard: React.FC = () => {
         {/* Wild Draw Four challenge or inspected hand banner */}
         <ChallengePanel />
 
-        {/* Draw & Discard Piles */}
+        {/* Draw & Discard Piles / Attack Launcher */}
         <div className="flex items-center justify-center gap-6 sm:gap-12">
-          {/* Draw Pile */}
-          <DrawPile
-            drawCount={gameState.drawPileCount}
-            canDraw={self.canDraw}
-            isLoading={isActionLoading}
-            onDraw={drawCard}
-          />
+          {/* Draw Pile or Virtual Attack Launcher */}
+          {isUnoAttack ? (
+            <AttackLauncher
+              cardCount={gameState.drawPileCount}
+              canPress={self.canDraw}
+              isLoading={isActionLoading}
+              launcherState={gameState.attackLauncherState}
+              activePlayerUsername={currentTurnPlayer?.username}
+              isMyTurn={isMyTurn}
+              onPress={drawCard}
+            />
+          ) : (
+            <DrawPile
+              drawCount={gameState.drawPileCount}
+              canDraw={self.canDraw}
+              isLoading={isActionLoading}
+              onDraw={drawCard}
+            />
+          )}
 
           {/* Discard Pile */}
           <DiscardPile
@@ -439,6 +465,16 @@ export const GameBoard: React.FC = () => {
         isLoading={isActionLoading}
         onSelectTarget={(targetId) => {
           chooseForcedSwap(targetId);
+        }}
+      />
+
+      {/* Wild Attack-Attack Target Modal (UNO Attack) */}
+      <AttackTargetModal
+        isOpen={!!self.canChooseAttackTarget}
+        eligiblePlayers={opponents.filter((p) => !p.isEliminated)}
+        isLoading={isActionLoading}
+        onSelectTarget={(targetId) => {
+          chooseAttackTarget(targetId);
         }}
       />
 

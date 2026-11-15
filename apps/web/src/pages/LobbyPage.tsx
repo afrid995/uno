@@ -150,7 +150,7 @@ export const LobbyPage: React.FC = () => {
               <h2 className="font-display font-black text-2xl tracking-tight">Starting Game Match</h2>
             </div>
             <p className="text-sm text-white/90">
-              Match countdown initiated ({startingCountdown}s). Preparing the {roomVariant === 'uno_show_em_no_mercy' ? '168-card' : roomVariant === 'uno_all_wild' ? '112-card all-wild' : roomVariant === 'uno_flex' ? '112-card flex' : roomVariant === 'uno_teams' ? '112-card teams' : roomVariant === 'uno_flip' ? '112-card dual-sided' : '108-card'} deck and dealing hands...
+              Match countdown initiated ({startingCountdown}s). Preparing the {roomVariant === 'uno_show_em_no_mercy' ? '168-card' : roomVariant === 'uno_all_wild' ? '112-card all-wild' : roomVariant === 'uno_flex' ? '112-card flex' : roomVariant === 'uno_teams' ? '112-card teams' : roomVariant === 'uno_attack' ? '112-card attack' : roomVariant === 'uno_flip' ? '112-card dual-sided' : '108-card'} deck and dealing hands...
             </p>
           </motion.div>
         )}
@@ -193,11 +193,13 @@ export const LobbyPage: React.FC = () => {
               ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
               : roomVariant === 'uno_teams'
               ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+              : roomVariant === 'uno_attack'
+              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
               : roomVariant === 'uno_flip'
               ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
               : 'bg-uno-red/20 text-uno-red border border-uno-red/30'
           }`}>
-            {roomVariant === 'uno_show_em_no_mercy' ? 'MERCY' : roomVariant === 'uno_all_wild' ? 'WILD' : roomVariant === 'uno_flex' ? 'FLEX' : roomVariant === 'uno_teams' ? 'TEAMS' : roomVariant === 'uno_flip' ? 'FLIP' : 'UNO'}
+            {roomVariant === 'uno_show_em_no_mercy' ? 'MERCY' : roomVariant === 'uno_all_wild' ? 'WILD' : roomVariant === 'uno_flex' ? 'FLEX' : roomVariant === 'uno_teams' ? 'TEAMS' : roomVariant === 'uno_attack' ? 'ATTACK' : roomVariant === 'uno_flip' ? 'FLIP' : 'UNO'}
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -210,6 +212,8 @@ export const LobbyPage: React.FC = () => {
                   ? 'UNO Flex'
                   : roomVariant === 'uno_teams'
                   ? 'UNO Teams'
+                  : roomVariant === 'uno_attack'
+                  ? 'UNO Attack'
                   : roomVariant === 'uno_flip'
                   ? 'UNO Flip!'
                   : 'Classic UNO'}
@@ -223,6 +227,8 @@ export const LobbyPage: React.FC = () => {
                   ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50'
                   : roomVariant === 'uno_teams'
                   ? 'bg-cyan-900/60 text-cyan-300 border border-cyan-700/50'
+                  : roomVariant === 'uno_attack'
+                  ? 'bg-rose-900/60 text-rose-300 border border-rose-700/50'
                   : roomVariant === 'uno_flip'
                   ? 'bg-purple-900/60 text-purple-300 border border-purple-700/50'
                   : 'bg-red-950/60 text-rose-300 border border-rose-800/50'
@@ -235,6 +241,8 @@ export const LobbyPage: React.FC = () => {
                   ? '112 CARDS • 8 POWER'
                   : roomVariant === 'uno_teams'
                   ? '112 CARDS • 2–4 TEAMS'
+                  : roomVariant === 'uno_attack'
+                  ? '112 CARDS • LAUNCHER'
                   : roomVariant === 'uno_flip'
                   ? '112 DUAL-SIDED CARDS'
                   : '108 CARDS'}
@@ -249,6 +257,8 @@ export const LobbyPage: React.FC = () => {
                 ? 'Official Mattel HNB00 rules, Power Cards, flex sides, flip mechanic, targeted draws.'
                 : roomVariant === 'uno_teams'
                 ? 'Official Mattel HXT58 rules, 2v2 partnership, passing symbols, Wild Team Play, 500-pt team target.'
+                : roomVariant === 'uno_attack'
+                ? 'Official Mattel GTX66 rules, virtual card launcher, Hit 2, Wild Hit 4, Wild Attack-Attack, Discard All.'
                 : roomVariant === 'uno_flip'
                 ? 'Light Side vs Dark Side, Flip card, Draw 1 / Draw 5, Skip Everyone.'
                 : 'Official Mattel 42001 rules, Wild Draw Four, 4-card UNO challenge penalty.'}
@@ -336,6 +346,19 @@ export const LobbyPage: React.FC = () => {
               }`}
             >
               UNO Teams
+            </button>
+            <button
+              type="button"
+              data-testid="lobby-toggle-attack"
+              disabled={roomVariant === 'uno_attack'}
+              onClick={() => updateSettings({ variant: 'uno_attack' })}
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                roomVariant === 'uno_attack'
+                  ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-glow'
+                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              UNO Attack
             </button>
           </div>
         )}

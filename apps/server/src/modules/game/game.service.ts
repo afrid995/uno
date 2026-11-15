@@ -376,6 +376,20 @@ export class GameService {
     });
   }
 
+  async chooseAttackTarget(
+    guestId: string,
+    roomCode: string,
+    targetPlayerId: string,
+    chosenColor?: CardColor
+  ): Promise<ActionProcessResult> {
+    return this.executeAction(roomCode, {
+      type: 'CHOOSE_ATTACK_TARGET',
+      playerId: guestId,
+      targetPlayerId,
+      chosenColor,
+    });
+  }
+
   async startNextRound(
     guestId: string,
     roomCode: string

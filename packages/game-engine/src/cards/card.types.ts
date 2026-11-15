@@ -21,7 +21,8 @@ export type ActionCardValue =
   | FlipActionCardValue
   | FlexActionCardValue
   | 'draw_four'
-  | 'discard_all';
+  | 'discard_all'
+  | 'hit_2';
 
 export type ClassicWildCardValue = 'wild' | 'wild_draw_four';
 export type FlipWildCardValue = 'wild_draw_two' | 'wild_draw_color';
@@ -49,13 +50,20 @@ export type AllWildCardValue = 'wild' | AllWildActionCardValue;
 
 export type TeamsWildCardValue = 'wild_team_play' | 'wild_team_draw_four';
 
+export type AttackWildCardValue =
+  | 'wild'
+  | 'wild_hit_4'
+  | 'wild_attack_attack'
+  | 'wild_customizable';
+
 export type WildCardValue =
   | ClassicWildCardValue
   | FlipWildCardValue
   | FlexWildCardValue
   | NoMercyWildCardValue
   | AllWildActionCardValue
-  | TeamsWildCardValue;
+  | TeamsWildCardValue
+  | AttackWildCardValue;
 
 export type CardValue = NumberCardValue | ActionCardValue | WildCardValue;
 
@@ -181,4 +189,11 @@ export const ALL_WILD_VALUES: readonly WildCardValue[] = [
   'wild_forced_swap',
   'wild_team_play',
   'wild_team_draw_four',
+  'wild_hit_4',
+  'wild_attack_attack',
+  'wild_customizable',
 ] as const;
+
+export function isAttackCard(card: Card): boolean {
+  return card.variant === 'uno_attack';
+}

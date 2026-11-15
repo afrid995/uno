@@ -16,6 +16,7 @@ import {
   teamInitialPassInputSchema,
   teamCardPassInputSchema,
   teamSplitHandPassInputSchema,
+  chooseAttackTargetInputSchema,
   CardColor,
 } from '@uno-ultimate/game-protocol';
 import { ERROR_CODES } from '@uno-ultimate/shared';
@@ -727,7 +728,44 @@ export function registerGameHandlers(
     }
   });
 
-  // 22. Handle game:next-round
+  // 22. Handle game:choose-attack-target
+  socket.on(SOCKET_EVENTS.GAME_CHOOSE_ATTACK_TARGET, async (payload, callback) => {
+    try {
+      const guestId = getAuthenticatedGuestId();
+      const roomCode = getActiveRoomCode();
+      const validated = await chooseAttackTargetInputSchema.parseAsync(payload);
+
+      const { nextState } = await gameService.chooseAttackTarget(
+        guestId,
+        roomCode,
+        validated.targetPlayerId,
+        validated.chosenColor as CardColor | undefined
+      );
+
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      if (nextState.status === 'ROUND_OVER') {
+        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
+      } else if (nextState.status === 'COMPLETED') {
+        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
+      }
+
+      callback({
+        success: true,
+        data: {
+          success: true,
+          roundOver: nextState.status === 'ROUND_OVER',
+          matchOver: nextState.status === 'COMPLETED',
+        },
+      });
+    } catch (err: unknown) {
+      const message = (err as Error).message || 'Failed to choose attack target';
+      const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      callback({ success: false, error: { code, message } });
+    }
+  });
+
+  // 23. Handle game:next-round
   socket.on(SOCKET_EVENTS.GAME_NEXT_ROUND, async (_payload, callback) => {
     try {
       const guestId = getAuthenticatedGuestId();

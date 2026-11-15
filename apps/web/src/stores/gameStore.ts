@@ -44,6 +44,7 @@ interface GameStateStore {
   chooseTargetedDrawTwo: (targetPlayerId: string) => Promise<boolean>;
   chooseTargetedDrawFour: (targetPlayerId: string) => Promise<boolean>;
   chooseForcedSwap: (targetPlayerId: string) => Promise<boolean>;
+  chooseAttackTarget: (targetPlayerId: string) => Promise<boolean>;
   teamInitialPass: (cardId: string) => Promise<boolean>;
   teamCardPass: (cardId: string) => Promise<boolean>;
   teamSplitHandPass: (cardIds: string[]) => Promise<boolean>;
@@ -381,6 +382,23 @@ export const useGameStore = create<GameStateStore>((set) => ({
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to swap hands' });
+          resolve(false);
+        }
+      });
+    });
+  },
+
+  chooseAttackTarget: async (targetPlayerId: string) => {
+    set({ isActionLoading: true, error: null });
+    const socket = socketManager.getSocket();
+
+    return new Promise<boolean>((resolve) => {
+      socket.emit(SOCKET_EVENTS.GAME_CHOOSE_ATTACK_TARGET, { targetPlayerId }, (res) => {
+        set({ isActionLoading: false });
+        if (res.success) {
+          resolve(true);
+        } else {
+          set({ error: res.error?.message || 'Failed to select attack target' });
           resolve(false);
         }
       });

@@ -33,6 +33,7 @@ export interface PlayerPrivateView {
   readonly canTeamCardPass?: boolean;
   readonly canTeamHandSplit?: boolean;
   readonly teamHandSplitCount?: number;
+  readonly canChooseAttackTarget?: boolean;
   readonly teamId?: string;
   readonly isOut?: boolean;
   readonly isEliminated?: boolean;
@@ -175,6 +176,12 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
       ? state.pendingActionState.cardsCountToPass
       : undefined;
 
+  const canChooseAttackTarget =
+    (state.pendingActionState?.type === 'AWAITING_ATTACK_TARGET_SELECTION' &&
+      state.pendingActionState.playedByPlayerId === playerId) ||
+    (state.pendingActionState?.type === 'AWAITING_STARTING_ATTACK_SELECTION' &&
+      state.pendingActionState.designatedPlayerId === playerId);
+
   const canDraw = !player.isEliminated && !player.isOut && isCurrentTurn && !player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
   const canPass = !player.isEliminated && !player.isOut && isCurrentTurn && player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
 
@@ -223,6 +230,7 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     canTeamCardPass,
     canTeamHandSplit,
     teamHandSplitCount,
+    canChooseAttackTarget,
     teamId: player.teamId,
     isOut: player.isOut,
     isEliminated: player.isEliminated,

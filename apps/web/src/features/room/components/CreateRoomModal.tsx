@@ -12,11 +12,11 @@ interface CreateRoomModalProps {
 
 export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) => {
   const [maxPlayers, setMaxPlayers] = useState<number>(ROOM_RULES.DEFAULT_MAX_PLAYERS);
-  const [variant, setVariant] = useState<'classic' | 'uno_flip' | 'uno_show_em_no_mercy' | 'uno_all_wild' | 'uno_flex' | 'uno_teams'>('classic');
+  const [variant, setVariant] = useState<'classic' | 'uno_flip' | 'uno_show_em_no_mercy' | 'uno_all_wild' | 'uno_flex' | 'uno_teams' | 'uno_attack'>('classic');
   const { createRoom, isLoading, error, clearError } = useRoomStore();
   const navigate = useNavigate();
 
-  const handleSelectVariant = (newVariant: 'classic' | 'uno_flip' | 'uno_show_em_no_mercy' | 'uno_all_wild' | 'uno_flex' | 'uno_teams') => {
+  const handleSelectVariant = (newVariant: 'classic' | 'uno_flip' | 'uno_show_em_no_mercy' | 'uno_all_wild' | 'uno_flex' | 'uno_teams' | 'uno_attack') => {
     setVariant(newVariant);
     if (newVariant === 'uno_show_em_no_mercy' && maxPlayers > 6) {
       setMaxPlayers(6);
@@ -94,6 +94,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                     ? 'UNO Flex'
                     : variant === 'uno_teams'
                     ? 'UNO Teams'
+                    : variant === 'uno_attack'
+                    ? 'UNO Attack'
                     : 'UNO All Wild'}
                 </span>
               </label>
@@ -207,6 +209,25 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                   </div>
                   <div className="text-[11px] text-slate-400 leading-tight">
                     Mattel HXT58 rules (112 cards, 2–4 teams of 2, passing symbol, Wild Team Play).
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  data-testid="variant-select-uno-attack"
+                  onClick={() => handleSelectVariant('uno_attack')}
+                  className={`p-3 rounded-2xl text-left border transition-all ${
+                    variant === 'uno_attack'
+                      ? 'bg-gradient-to-br from-rose-600/30 to-red-500/20 border-rose-400 text-white shadow-glow'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                  }`}
+                >
+                  <div className="font-bold font-display text-sm text-white mb-0.5 flex items-center gap-1.5">
+                    UNO Attack
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500/30 text-rose-300 font-mono">112C</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 leading-tight">
+                    Mattel GTX66 rules (112 cards, virtual launcher, Hit 2, Wild Hit 4, Discard All).
                   </div>
                 </button>
               </div>

@@ -90,6 +90,15 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         if (card.value === 'wild_team_draw_four') {
           return 'from-slate-950 via-blue-950 to-slate-900 border-blue-400 text-white shadow-blue-500/30';
         }
+        if (card.value === 'wild_hit_4') {
+          return 'from-slate-950 via-rose-950 to-slate-900 border-rose-500 text-white shadow-rose-500/30';
+        }
+        if (card.value === 'wild_attack_attack') {
+          return 'from-slate-950 via-red-950 to-slate-900 border-red-500 text-white shadow-red-500/30';
+        }
+        if (card.value === 'wild_customizable') {
+          return 'from-slate-950 via-amber-950 to-slate-900 border-amber-400 text-white shadow-amber-500/30';
+        }
         if (card.value === 'wild_all_flip') {
           return 'from-slate-950 via-teal-950 to-slate-900 border-teal-400 text-white shadow-teal-500/30';
         }
@@ -179,6 +188,14 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         return 'TEAM ⇄';
       case 'wild_team_draw_four':
         return '+4👥';
+      case 'hit_2':
+        return 'HIT 2';
+      case 'wild_hit_4':
+        return 'HIT 4';
+      case 'wild_attack_attack':
+        return 'ATK 2x';
+      case 'wild_customizable':
+        return 'CUSTOM';
       default:
         return card.value;
     }
@@ -220,6 +237,14 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         return 'TEAM PLAY';
       case 'wild_team_draw_four':
         return 'TEAM DRAW 4';
+      case 'hit_2':
+        return 'HIT 2';
+      case 'wild_hit_4':
+        return 'HIT 4';
+      case 'wild_attack_attack':
+        return 'ATTACK ATTACK';
+      case 'wild_customizable':
+        return 'CUSTOM';
       default:
         return getDisplayValue();
     }

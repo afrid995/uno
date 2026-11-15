@@ -1,0 +1,135 @@
+import { Card, ClassicCardColor } from '../../cards/card.types';
+import { ATTACK_SCORING, UNO_ATTACK_RULES } from './attack.constants';
+
+const COLORS: readonly ClassicCardColor[] = ['red', 'yellow', 'green', 'blue'];
+
+/**
+ * Factory for creating the official 112-card Mattel UNO Attack (Product GTX66) deck.
+ */
+export class AttackDeckFactory {
+  static createDeck(): Card[] {
+    const deck: Card[] = [];
+
+    // 1. Number Cards (1 to 9, two of each per color = 18 per color * 4 = 72 cards)
+    // Note: UNO Attack has NO 0 number cards!
+    for (const color of COLORS) {
+      for (let num = 1; num <= 9; num++) {
+        for (let copy = 0; copy < 2; copy++) {
+          const valueStr = String(num) as Card['value'];
+          deck.push({
+            id: `attack_${color}_${num}_${copy}`,
+            color,
+            value: valueStr,
+            type: 'number',
+            scoreValue: ATTACK_SCORING.NUMBER_CARD_FACE_VALUE(valueStr),
+            variant: 'uno_attack',
+          });
+        }
+      }
+    }
+
+    // 2. Colored Action Cards
+    for (const color of COLORS) {
+      // 8 Hit 2 cards: 2 each in blue, green, red, yellow (20 pts)
+      for (let copy = 0; copy < 2; copy++) {
+        deck.push({
+          id: `attack_${color}_hit_2_${copy}`,
+          color,
+          value: 'hit_2',
+          type: 'action',
+          scoreValue: ATTACK_SCORING.HIT_2,
+          variant: 'uno_attack',
+        });
+      }
+
+      // 4 Reverse cards: 1 each in blue, green, red, yellow (20 pts)
+      deck.push({
+        id: `attack_${color}_reverse_0`,
+        color,
+        value: 'reverse',
+        type: 'action',
+        scoreValue: ATTACK_SCORING.REVERSE,
+        variant: 'uno_attack',
+      });
+
+      // 8 Skip cards: 2 each in blue, green, red, yellow (20 pts)
+      for (let copy = 0; copy < 2; copy++) {
+        deck.push({
+          id: `attack_${color}_skip_${copy}`,
+          color,
+          value: 'skip',
+          type: 'action',
+          scoreValue: ATTACK_SCORING.SKIP,
+          variant: 'uno_attack',
+        });
+      }
+
+      // 8 Discard All cards: 2 each in blue, green, red, yellow (30 pts)
+      for (let copy = 0; copy < 2; copy++) {
+        deck.push({
+          id: `attack_${color}_discard_all_${copy}`,
+          color,
+          value: 'discard_all',
+          type: 'action',
+          scoreValue: ATTACK_SCORING.DISCARD_ALL,
+          variant: 'uno_attack',
+        });
+      }
+    }
+
+    // 3. Wild Cards (12 cards total)
+    // 4 Wild cards (50 pts)
+    for (let i = 0; i < 4; i++) {
+      deck.push({
+        id: `attack_wild_${i}`,
+        color: null,
+        value: 'wild',
+        type: 'wild',
+        scoreValue: ATTACK_SCORING.WILD,
+        variant: 'uno_attack',
+      });
+    }
+
+    // 4 Wild Attack-Attack cards (50 pts)
+    for (let i = 0; i < 4; i++) {
+      deck.push({
+        id: `attack_wild_attack_attack_${i}`,
+        color: null,
+        value: 'wild_attack_attack',
+        type: 'wild',
+        scoreValue: ATTACK_SCORING.WILD_ATTACK_ATTACK,
+        variant: 'uno_attack',
+      });
+    }
+
+    // 3 Wild Customizable cards (50 pts)
+    for (let i = 0; i < 3; i++) {
+      deck.push({
+        id: `attack_wild_customizable_${i}`,
+        color: null,
+        value: 'wild_customizable',
+        type: 'wild',
+        scoreValue: ATTACK_SCORING.WILD_CUSTOMIZABLE,
+        variant: 'uno_attack',
+      });
+    }
+
+    // 1 Wild Hit 4 card (40 pts)
+    deck.push({
+      id: `attack_wild_hit_4_0`,
+      color: null,
+      value: 'wild_hit_4',
+      type: 'wild',
+      scoreValue: ATTACK_SCORING.WILD_HIT_4,
+      variant: 'uno_attack',
+    });
+
+    if (deck.length !== UNO_ATTACK_RULES.TOTAL_DECK_SIZE) {
+      throw new Error(
+        `Invalid UNO Attack deck size generated: ${deck.length}. Expected exactly ${UNO_ATTACK_RULES.TOTAL_DECK_SIZE}.`
+      );
+    }
+
+    return deck;
+  }
+}

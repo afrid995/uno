@@ -22,6 +22,7 @@ export type GameActionType =
   | 'TEAM_INITIAL_PASS'
   | 'TEAM_CARD_PASS'
   | 'TEAM_SPLIT_HAND_PASS'
+  | 'CHOOSE_ATTACK_TARGET'
   | 'START_NEXT_ROUND';
 
 export type PlayCardMode = 'regular' | 'flex';
@@ -150,6 +151,13 @@ export interface TeamSplitHandPassAction {
   readonly cardIds: readonly string[];
 }
 
+export interface ChooseAttackTargetAction {
+  readonly type: 'CHOOSE_ATTACK_TARGET';
+  readonly playerId: string;
+  readonly targetPlayerId: string;
+  readonly chosenColor?: CardColor;
+}
+
 export interface StartNextRoundAction {
   readonly type: 'START_NEXT_ROUND';
   readonly triggeredByPlayerId: string;
@@ -177,6 +185,7 @@ export type GameAction =
   | TeamInitialPassAction
   | TeamCardPassAction
   | TeamSplitHandPassAction
+  | ChooseAttackTargetAction
   | StartNextRoundAction;
 
 export interface GameEventRecord {

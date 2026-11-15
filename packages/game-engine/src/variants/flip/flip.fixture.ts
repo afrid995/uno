@@ -324,35 +324,47 @@ export class FlipFixtureBuilder {
   static injectStartingWild(state: GameState): { nextState: GameState; wildCard: Card } {
     assertValidFlipGameState(state);
 
-    if (state.activeSide !== 'LIGHT') {
-      throw new Error('Starting Wild state can only be established on the LIGHT side.');
+    let workingState = state;
+    if (workingState.activeSide === 'DARK') {
+      workingState = {
+        ...workingState,
+        activeSide: 'LIGHT',
+        topDiscardCard: FlipDeckFactory.flipCard(workingState.topDiscardCard, 'LIGHT'),
+        discardPile: workingState.discardPile.map((c) => FlipDeckFactory.flipCard(c, 'LIGHT')),
+        drawPile: workingState.drawPile.map((c) => FlipDeckFactory.flipCard(c, 'LIGHT')),
+        players: workingState.players.map((p) => ({
+          ...p,
+          hand: p.hand.map((c) => FlipDeckFactory.flipCard(c, 'LIGHT')),
+        })),
+        activeColor: workingState.topDiscardCard.lightFace?.color ?? 'blue',
+      };
     }
 
     // If topDiscardCard is already Wild and awaiting color, return as is
     if (
-      state.topDiscardCard.value === 'wild' &&
-      state.pendingActionState?.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION'
+      workingState.topDiscardCard.value === 'wild' &&
+      workingState.pendingActionState?.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION'
     ) {
-      return { nextState: state, wildCard: state.topDiscardCard };
+      return { nextState: workingState, wildCard: workingState.topDiscardCard };
     }
 
     // Locate a physical Wild card in the game's existing drawPile
-    const wildIndex = state.drawPile.findIndex((c) => c.lightFace?.value === 'wild');
+    const wildIndex = workingState.drawPile.findIndex((c) => c.lightFace?.value === 'wild');
     let wildCard: Card;
-    const newDrawPile = [...state.drawPile];
-    const newPlayers = state.players.map((p) => ({ ...p, hand: [...p.hand] }));
+    const newDrawPile = [...workingState.drawPile];
+    const newPlayers = workingState.players.map((p) => ({ ...p, hand: [...p.hand] }));
 
     if (wildIndex !== -1) {
-      wildCard = state.drawPile[wildIndex];
+      wildCard = workingState.drawPile[wildIndex];
       // Put the current top discard card into the drawPile at wildIndex
-      const oldTopDiscard = state.topDiscardCard;
+      const oldTopDiscard = workingState.topDiscardCard;
       newDrawPile[wildIndex] = oldTopDiscard;
     } else {
       // Search in players' hands
       let foundPlayerIdx = -1;
       let foundCardIdx = -1;
-      for (let pIdx = 0; pIdx < state.players.length; pIdx++) {
-        const hand = state.players[pIdx].hand;
+      for (let pIdx = 0; pIdx < workingState.players.length; pIdx++) {
+        const hand = workingState.players[pIdx].hand;
         for (let cIdx = 0; cIdx < hand.length; cIdx++) {
           if (hand[cIdx]?.lightFace?.value === 'wild') {
             foundPlayerIdx = pIdx;
@@ -369,18 +381,18 @@ export class FlipFixtureBuilder {
 
       wildCard = newPlayers[foundPlayerIdx].hand[foundCardIdx];
       // Swap wildCard with old top discard, and old top discard goes to player's hand
-      newPlayers[foundPlayerIdx].hand[foundCardIdx] = state.topDiscardCard;
+      newPlayers[foundPlayerIdx].hand[foundCardIdx] = workingState.topDiscardCard;
     }
 
     const activeWild = FlipDeckFactory.flipCard(wildCard, 'LIGHT');
     const newDiscardPile = [activeWild];
 
-    const dealerIdx = state.dealerIndex;
-    const designatedIdx = (dealerIdx + 1) % state.players.length;
-    const designatedPlayerId = state.players[designatedIdx].id;
+    const dealerIdx = workingState.dealerIndex;
+    const designatedIdx = (dealerIdx + 1) % workingState.players.length;
+    const designatedPlayerId = workingState.players[designatedIdx].id;
 
     const nextState: GameState = {
-      ...state,
+      ...workingState,
       topDiscardCard: activeWild,
       discardPile: newDiscardPile,
       drawPile: newDrawPile,

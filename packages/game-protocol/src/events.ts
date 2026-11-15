@@ -75,6 +75,7 @@ export const SOCKET_EVENTS = {
   GAME_TEAM_INITIAL_PASS: 'game:team-initial-pass',
   GAME_TEAM_CARD_PASS: 'game:team-card-pass',
   GAME_TEAM_SPLIT_HAND_PASS: 'game:team-split-hand-pass',
+  GAME_CHOOSE_ATTACK_TARGET: 'game:choose-attack-target',
   GAME_NEXT_ROUND: 'game:next-round',
 
   // Phase 4 & Phase 6 Gameplay Broadcasts: Server to Client
@@ -167,6 +168,21 @@ export const teamSplitHandPassInputSchema = z.object({
   cardIds: z.array(z.string().min(1)).min(1, 'At least one card ID is required'),
 });
 export type TeamSplitHandPassInput = z.infer<typeof teamSplitHandPassInputSchema>;
+
+export const chooseAttackTargetInputSchema = z.object({
+  targetPlayerId: z.string().min(1, 'Target player ID is required'),
+  chosenColor: z.enum([
+    'red',
+    'yellow',
+    'green',
+    'blue',
+    'pink',
+    'teal',
+    'orange',
+    'purple',
+  ]).optional(),
+});
+export type ChooseAttackTargetInput = z.infer<typeof chooseAttackTargetInputSchema>;
 
 /**
  * Socket.IO client-to-server event signatures
@@ -300,6 +316,10 @@ export interface ClientToServerEvents {
   [SOCKET_EVENTS.GAME_TEAM_SPLIT_HAND_PASS]: (
     payload: TeamSplitHandPassInput,
     callback: (response: SocketAck<{ success: boolean; cardsPassed: number }>) => void
+  ) => void;
+  [SOCKET_EVENTS.GAME_CHOOSE_ATTACK_TARGET]: (
+    payload: ChooseAttackTargetInput,
+    callback: (response: SocketAck<{ success: boolean; roundOver?: boolean; matchOver?: boolean }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_NEXT_ROUND]: (
     payload: Record<string, never> | undefined,

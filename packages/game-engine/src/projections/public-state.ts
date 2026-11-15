@@ -103,6 +103,17 @@ export interface PublicPendingWildTeamPlay {
   readonly chosenColor: CardColor;
 }
 
+export interface PublicPendingAttackTarget {
+  readonly type: 'AWAITING_ATTACK_TARGET_SELECTION';
+  readonly playedByPlayerId: string;
+  readonly chosenColor: CardColor;
+}
+
+export interface PublicPendingStartingAttack {
+  readonly type: 'AWAITING_STARTING_ATTACK_SELECTION';
+  readonly designatedPlayerId: string;
+}
+
 export type PublicPendingActionState =
   | PublicPendingWildDrawFour
   | PublicPendingWildDrawTwo
@@ -117,7 +128,9 @@ export type PublicPendingActionState =
   | PublicPendingTeamInitialPass
   | PublicPendingTeamCardPass
   | PublicPendingTeamHandSplit
-  | PublicPendingWildTeamPlay;
+  | PublicPendingWildTeamPlay
+  | PublicPendingAttackTarget
+  | PublicPendingStartingAttack;
 
 export interface PublicGameState {
   readonly id: string;
@@ -142,6 +155,7 @@ export interface PublicGameState {
   readonly unoVulnerablePlayerId: string | null;
   readonly pendingActionState: PublicPendingActionState | null;
   readonly eliminatedPlayerIds?: readonly string[];
+  readonly attackLauncherState?: GameState['attackLauncherState'];
   readonly roundWinner: GameWinner | null;
   readonly winner: GameWinner | null;
 }
@@ -240,6 +254,17 @@ export function getPublicGameState(state: GameState): PublicGameState {
         partnerPlayerId: state.pendingActionState.partnerPlayerId,
         chosenColor: state.pendingActionState.chosenColor,
       };
+    } else if (state.pendingActionState.type === 'AWAITING_ATTACK_TARGET_SELECTION') {
+      pendingActionState = {
+        type: 'AWAITING_ATTACK_TARGET_SELECTION',
+        playedByPlayerId: state.pendingActionState.playedByPlayerId,
+        chosenColor: state.pendingActionState.chosenColor,
+      };
+    } else if (state.pendingActionState.type === 'AWAITING_STARTING_ATTACK_SELECTION') {
+      pendingActionState = {
+        type: 'AWAITING_STARTING_ATTACK_SELECTION',
+        designatedPlayerId: state.pendingActionState.designatedPlayerId,
+      };
     }
   }
 
@@ -276,6 +301,7 @@ export function getPublicGameState(state: GameState): PublicGameState {
     unoVulnerablePlayerId: state.unoVulnerablePlayerId,
     pendingActionState,
     eliminatedPlayerIds: state.eliminatedPlayerIds,
+    attackLauncherState: state.attackLauncherState,
     roundWinner: state.roundWinner,
     winner: state.winner,
   };
