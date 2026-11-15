@@ -1,5 +1,12 @@
-# Render Blueprint for UNO Ultimate
+# ==============================================================================
+# UNO Ultimate — Render Paid Starter Tier Blueprint
+# ==============================================================================
+# NOTE: This blueprint uses Render's paid 'starter' plans for the Web Service
+# and Managed PostgreSQL ($7/month each).
+# For a STRICTLY FREE (₹0/month) deployment using Render Free Web Service and
+# Neon Free PostgreSQL, use 'render.free.yaml' instead!
 # Reference: https://render.com/docs/blueprint-spec
+# ==============================================================================
 
 services:
   # 1. Persistent Node.js Web Service for Backend API and WebSocket server

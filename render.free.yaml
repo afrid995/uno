@@ -1,0 +1,47 @@
+# ==============================================================================
+# UNO Ultimate — Render Free-Tier Blueprint (Strictly ₹0/Month)
+# ==============================================================================
+# Architecture:
+# - Frontend: Vercel Free Tier (Vite + React SPA)
+# - Backend: Render Free Web Service (Node.js + Socket.IO)
+# - Database: Neon Free Tier PostgreSQL (Serverless PostgreSQL with SSL)
+#
+# No paid resources, persistent disks, or paid databases are declared here.
+# Render will NOT prompt for payment information when deploying this blueprint.
+#
+# Reference: https://render.com/docs/blueprint-spec
+# ==============================================================================
+
+services:
+  # 1. Render Free Node.js Web Service for Backend API and WebSocket Server
+  - type: web
+    name: uno-ultimate-server-free
+    runtime: node
+    plan: free # Strictly free tier ($0/month)
+    region: oregon # Render free tier supported region (oregon, ohio, frankfurt, singapore)
+    buildCommand: pnpm install --frozen-lockfile && pnpm build:server && pnpm db:deploy
+    startCommand: pnpm start:server
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CORS_ORIGIN
+        sync: false # Set in Render Dashboard to your Vercel URL (e.g. https://your-app.vercel.app,https://*.vercel.app)
+      - key: DATABASE_URL
+        sync: false # Set in Render Dashboard to your Neon connection string (postgresql://...neon.tech/neondb?sslmode=require)
+      - key: SESSION_SECRET
+        generateValue: true # Render automatically generates a cryptographically secure 256-bit random secret
+      - key: COOKIE_SECRET
+        generateValue: true # Render automatically generates a cryptographically secure 256-bit random secret
+      - key: COOKIE_NAME
+        value: uno_session
+      - key: SESSION_EXPIRATION_HOURS
+        value: 24
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX_GUEST
+        value: 120
+      - key: ENABLE_TEST_HELPERS
+        value: "false"
