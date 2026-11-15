@@ -547,6 +547,18 @@ export class RoomService {
         );
       }
 
+      if (
+        settings.attackCustomizableCount !== undefined &&
+        settings.attackCustomizableCount !== 1 &&
+        settings.attackCustomizableCount !== 3
+      ) {
+        throw new AppError(
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.VALIDATION_ERROR,
+          'Invalid attackCustomizableCount. Official Mattel GTX66 rules strictly permit only 1 or 3 Wild Customizable cards.'
+        );
+      }
+
       const mergedSettings = {
         ...((member.room.settings as Record<string, unknown>) || {}),
         ...settings,

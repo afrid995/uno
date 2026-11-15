@@ -39,6 +39,45 @@ describe('UNO Attack Rule Fidelity & State Transitions (Mattel Product GTX66)', 
       assertValidAttackGameState(state);
     });
 
+    it('initializes a game with 1 Wild Customizable card (110-card conservation)', () => {
+      const state = adapter.createGame({
+        roomId: 'room_attack_1custom',
+        variant: 'uno_attack',
+        attackCustomizableCount: 1,
+        players: [
+          { id: 'p1', username: 'P1' },
+          { id: 'p2', username: 'P2' },
+        ],
+      });
+
+      expect(state.attackCustomizableCount).toBe(1);
+      const allCards = [
+        ...state.drawPile,
+        ...state.discardPile,
+        ...state.players.flatMap((p) => p.hand),
+      ];
+      expect(allCards.length).toBe(110);
+      const customWilds = allCards.filter((c) => c.value === 'wild_customizable');
+      expect(customWilds.length).toBe(1);
+
+      assertValidAttackGameState(state);
+    });
+
+    it('strictly rejects non-official 2-card customizable configuration at adapter level', () => {
+      expect(() => {
+        adapter.createGame({
+          roomId: 'room_attack_2custom',
+          variant: 'uno_attack',
+          // @ts-expect-error Testing runtime rejection of 2
+          attackCustomizableCount: 2,
+          players: [
+            { id: 'p1', username: 'P1' },
+            { id: 'p2', username: 'P2' },
+          ],
+        });
+      }).toThrow(/Official Mattel GTX66 rules strictly permit only 1 or 3/i);
+    });
+
     it('rejects invalid player counts: < 2 or > 10', () => {
       expect(() => {
         adapter.createGame({

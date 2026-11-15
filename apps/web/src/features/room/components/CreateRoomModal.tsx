@@ -13,7 +13,7 @@ interface CreateRoomModalProps {
 export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) => {
   const [maxPlayers, setMaxPlayers] = useState<number>(ROOM_RULES.DEFAULT_MAX_PLAYERS);
   const [variant, setVariant] = useState<'classic' | 'uno_flip' | 'uno_show_em_no_mercy' | 'uno_all_wild' | 'uno_flex' | 'uno_teams' | 'uno_attack'>('classic');
-  const [attackCustomizableCount, setAttackCustomizableCount] = useState<number>(3);
+  const [attackCustomizableCount, setAttackCustomizableCount] = useState<1 | 3>(3);
   const { createRoom, isLoading, error, clearError } = useRoomStore();
   const navigate = useNavigate();
 
@@ -249,11 +249,11 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                     Wild Customizable Cards (GTX66)
                   </label>
                   <span className="font-mono text-xs text-amber-400 font-bold">
-                    {attackCustomizableCount} {attackCustomizableCount === 1 ? 'Card' : 'Cards'} ({109 + attackCustomizableCount} Total)
+                    {attackCustomizableCount === 1 ? '1 Card (110 Total Cards)' : '3 Cards (112 Total Cards)'}
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  {[1, 2, 3].map((count) => (
+                  {([1, 3] as const).map((count) => (
                     <button
                       key={count}
                       type="button"
@@ -265,12 +265,12 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                           : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-white'
                       }`}
                     >
-                      {count} {count === 1 ? 'Card' : 'Cards'}
+                      {count === 1 ? '1 Card (110 Cards)' : '3 Cards (112 Cards)'}
                     </button>
                   ))}
                 </div>
                 <p className="text-[10px] text-slate-500">
-                  Mattel GTX66 rules allow including 1, 2, or 3 customizable cards (110–112 total cards).
+                  Official Mattel GTX66 rules strictly permit including 1 Wild Customizable card or all 3 cards.
                 </p>
               </div>
             )}

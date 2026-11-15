@@ -221,8 +221,8 @@ export interface GameState {
   readonly eliminatedBonusCount?: number;
   /** Authoritative state of virtual launcher for UNO Attack */
   readonly attackLauncherState?: AttackLauncherState;
-  /** Number of Wild Customizable cards configured for UNO Attack (1, 2, or 3) */
-  readonly attackCustomizableCount?: number;
+  /** Number of Wild Customizable cards configured for UNO Attack (strictly 1 or 3 per official Mattel GTX66 rules) */
+  readonly attackCustomizableCount?: 1 | 3;
   /** ISO timestamp when match was created */
   readonly createdAt: string;
   /** ISO timestamp of latest state update */
@@ -237,6 +237,6 @@ export interface GameConfig {
   readonly cardsPerHand?: number;
   readonly targetScore?: number;
   readonly dealerIndex?: number;
-  /** Number of Wild Customizable cards to include in UNO Attack (1, 2, or 3 per GTX66 rules, default 3) */
-  readonly attackCustomizableCount?: number;
+  /** Number of Wild Customizable cards to include in UNO Attack (strictly 1 or 3 per official Mattel GTX66 rules, default 3) */
+  readonly attackCustomizableCount?: 1 | 3;
 }

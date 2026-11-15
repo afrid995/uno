@@ -84,19 +84,13 @@ describe('UNO Attack Deck Factory (Mattel Product GTX66)', () => {
     expect(hitFourWilds[0].scoreValue).toBe(40);
   });
 
-  describe('Wild Customizable Card Configuration (GTX66: 1, 2, or 3 cards)', () => {
+  describe('Wild Customizable Card Configuration (Official Mattel GTX66: strictly 1 or 3 cards)', () => {
     it('generates 110 cards when configured with 1 customizable card', () => {
       const customDeck = AttackDeckFactory.createDeck(1);
       expect(customDeck.length).toBe(110);
       const customWilds = customDeck.filter((c) => c.value === 'wild_customizable');
       expect(customWilds.length).toBe(1);
-    });
-
-    it('generates 111 cards when configured with 2 customizable cards', () => {
-      const customDeck = AttackDeckFactory.createDeck(2);
-      expect(customDeck.length).toBe(111);
-      const customWilds = customDeck.filter((c) => c.value === 'wild_customizable');
-      expect(customWilds.length).toBe(2);
+      expect(new Set(customDeck.map((c) => c.id)).size).toBe(110);
     });
 
     it('generates 112 cards when configured with 3 customizable cards (default)', () => {
@@ -104,14 +98,20 @@ describe('UNO Attack Deck Factory (Mattel Product GTX66)', () => {
       expect(customDeck.length).toBe(112);
       const customWilds = customDeck.filter((c) => c.value === 'wild_customizable');
       expect(customWilds.length).toBe(3);
+      expect(new Set(customDeck.map((c) => c.id)).size).toBe(112);
     });
 
-    it('clamps counts outside [1, 3] to valid range', () => {
-      const minDeck = AttackDeckFactory.createDeck(0);
-      expect(minDeck.length).toBe(110);
+    it('strictly rejects non-official 2-card configuration at engine level', () => {
+      expect(() => AttackDeckFactory.createDeck(2)).toThrow(
+        /strictly permit only 1 or 3 Wild Customizable cards/i
+      );
+    });
 
-      const maxDeck = AttackDeckFactory.createDeck(5);
-      expect(maxDeck.length).toBe(112);
+    it('strictly rejects other invalid configurations (0, -1, 4, 5)', () => {
+      expect(() => AttackDeckFactory.createDeck(0)).toThrow(/strictly permit only 1 or 3/i);
+      expect(() => AttackDeckFactory.createDeck(-1)).toThrow(/strictly permit only 1 or 3/i);
+      expect(() => AttackDeckFactory.createDeck(4)).toThrow(/strictly permit only 1 or 3/i);
+      expect(() => AttackDeckFactory.createDeck(5)).toThrow(/strictly permit only 1 or 3/i);
     });
   });
 });

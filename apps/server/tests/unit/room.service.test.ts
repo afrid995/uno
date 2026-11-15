@@ -135,6 +135,22 @@ describe('RoomService Unit Tests', () => {
     const updated = await roomService.updateSettings(hostGuestId, { drawToMatch: true });
     expect((updated.settings as Record<string, unknown>).drawToMatch).toBe(true);
 
+    // Host updates attackCustomizableCount to 1 and 3 (allowed)
+    const updated1 = await roomService.updateSettings(hostGuestId, { attackCustomizableCount: 1 });
+    expect((updated1.settings as Record<string, unknown>).attackCustomizableCount).toBe(1);
+
+    const updated3 = await roomService.updateSettings(hostGuestId, { attackCustomizableCount: 3 });
+    expect((updated3.settings as Record<string, unknown>).attackCustomizableCount).toBe(3);
+
+    // Host attempts to set attackCustomizableCount to 2 (invalid - only 1 or 3 permitted)
+    await expect(roomService.updateSettings(hostGuestId, { attackCustomizableCount: 2 as any })).rejects.toThrow(AppError);
+    try {
+      await roomService.updateSettings(hostGuestId, { attackCustomizableCount: 2 as any });
+    } catch (err) {
+      const appErr = err as AppError;
+      expect(appErr.code).toBe(ERROR_CODES.VALIDATION_ERROR);
+    }
+
     // Non-host attempts settings update
     await expect(roomService.updateSettings(player1GuestId, { drawToMatch: false })).rejects.toThrow(AppError);
 

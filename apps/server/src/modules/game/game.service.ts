@@ -74,10 +74,23 @@ export class GameService {
 
     const matchId = uuidv4();
     const targetScore = variant === 'uno_show_em_no_mercy' ? 1000 : 500;
-    const attackCustomizableCount =
-      typeof settings?.attackCustomizableCount === 'number'
-        ? settings.attackCustomizableCount
-        : undefined;
+
+    let attackCustomizableCount: 1 | 3 | undefined = undefined;
+    if (variant === 'uno_attack') {
+      const rawCount = settings?.attackCustomizableCount;
+      if (rawCount !== undefined) {
+        if (rawCount !== 1 && rawCount !== 3) {
+          throw new AppError(
+            HTTP_STATUS.BAD_REQUEST,
+            ERROR_CODES.BAD_REQUEST,
+            'UNO Attack permits only 1 or 3 Wild Customizable cards (official Mattel GTX66 rules).'
+          );
+        }
+        attackCustomizableCount = rawCount as 1 | 3;
+      } else {
+        attackCustomizableCount = 3;
+      }
+    }
 
     // 2. Initialize GameState through official engine factory
     const initialGameState = GameFactory.createGame({

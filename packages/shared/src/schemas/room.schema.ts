@@ -17,7 +17,8 @@ export const roomCodeSchema = z
 
 export const roomSettingsSchema = z.object({
   variant: z.enum(['classic', 'uno_flip', 'uno_show_em_no_mercy', 'uno_all_wild', 'uno_flex', 'uno_teams', 'uno_attack']).default('classic'),
-  attackCustomizableCount: z.number().int().min(1).max(3).default(3).optional(),
+  /** Official Mattel GTX66 rules strictly permit only 1 or 3 Wild Customizable cards */
+  attackCustomizableCount: z.union([z.literal(1), z.literal(3)]).default(3).optional(),
 }).passthrough();
 export type RoomSettings = z.infer<typeof roomSettingsSchema>;
 
@@ -45,7 +46,17 @@ export const readyStatusSchema = z.object({
 });
 
 export const updateRoomSettingsSchema = z.object({
-  settings: z.record(z.unknown()),
+  settings: z.record(z.unknown()).refine(
+    (settings) => {
+      if (settings.attackCustomizableCount !== undefined) {
+        return settings.attackCustomizableCount === 1 || settings.attackCustomizableCount === 3;
+      }
+      return true;
+    },
+    {
+      message: 'Invalid attackCustomizableCount. Official Mattel GTX66 rules strictly permit only 1 or 3 Wild Customizable cards.',
+    }
+  ),
 });
 
 export const roomMemberRoleEnum = z.enum(['HOST', 'PLAYER']);

@@ -13,7 +13,11 @@ import { AttackDealerSelector } from './attack.dealer';
 import { AttackMoveValidator } from './attack.validator';
 import { AttackActionProcessor } from './attack.actions';
 import { AttackLauncher } from './attack.launcher';
-import { UNO_ATTACK_RULES, ATTACK_LAUNCHER_CONFIG } from './attack.constants';
+import {
+  UNO_ATTACK_RULES,
+  ATTACK_LAUNCHER_CONFIG,
+  isValidAttackCustomizableCount,
+} from './attack.constants';
 import { assertValidAttackGameState } from './attack.invariants';
 import { HandManager } from '../../players/hand.manager';
 import { DeckManager } from '../../deck/deck.manager';
@@ -58,6 +62,11 @@ export class UnoAttackAdapter implements GameVariantAdapter {
     // 1. Build and shuffle Attack deck (with configured Customizable cards count, default 3)
     const customizableCount =
       config.attackCustomizableCount ?? UNO_ATTACK_RULES.DEFAULT_CUSTOMIZABLE_CARDS_COUNT;
+    if (!isValidAttackCustomizableCount(customizableCount)) {
+      throw new Error(
+        `Invalid attackCustomizableCount: ${customizableCount}. Official Mattel GTX66 rules strictly permit only 1 or 3 Wild Customizable cards (110 or 112 total cards). A 2-card configuration is not permitted.`
+      );
+    }
     const deck = shuffleDeck(AttackDeckFactory.createDeck(customizableCount), rng);
 
     // 2. Determine dealer

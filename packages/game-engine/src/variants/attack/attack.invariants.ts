@@ -1,5 +1,9 @@
 import { GameState } from '../../game/game.types';
-import { UNO_ATTACK_RULES, ATTACK_LAUNCHER_CONFIG } from './attack.constants';
+import {
+  UNO_ATTACK_RULES,
+  ATTACK_LAUNCHER_CONFIG,
+  isValidAttackCustomizableCount,
+} from './attack.constants';
 
 export class AttackInvariantViolationError extends Error {
   constructor(message: string) {
@@ -97,12 +101,18 @@ export function assertValidAttackGameState(state: GameState): void {
     }
   }
 
+  if (!isValidAttackCustomizableCount(customizableCount)) {
+    throw new AttackInvariantViolationError(
+      `Invalid Wild Customizable card count ${customizableCount}. Official Mattel GTX66 rules strictly permit only 1 or 3 Wild Customizable cards (110 or 112 total cards). A 2-card configuration is not permitted.`
+    );
+  }
+
   if (
-    customizableCount < UNO_ATTACK_RULES.MIN_CUSTOMIZABLE_CARDS_COUNT ||
-    customizableCount > UNO_ATTACK_RULES.MAX_CUSTOMIZABLE_CARDS_COUNT
+    state.attackCustomizableCount !== undefined &&
+    !isValidAttackCustomizableCount(state.attackCustomizableCount)
   ) {
     throw new AttackInvariantViolationError(
-      `Invalid Wild Customizable card count ${customizableCount}. Expected between ${UNO_ATTACK_RULES.MIN_CUSTOMIZABLE_CARDS_COUNT} and ${UNO_ATTACK_RULES.MAX_CUSTOMIZABLE_CARDS_COUNT}.`
+      `Invalid state.attackCustomizableCount ${state.attackCustomizableCount}. Permitted values are strictly 1 or 3.`
     );
   }
 

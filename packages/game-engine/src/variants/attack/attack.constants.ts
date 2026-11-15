@@ -21,10 +21,22 @@ export const UNO_ATTACK_RULES = {
   /** Base non-customizable cards in GTX66 (72 numbers + 28 action + 4 wild + 4 attack-attack + 1 hit 4) */
   BASE_CARDS_COUNT: 109,
   DEFAULT_CUSTOMIZABLE_CARDS_COUNT: 3,
-  MIN_CUSTOMIZABLE_CARDS_COUNT: 1,
-  MAX_CUSTOMIZABLE_CARDS_COUNT: 3,
+  /**
+   * Official Mattel Product GTX66 rule (Page 3):
+   * "Before the game begins, decide how many of these cards to include. You may use only 1 or all 3, it’s up to you."
+   * Permitted counts are strictly 1 or 3 (decks of 110 or 112 cards). A 2-card setup is not an official rule.
+   */
+  PERMITTED_CUSTOMIZABLE_CARDS_COUNTS: [1, 3] as const,
+  OFFICIAL_DECK_SIZES: {
+    ONE_CUSTOMIZABLE: 110,
+    THREE_CUSTOMIZABLE: 112,
+  } as const,
   MISSED_UNO_PENALTY_PRESSES: 2,
 } as const;
+
+export function isValidAttackCustomizableCount(count: number): count is 1 | 3 {
+  return count === 1 || count === 3;
+}
 
 export const ATTACK_SCORING = {
   NUMBER_CARD_FACE_VALUE: (val: string): number => {
