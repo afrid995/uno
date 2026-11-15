@@ -91,10 +91,14 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
             className={`px-2 py-0.5 rounded-full text-[9px] font-black border tracking-wider ${
               player.teamId === 'team_1'
                 ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                : 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                : player.teamId === 'team_2'
+                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                : player.teamId === 'team_3'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
             }`}
           >
-            {player.teamId === 'team_1' ? 'TEAM 1' : 'TEAM 2'}
+            {player.teamId.toUpperCase().replace('_', ' ')}
           </div>
         )}
 

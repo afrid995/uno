@@ -214,8 +214,48 @@ describe('UNO Teams Rule Fidelity & State Transitions (Mattel Product HXT58)', (
       // p1 must draw 2 penalty cards! p1 had 1 card remaining + 2 penalty = 3 cards!
       expect(res.nextState.players[0].hand.length).toBe(3);
 
-      // Play continues from partner: turn advances to player after partner (p4, index 3)
-      expect(res.nextState.currentPlayerIndex).toBe(3);
+      // Per official rules: "Play continues from your partner with the chosen color."
+      // Partner p3 (index 2) is the current player whose turn it now is!
+      expect(res.nextState.currentPlayerIndex).toBe(2);
+
+      assertValidTeamsGameState(res.nextState);
+    });
+
+    it('handles Wild Team Play when partner is OUT: penalty draw triggers Tagging Back In and partner turn', () => {
+      const top = fullDeck.find((c) => c.id === 'teams_red_2_0')!;
+      const wildTeamPlay = fullDeck.find((c) => c.id === 'teams_wild_team_play_0')!;
+
+      const initial = TeamsFixtureBuilder.createInitialGameFixture();
+      const custom = TeamsFixtureBuilder.setCustomState(
+        initial,
+        {
+          p1: [wildTeamPlay, fullDeck.find((c) => c.id === 'teams_blue_1_0')!], // p1 has 2 cards, plays wild team play
+          p2: [fullDeck.find((c) => c.id === 'teams_blue_2_0')!],
+          p3: [], // partner p3 is OUT (0 cards)!
+          p4: [fullDeck.find((c) => c.id === 'teams_yellow_2_0')!],
+        },
+        top
+      );
+
+      // p1 plays Wild Team Play and chooses yellow
+      const res = adapter.processAction(custom, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: wildTeamPlay.id,
+        chosenColor: 'yellow',
+      });
+
+      // Partner was out, so partner cannot play!
+      // p1 had 1 card remaining + 2 penalty cards = 3 cards!
+      // Since partner p3 was out, p1 drawing cards triggers Tagging Back In:
+      // p1 passes floor(3/2) = 1 card to p3! p1 keeps 2 cards, p3 gets 1 card!
+      expect(res.nextState.players[0].hand.length).toBe(2);
+      expect(res.nextState.players[2].hand.length).toBe(1);
+      expect(res.nextState.players[2].isOut).toBe(false);
+
+      // Play continues from partner (p3, index 2) with chosen color
+      expect(res.nextState.currentPlayerIndex).toBe(2);
+      expect(res.nextState.activeColor).toBe('yellow');
 
       assertValidTeamsGameState(res.nextState);
     });
@@ -255,6 +295,120 @@ describe('UNO Teams Rule Fidelity & State Transitions (Mattel Product HXT58)', (
       expect(res.nextState.players[3].isOut).toBe(false);
 
       // p2 is skipped, turn advances to p3 (index 2)
+      expect(res.nextState.currentPlayerIndex).toBe(2);
+
+      assertValidTeamsGameState(res.nextState);
+    });
+
+    it('directly targets next player with Wild Team Draw Four even when that next player is currently OUT', () => {
+      const top = fullDeck.find((c) => c.id === 'teams_red_2_0')!;
+      const wildTeamDrawFour = fullDeck.find((c) => c.id === 'teams_wild_team_draw_four_0')!;
+
+      const initial = TeamsFixtureBuilder.createInitialGameFixture();
+      const custom = TeamsFixtureBuilder.setCustomState(
+        initial,
+        {
+          p1: [wildTeamDrawFour, fullDeck.find((c) => c.id === 'teams_blue_1_0')!],
+          p2: [], // p2 (next seat) is OUT!
+          p3: [fullDeck.find((c) => c.id === 'teams_green_1_0')!],
+          p4: [fullDeck.find((c) => c.id === 'teams_yellow_2_0')!], // p4 (p2 partner) is active
+        },
+        top
+      );
+
+      expect(custom.players[1].isOut).toBe(true);
+
+      const res = adapter.processAction(custom, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: wildTeamDrawFour.id,
+        chosenColor: 'blue',
+      });
+
+      // Next player (p2) was OUT: draws 2 cards directly and is tagged in!
+      expect(res.nextState.players[1].hand.length).toBe(2);
+      expect(res.nextState.players[1].isOut).toBe(false);
+
+      // Partner p4 also draws 2 cards: had 1 -> now 3 cards!
+      expect(res.nextState.players[3].hand.length).toBe(3);
+
+      // p2 is skipped, turn advances to p3 (index 2)
+      expect(res.nextState.currentPlayerIndex).toBe(2);
+
+      assertValidTeamsGameState(res.nextState);
+    });
+  });
+
+  describe('Directly Targeted Out Players & Draw Two', () => {
+    it('directly targets an out player with Draw Two: receives 2 cards, tagged in, no partner split, loses turn', () => {
+      const top = fullDeck.find((c) => c.id === 'teams_red_2_0')!;
+      const drawTwo = fullDeck.find((c) => c.id === 'teams_red_draw_two_0')!;
+
+      const initial = TeamsFixtureBuilder.createInitialGameFixture();
+      const custom = TeamsFixtureBuilder.setCustomState(
+        initial,
+        {
+          p1: [drawTwo, fullDeck.find((c) => c.id === 'teams_blue_1_0')!],
+          p2: [], // next seat p2 is OUT!
+          p3: [fullDeck.find((c) => c.id === 'teams_green_1_0')!],
+          p4: [fullDeck.find((c) => c.id === 'teams_yellow_1_0')!, fullDeck.find((c) => c.id === 'teams_yellow_2_0')!], // partner p4 has 2 cards
+        },
+        top
+      );
+
+      expect(custom.players[1].isOut).toBe(true);
+
+      const res = adapter.processAction(custom, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: drawTwo.id,
+      });
+
+      // p2 was directly targeted: receives 2 cards directly from draw pile
+      expect(res.nextState.players[1].hand.length).toBe(2);
+      expect(res.nextState.players[1].isOut).toBe(false);
+
+      // Partner p4 did NOT split hand: p4 still has 2 cards!
+      expect(res.nextState.players[3].hand.length).toBe(2);
+
+      // p2 loses turn (skipped), turn advances to p3 (index 2)
+      expect(res.nextState.currentPlayerIndex).toBe(2);
+
+      assertValidTeamsGameState(res.nextState);
+    });
+
+    it('targets an active player with Draw Two whose partner is out: active player draws 2, splits hand and tags partner in', () => {
+      const top = fullDeck.find((c) => c.id === 'teams_red_2_0')!;
+      const drawTwo = fullDeck.find((c) => c.id === 'teams_red_draw_two_0')!;
+
+      const initial = TeamsFixtureBuilder.createInitialGameFixture();
+      const custom = TeamsFixtureBuilder.setCustomState(
+        initial,
+        {
+          p1: [drawTwo, fullDeck.find((c) => c.id === 'teams_blue_1_0')!],
+          p2: [fullDeck.find((c) => c.id === 'teams_yellow_1_0')!], // active with 1 card
+          p3: [fullDeck.find((c) => c.id === 'teams_green_1_0')!],
+          p4: [], // partner p4 is OUT!
+        },
+        top
+      );
+
+      expect(custom.players[3].isOut).toBe(true);
+
+      const res = adapter.processAction(custom, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: drawTwo.id,
+      });
+
+      // p2 had 1 card + drew 2 = 3 cards!
+      // Partner p4 was out, so p2 splits hand: floor(3/2) = 1 card passed to p4!
+      // p2 keeps 2 cards, p4 receives 1 card and is tagged in!
+      expect(res.nextState.players[1].hand.length).toBe(2);
+      expect(res.nextState.players[3].hand.length).toBe(1);
+      expect(res.nextState.players[3].isOut).toBe(false);
+
+      // p2 loses turn (skipped), turn advances to p3 (index 2)
       expect(res.nextState.currentPlayerIndex).toBe(2);
 
       assertValidTeamsGameState(res.nextState);
@@ -450,6 +604,151 @@ describe('UNO Teams Rule Fidelity & State Transitions (Mattel Product HXT58)', (
           targetPlayerId: 'p3',
         });
       }).toThrow(/cannot challenge your own teammate/i);
+    });
+  });
+
+  describe('Team Formation for Supported Player Counts (Rule 1 & Box Specs)', () => {
+    it('creates 2 teams of 2 for 4 players seated across from each other', () => {
+      const state = adapter.createGame({
+        roomId: 'room_4p',
+        variant: 'uno_teams',
+        players: [
+          { id: 'p1', username: 'P1' },
+          { id: 'p2', username: 'P2' },
+          { id: 'p3', username: 'P3' },
+          { id: 'p4', username: 'P4' },
+        ],
+      });
+
+      expect(state.players[0].teamId).toBe('team_1');
+      expect(state.players[1].teamId).toBe('team_2');
+      expect(state.players[2].teamId).toBe('team_1'); // Across from p1
+      expect(state.players[3].teamId).toBe('team_2'); // Across from p2
+
+      assertValidTeamsGameState(state);
+    });
+
+    it('creates 3 teams of 2 for 6 players seated across from each other', () => {
+      const state = adapter.createGame({
+        roomId: 'room_6p',
+        variant: 'uno_teams',
+        players: [
+          { id: 'p1', username: 'P1' },
+          { id: 'p2', username: 'P2' },
+          { id: 'p3', username: 'P3' },
+          { id: 'p4', username: 'P4' },
+          { id: 'p5', username: 'P5' },
+          { id: 'p6', username: 'P6' },
+        ],
+      });
+
+      expect(state.players[0].teamId).toBe('team_1');
+      expect(state.players[1].teamId).toBe('team_2');
+      expect(state.players[2].teamId).toBe('team_3');
+      expect(state.players[3].teamId).toBe('team_1'); // Across from p1 (index 0 + 6/2 = 3)
+      expect(state.players[4].teamId).toBe('team_2'); // Across from p2 (index 1 + 6/2 = 4)
+      expect(state.players[5].teamId).toBe('team_3'); // Across from p3 (index 2 + 6/2 = 5)
+
+      // Exactly 2 players per team
+      expect(state.players.filter((p) => p.teamId === 'team_1').length).toBe(2);
+      expect(state.players.filter((p) => p.teamId === 'team_2').length).toBe(2);
+      expect(state.players.filter((p) => p.teamId === 'team_3').length).toBe(2);
+
+      assertValidTeamsGameState(state);
+    });
+
+    it('creates 4 teams of 2 for 8 players seated across from each other', () => {
+      const state = adapter.createGame({
+        roomId: 'room_8p',
+        variant: 'uno_teams',
+        players: [
+          { id: 'p1', username: 'P1' },
+          { id: 'p2', username: 'P2' },
+          { id: 'p3', username: 'P3' },
+          { id: 'p4', username: 'P4' },
+          { id: 'p5', username: 'P5' },
+          { id: 'p6', username: 'P6' },
+          { id: 'p7', username: 'P7' },
+          { id: 'p8', username: 'P8' },
+        ],
+      });
+
+      expect(state.players[0].teamId).toBe('team_1');
+      expect(state.players[1].teamId).toBe('team_2');
+      expect(state.players[2].teamId).toBe('team_3');
+      expect(state.players[3].teamId).toBe('team_4');
+      expect(state.players[4].teamId).toBe('team_1'); // Across from p1 (index 0 + 8/2 = 4)
+      expect(state.players[5].teamId).toBe('team_2'); // Across from p2 (index 1 + 8/2 = 5)
+      expect(state.players[6].teamId).toBe('team_3'); // Across from p3 (index 2 + 8/2 = 6)
+      expect(state.players[7].teamId).toBe('team_4'); // Across from p4 (index 3 + 8/2 = 7)
+
+      // Exactly 2 players per team
+      expect(state.players.filter((p) => p.teamId === 'team_1').length).toBe(2);
+      expect(state.players.filter((p) => p.teamId === 'team_2').length).toBe(2);
+      expect(state.players.filter((p) => p.teamId === 'team_3').length).toBe(2);
+      expect(state.players.filter((p) => p.teamId === 'team_4').length).toBe(2);
+
+      assertValidTeamsGameState(state);
+    });
+
+    it('rejects invalid player counts: 2, 3, 5, 7, 9, 10', () => {
+      const invalidCounts = [2, 3, 5, 7, 9, 10];
+      for (const count of invalidCounts) {
+        expect(() => {
+          adapter.createGame({
+            roomId: `room_${count}p`,
+            variant: 'uno_teams',
+            players: Array.from({ length: count }, (_, i) => ({
+              id: `p${i + 1}`,
+              username: `P${i + 1}`,
+            })),
+          });
+        }).toThrow(/Invalid player count/i);
+      }
+    });
+  });
+
+  describe('Match Victory & Cumulative Scoring (500 pts target)', () => {
+    it('declares match victory (status COMPLETED) when winning team reaches 500 points', () => {
+      const top = fullDeck.find((c) => c.id === 'teams_red_2_0')!;
+      const lastCard = fullDeck.find((c) => c.id === 'teams_red_7_0')!;
+
+      const initial = TeamsFixtureBuilder.createInitialGameFixture();
+      // Start team 1 with 480 points (needs 20 points for 500 target)
+      const stateWithScore = {
+        ...initial,
+        players: initial.players.map((p) =>
+          p.teamId === 'team_1' ? { ...p, score: 480 } : p
+        ),
+      };
+
+      // Opponent p2 has two Action cards (20 + 20 = 40 points)
+      const oppCard1 = fullDeck.find((c) => c.id === 'teams_red_skip_0')!;
+      const oppCard2 = fullDeck.find((c) => c.id === 'teams_blue_skip_0')!;
+
+      const custom = TeamsFixtureBuilder.setCustomState(
+        stateWithScore,
+        {
+          p1: [lastCard],
+          p2: [oppCard1, oppCard2],
+          p3: [], // partner already out
+          p4: [fullDeck.find((c) => c.id === 'teams_yellow_2_0')!],
+        },
+        top
+      );
+
+      const res = adapter.processAction(custom, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: lastCard.id,
+      });
+
+      // Round ends, team 1 scores 40 + 2 = 42 points. Total: 480 + 42 = 522 >= 500!
+      expect(res.nextState.status).toBe('COMPLETED');
+      expect(res.nextState.winner).not.toBeNull();
+      expect(res.nextState.winner?.score).toBeGreaterThanOrEqual(500);
+
+      assertValidTeamsGameState(res.nextState);
     });
   });
 });

@@ -17,6 +17,8 @@ import {
   FlexFixtureBuilder,
   assertValidFlexGameState,
   validateFlexGameStateInvariants,
+  TeamsFixtureBuilder,
+  assertValidTeamsGameState,
   validateTeamsGameStateInvariants,
 } from '@uno-ultimate/game-engine';
 import { timingSafeSecretCompare } from '../utils/crypto';
@@ -770,6 +772,11 @@ const setFlexHandSizeSchema = z.object({
   targetCount: z.number().int().min(1).max(25),
 });
 
+const setupTeamsRoundEndSchema = z.object({
+  roomCode: z.string().min(1),
+  targetTeamId: z.string().optional(),
+});
+
 /**
  * POST /api/test/inject-flex-card
  */
@@ -1052,6 +1059,66 @@ router.get(['/verify-teams-invariants/:roomCode', '/verify-teams-invariants'], a
     res.json(outcome);
   } catch (err: unknown) {
     res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: (err as Error).message } });
+  }
+});
+
+/**
+ * POST /api/test/setup-teams-round-end
+ */
+router.post('/setup-teams-round-end', async (req: Request, res: Response) => {
+  const parseResult = setupTeamsRoundEndSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    res.status(400).json({
+      success: false,
+      error: { code: 'BAD_REQUEST', message: 'Invalid payload', details: parseResult.error.format() },
+    });
+    return;
+  }
+
+  const { roomCode, targetTeamId } = parseResult.data;
+  const session = gameSessionManager.getSessionByRoomCode(roomCode);
+  if (!session) {
+    res.status(404).json({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Active game session not found for this room.' },
+    });
+    return;
+  }
+
+  try {
+    const outcome = await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      if (activeSession.state.variant !== 'uno_teams') {
+        throw new AppError(400, 'INVALID_VARIANT', 'Fixture only valid for UNO Teams.');
+      }
+      if (activeSession.state.status !== 'IN_PROGRESS') {
+        throw new AppError(400, 'MATCH_NOT_ACTIVE', 'Match must be IN_PROGRESS.');
+      }
+
+      const nextState = TeamsFixtureBuilder.setupRoundEndState(
+        activeSession.state,
+        targetTeamId ?? 'team_1'
+      );
+
+      assertValidTeamsGameState(nextState);
+      await gamePersistenceService.persistActionBatch(activeSession.matchId, nextState, []);
+      activeSession.state = nextState;
+      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+      const currentPlayer = nextState.players[nextState.currentPlayerIndex];
+      return {
+        winningTeamId: targetTeamId ?? 'team_1',
+        currentPlayerId: currentPlayer.id,
+        cardToPlayId: currentPlayer.hand[0]?.id,
+      };
+    });
+
+    res.json({ success: true, data: outcome });
+  } catch (err: unknown) {
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json({ success: false, error: { code: err.code, message: err.message } });
+    } else {
+      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: (err as Error).message } });
+    }
   }
 });
 

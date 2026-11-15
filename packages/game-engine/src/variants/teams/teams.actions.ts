@@ -445,42 +445,72 @@ export class TeamsActionProcessor {
         updatedPlayers
       );
     } else if (playedCard.value === 'skip') {
-      const skippedIndex = advanceTurn(1);
+      const skippedIndex = TurnManager.getNextPlayerIndex(
+        state.currentPlayerIndex,
+        updatedPlayers.length,
+        turnDirection,
+        1
+      );
       const skippedPlayer = updatedPlayers[skippedIndex];
       addEvent('PLAYER_SKIPPED', skippedPlayer.id, { skippedBy: playerId });
-      nextPlayerIndex = advanceTurn(2);
+      nextPlayerIndex = this.getNextActivePlayerIndex(
+        skippedIndex,
+        updatedPlayers.length,
+        turnDirection,
+        1,
+        updatedPlayers
+      );
     } else if (playedCard.value === 'draw_two') {
-      const victimIndex = advanceTurn(1);
+      // Physical next seat in rotation is the direct target of Draw Two
+      const victimIndex = TurnManager.getNextPlayerIndex(
+        state.currentPlayerIndex,
+        updatedPlayers.length,
+        turnDirection,
+        1
+      );
       const victim = updatedPlayers[victimIndex];
+      const vPartnerId = getPartnerId(victim.id, state);
 
       const drawResult = DeckManager.drawCards(drawPile, discard, 2, rng);
       drawPile = [...drawResult.newDrawPile];
       discard = [...drawResult.newDiscardPile];
 
       let newVictimHand = [...victim.hand, ...drawResult.drawnCards];
-      let victimPartnerHand = [...updatedPlayers.find((p) => p.id === getPartnerId(victim.id, state))!.hand];
-      let victimPartnerIsOut = updatedPlayers.find((p) => p.id === getPartnerId(victim.id, state))!.isOut;
+      let victimIsOut = victim.isOut;
+      let victimPartnerHand = [...updatedPlayers.find((p) => p.id === vPartnerId)!.hand];
+      let victimPartnerIsOut = updatedPlayers.find((p) => p.id === vPartnerId)!.isOut;
 
-      // Check Tagging Back In for victim's partner
-      if (victimPartnerIsOut) {
-        // Victim passes half of cards to partner, partner tagged back in!
+      if (victimIsOut) {
+        // Critical Audit B: Directly targeted out player receives cards & returns to active play!
+        // No partner hand split occurs because victim was directly targeted.
+        victimIsOut = false;
+        addEvent('TEAM_TAGGED_BACK_IN', victim.id, {
+          taggedInBy: playerId,
+          reason: 'DIRECTLY_TARGETED_DRAW_TWO',
+          cardsReceived: 2,
+        });
+      } else if (victimPartnerIsOut) {
+        // Victim was active, but victim's partner is out.
+        // Partner-draw tag-in mechanic: victim must split hand and pass half to partner!
         const totalCards = newVictimHand.length;
         const passCount = Math.floor(totalCards / 2);
-        const passedToPartner = newVictimHand.slice(0, passCount);
-        newVictimHand = newVictimHand.slice(passCount);
-        victimPartnerHand = [...victimPartnerHand, ...passedToPartner];
-        victimPartnerIsOut = false;
+        if (passCount > 0) {
+          const passedToPartner = newVictimHand.slice(0, passCount);
+          newVictimHand = newVictimHand.slice(passCount);
+          victimPartnerHand = [...victimPartnerHand, ...passedToPartner];
+          victimPartnerIsOut = false;
 
-        addEvent('TEAM_TAGGED_BACK_IN', getPartnerId(victim.id, state), {
-          taggedInBy: victim.id,
-          cardsReceived: passCount,
-        });
+          addEvent('TEAM_TAGGED_BACK_IN', vPartnerId, {
+            taggedInBy: victim.id,
+            reason: 'PARTNER_DRAW_SPLIT',
+            cardsReceived: passCount,
+          });
+        }
       }
 
-      const vPartnerId = getPartnerId(victim.id, state);
       updatedPlayers = updatedPlayers.map((p) => {
         if (p.id === victim.id) {
-          return { ...p, hand: newVictimHand, hasDeclaredUno: false };
+          return { ...p, hand: newVictimHand, isOut: victimIsOut, hasDeclaredUno: false };
         }
         if (p.id === vPartnerId) {
           return { ...p, hand: victimPartnerHand, isOut: victimPartnerIsOut };
@@ -495,32 +525,49 @@ export class TeamsActionProcessor {
       });
 
       addEvent('PLAYER_SKIPPED', victim.id, { skippedBy: playerId });
-      nextPlayerIndex = advanceTurn(2);
+      // Victim loses turn; play advances to next active player after victim
+      nextPlayerIndex = this.getNextActivePlayerIndex(
+        victimIndex,
+        updatedPlayers.length,
+        turnDirection,
+        1,
+        updatedPlayers
+      );
     } else if (playedCard.value === 'wild_team_draw_four') {
-      // Next player in rotation draws 2 and skips, AND their teammate draws 2!
-      const victimIndex = advanceTurn(1);
+      // Physical next seat in rotation draws 2 and skips, AND their teammate draws 2!
+      const victimIndex = TurnManager.getNextPlayerIndex(
+        state.currentPlayerIndex,
+        updatedPlayers.length,
+        turnDirection,
+        1
+      );
       const victim = updatedPlayers[victimIndex];
       const victimPartnerId = getPartnerId(victim.id, state);
 
-      // Draw 2 for victim
+      // Draw 2 for victim (direct target)
       const drawVictim = DeckManager.drawCards(drawPile, discard, 2, rng);
       drawPile = [...drawVictim.newDrawPile];
       discard = [...drawVictim.newDiscardPile];
 
-      // Draw 2 for victim's partner (even if out)
+      // Draw 2 for victim's partner (direct target, even if out)
       const drawPartner = DeckManager.drawCards(drawPile, discard, 2, rng);
       drawPile = [...drawPartner.newDrawPile];
       discard = [...drawPartner.newDiscardPile];
 
       updatedPlayers = updatedPlayers.map((p) => {
         if (p.id === victim.id) {
-          return { ...p, hand: [...p.hand, ...drawVictim.drawnCards], hasDeclaredUno: false };
+          return {
+            ...p,
+            hand: [...p.hand, ...drawVictim.drawnCards],
+            isOut: false, // Directly targeted -> tagged back in if out!
+            hasDeclaredUno: false,
+          };
         }
         if (p.id === victimPartnerId) {
           return {
             ...p,
             hand: [...p.hand, ...drawPartner.drawnCards],
-            isOut: false, // Tagged back in!
+            isOut: false, // Directly targeted -> tagged back in if out!
             hasDeclaredUno: false,
           };
         }
@@ -537,7 +584,14 @@ export class TeamsActionProcessor {
       });
       addEvent('PLAYER_SKIPPED', victim.id, { skippedBy: playerId });
 
-      nextPlayerIndex = advanceTurn(2);
+      // Victim loses turn; play advances to next active player after victim
+      nextPlayerIndex = this.getNextActivePlayerIndex(
+        victimIndex,
+        updatedPlayers.length,
+        turnDirection,
+        1,
+        updatedPlayers
+      );
     } else if (playedCard.value === 'wild_team_play') {
       // First choose a color (already in activeColor). Play SKIPS directly to partner!
       const partnerIndex = updatedPlayers.findIndex((p) => p.id === partnerId);
@@ -549,7 +603,8 @@ export class TeamsActionProcessor {
       });
 
       // Check if partner can play a card matching chosenColor or a Wild card
-      const partnerHasPlayable = targetPartner.hand.some((c) => {
+      // If partner is currently out (0 cards), partner cannot play.
+      const partnerHasPlayable = !targetPartner.isOut && targetPartner.hand.some((c) => {
         if (isWildCard(c)) return true;
         return c.color === activeColor;
       });
@@ -560,27 +615,47 @@ export class TeamsActionProcessor {
         drawPile = [...drawPenalty.newDrawPile];
         discard = [...drawPenalty.newDiscardPile];
 
-        updatedPlayers = updatedPlayers.map((p) =>
-          p.id === playerId ? { ...p, hand: [...p.hand, ...drawPenalty.drawnCards], hasDeclaredUno: false } : p
-        );
+        let playerHandAfterPenalty = [...updatedPlayers.find((p) => p.id === playerId)!.hand, ...drawPenalty.drawnCards];
+        let partnerHandAfterPenalty = [...updatedPlayers.find((p) => p.id === partnerId)!.hand];
+        let partnerIsOutAfterPenalty = updatedPlayers.find((p) => p.id === partnerId)!.isOut;
+
+        // If partner was out: card player drawing penalty cards triggers Tagging Back In!
+        if (partnerIsOutAfterPenalty) {
+          const totalCards = playerHandAfterPenalty.length;
+          const passCount = Math.floor(totalCards / 2);
+          if (passCount > 0) {
+            const passedToPartner = playerHandAfterPenalty.slice(0, passCount);
+            playerHandAfterPenalty = playerHandAfterPenalty.slice(passCount);
+            partnerHandAfterPenalty = [...partnerHandAfterPenalty, ...passedToPartner];
+            partnerIsOutAfterPenalty = false;
+
+            addEvent('TEAM_TAGGED_BACK_IN', partnerId, {
+              taggedInBy: playerId,
+              reason: 'PARTNER_PENALTY_DRAW_SPLIT',
+              cardsReceived: passCount,
+            });
+          }
+        }
+
+        updatedPlayers = updatedPlayers.map((p) => {
+          if (p.id === playerId) {
+            return { ...p, hand: playerHandAfterPenalty, hasDeclaredUno: false };
+          }
+          if (p.id === partnerId) {
+            return { ...p, hand: partnerHandAfterPenalty, isOut: partnerIsOutAfterPenalty };
+          }
+          return p;
+        });
 
         addEvent('CARDS_DRAWN', playerId, {
           count: 2,
           reason: 'WILD_TEAM_PLAY_PARTNER_CANNOT_PLAY_PENALTY',
         });
-
-        // Play continues from partner with chosen color: turn advances to player after partner
-        nextPlayerIndex = this.getNextActivePlayerIndex(
-          partnerIndex,
-          updatedPlayers.length,
-          turnDirection,
-          1,
-          updatedPlayers
-        );
-      } else {
-        // Partner CAN play: partner's turn begins!
-        nextPlayerIndex = partnerIndex;
       }
+
+      // Per official rules: "Play continues from your partner with the chosen color."
+      // Partner takes their turn!
+      nextPlayerIndex = partnerIndex;
     } else if (playedCard.hasPassingSymbol) {
       // Number card with passing symbol:
       // If player still has cards and partner is active, enter AWAITING_TEAM_CARD_PASS

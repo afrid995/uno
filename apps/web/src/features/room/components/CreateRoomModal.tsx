@@ -206,7 +206,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                     <span className="px-1.5 py-0.5 rounded text-[9px] bg-cyan-500/30 text-cyan-300 font-mono">112C</span>
                   </div>
                   <div className="text-[11px] text-slate-400 leading-tight">
-                    Mattel HXT58 rules (112 cards, 2v2 partnership, passing symbol, Wild Team Play).
+                    Mattel HXT58 rules (112 cards, 2–4 teams of 2, passing symbol, Wild Team Play).
                   </div>
                 </button>
               </div>

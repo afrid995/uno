@@ -116,4 +116,51 @@ export class TeamsFixtureBuilder {
     assertValidTeamsGameState(nextState);
     return nextState;
   }
+
+  /**
+   * Sets up an active game state right before round victory:
+   * Current player (partner A of target team) has 1 playable card matching top discard,
+   * Partner B of target team has 0 cards (isOut = true),
+   * Opponents have hands, and 112-card conservation is maintained.
+   */
+  static setupRoundEndState(state: GameState, targetTeamId: string = 'team_1'): GameState {
+    const fullDeck = TeamsDeckFactory.createDeck();
+    const teamPlayers = state.players.filter((p) => p.teamId === targetTeamId);
+    if (teamPlayers.length !== 2) {
+      throw new Error(`Team ${targetTeamId} does not have exactly 2 players.`);
+    }
+    const [partnerA, partnerB] = teamPlayers;
+
+    // Pick a red 5 for top discard, red 7 for partner A's hand
+    const topCard = fullDeck.find((c) => c.color === 'red' && c.value === '5')!;
+    const winningCard = fullDeck.find((c) => c.color === 'red' && c.value === '7')!;
+
+    const hands: Record<string, Card[]> = {};
+    hands[partnerA.id] = [winningCard];
+    hands[partnerB.id] = [];
+
+    const opponents = state.players.filter((p) => p.teamId !== targetTeamId);
+    let cardIdx = 0;
+    const opponentCardsPool = fullDeck.filter(
+      (c) => c.id !== topCard.id && c.id !== winningCard.id && c.type === 'number'
+    );
+
+    for (const opp of opponents) {
+      hands[opp.id] = [opponentCardsPool[cardIdx++], opponentCardsPool[cardIdx++]];
+    }
+
+    const customState = this.setCustomState(state, hands, topCard, 'red');
+
+    // Partner A is current player
+    const partnerAIndex = customState.players.findIndex((p) => p.id === partnerA.id);
+    const finalState: GameState = {
+      ...customState,
+      currentPlayerIndex: partnerAIndex,
+      pendingActionState: null,
+      status: 'IN_PROGRESS',
+    };
+
+    assertValidTeamsGameState(finalState);
+    return finalState;
+  }
 }

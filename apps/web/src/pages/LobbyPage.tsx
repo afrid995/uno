@@ -234,7 +234,7 @@ export const LobbyPage: React.FC = () => {
                   : roomVariant === 'uno_flex'
                   ? '112 CARDS • 8 POWER'
                   : roomVariant === 'uno_teams'
-                  ? '112 CARDS • 2v2 TEAMS'
+                  ? '112 CARDS • 2–4 TEAMS'
                   : roomVariant === 'uno_flip'
                   ? '112 DUAL-SIDED CARDS'
                   : '108 CARDS'}
