@@ -85,6 +85,13 @@ export class GameSessionManager {
     }
   }
 
+  removeSessionByRoomCode(roomCode: string): void {
+    const matchId = this.roomCodeToMatchId.get(roomCode);
+    if (matchId) {
+      this.removeSession(matchId);
+    }
+  }
+
   /**
    * Resets all in-memory game sessions. Used to simulate cold server restart in tests.
    */

@@ -20,6 +20,7 @@ import { AppError } from '../middleware/errorHandler';
 import { HTTP_STATUS } from '@uno-ultimate/shared';
 import { roomService } from '../modules/room/room.service';
 import { gameService } from '../modules/game/game.service';
+import { gameSessionManager } from '../modules/game/game.session.manager';
 import { gameStatePublisher } from '../modules/game/game.state.publisher';
 import { logger } from '../utils/logger';
 
@@ -53,6 +54,7 @@ export function cancelAllCountdownTimersForTesting(): void {
   }
   activeCountdownTimers.clear();
   resetCountdownDurationForTesting();
+  roomService.shutdown();
 }
 
 export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
@@ -252,6 +254,7 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       socket.data.currentRoomCode = undefined;
 
       if (result.roomDeleted) {
+        gameSessionManager.removeSessionByRoomCode(roomCode);
         io.to(roomCode).emit(SOCKET_EVENTS.ROOM_CLOSED, { reason: 'Host closed or all members left.' });
       } else if (result.room) {
         io.to(roomCode).emit(SOCKET_EVENTS.ROOM_PLAYER_LEFT, {
@@ -468,6 +471,7 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
         await roomService.markDisconnected(guestId, {
           onGracePeriodExpired: (expiredGuestId, roomCode, result) => {
             if (result.roomDeleted) {
+              gameSessionManager.removeSessionByRoomCode(roomCode);
               io.to(roomCode).emit(SOCKET_EVENTS.ROOM_CLOSED, {
                 reason: 'Room closed after disconnected members departed.',
               });

@@ -7,6 +7,7 @@ import {
   SOCKET_EVENTS,
 } from '@uno-ultimate/game-protocol';
 import { socketManager } from '../services/socketClient';
+import { useGameStore } from './gameStore';
 
 interface RoomState {
   room: RoomPublicDto | null;
@@ -79,6 +80,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
   leaveRoom: async () => {
     set({ isLoading: true });
+    useGameStore.getState().reset();
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
@@ -209,6 +211,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     };
 
     const handleRoomClosed = (payload: { reason: string }) => {
+      useGameStore.getState().reset();
       set({
         room: null,
         error: `Room closed: ${payload.reason}`,

@@ -30,10 +30,12 @@ export const GamePage: React.FC = () => {
     const cleanup = initGameListeners(roomCode);
     return () => {
       cleanup();
+      useGameStore.getState().reset();
     };
   }, [roomCode, guest, initGameListeners, navigate]);
 
   const handleLeave = async () => {
+    useGameStore.getState().reset();
     await leaveRoom();
     navigate('/dashboard');
   };

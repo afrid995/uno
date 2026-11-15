@@ -54,10 +54,11 @@ interface GameStateStore {
   closeWildColorPicker: () => void;
   dismissRoundModal: () => void;
   clearError: () => void;
+  reset: () => void;
   initGameListeners: (roomCode: string) => () => void;
 }
 
-export const useGameStore = create<GameStateStore>((set) => ({
+const initialGameState = {
   gameState: null,
   isConnected: true,
   isActionLoading: false,
@@ -68,7 +69,12 @@ export const useGameStore = create<GameStateStore>((set) => ({
   roundWinnerData: null,
   matchWinnerData: null,
   roundScores: null,
+};
 
+export const useGameStore = create<GameStateStore>((set, get) => ({
+  ...initialGameState,
+
+  reset: () => set(initialGameState),
   openWildColorPicker: (card) => set({ selectedCardForWild: card }),
   closeWildColorPicker: () => set({ selectedCardForWild: null }),
   dismissRoundModal: () => set({ showRoundResultModal: false }),
@@ -474,12 +480,22 @@ export const useGameStore = create<GameStateStore>((set) => ({
   },
 
   initGameListeners: (roomCode: string) => {
+    // Reset state before binding new room listeners
+    set(initialGameState);
+
     const socket = socketManager.getSocket();
 
     const handleGameState = (payload: { state: PlayerGameState }) => {
       set({ gameState: payload.state });
 
-      if (payload.state.status === 'ROUND_OVER') {
+      if (payload.state.status === 'IN_PROGRESS') {
+        set({
+          showRoundResultModal: false,
+          showMatchResultModal: false,
+          roundWinnerData: null,
+          matchWinnerData: null,
+        });
+      } else if (payload.state.status === 'ROUND_OVER') {
         set({
           showRoundResultModal: true,
           roundWinnerData: payload.state.roundWinner,
@@ -493,10 +509,15 @@ export const useGameStore = create<GameStateStore>((set) => ({
     };
 
     const handleRoundFinished = (payload: {
+      matchId?: string;
       roundWinner: GameWinner;
       roundNumber: number;
       scores: Record<string, number>;
     }) => {
+      const current = get().gameState;
+      if (current && payload.matchId && current.id !== payload.matchId) {
+        return;
+      }
       set({
         showRoundResultModal: true,
         roundWinnerData: payload.roundWinner,
@@ -505,9 +526,14 @@ export const useGameStore = create<GameStateStore>((set) => ({
     };
 
     const handleGameFinished = (payload: {
+      matchId?: string;
       winner: GameWinner;
       finalScores: Record<string, number>;
     }) => {
+      const current = get().gameState;
+      if (current && payload.matchId && current.id !== payload.matchId) {
+        return;
+      }
       set({
         showMatchResultModal: true,
         matchWinnerData: payload.winner,
@@ -532,6 +558,7 @@ export const useGameStore = create<GameStateStore>((set) => ({
       socket.off(SOCKET_EVENTS.GAME_ROUND_FINISHED, handleRoundFinished);
       socket.off(SOCKET_EVENTS.GAME_FINISHED, handleGameFinished);
       socket.off(SOCKET_EVENTS.GAME_ERROR, handleGameError);
+      set(initialGameState);
     };
   },
 }));

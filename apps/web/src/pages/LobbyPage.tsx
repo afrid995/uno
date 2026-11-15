@@ -14,6 +14,7 @@ import { SOCKET_EVENTS } from '@uno-ultimate/game-protocol';
 import { socketManager } from '../services/socketClient';
 import { useRoomStore } from '../stores/roomStore';
 import { useGuestStore } from '../stores/guestStore';
+import { useGameStore } from '../stores/gameStore';
 import { PlayerCard } from '../features/room/components/PlayerCard';
 import { InviteLinkCard } from '../features/room/components/InviteLinkCard';
 
@@ -37,6 +38,11 @@ export const LobbyPage: React.FC = () => {
   } = useRoomStore();
 
   const [confirmLeave, setConfirmLeave] = useState(false);
+
+  // Reset game store on entering lobby to guarantee fresh state
+  useEffect(() => {
+    useGameStore.getState().reset();
+  }, []);
 
   // Initialize socket listeners on mount
   useEffect(() => {

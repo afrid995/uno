@@ -350,8 +350,8 @@ export interface ServerToClientEvents {
   // Gameplay broadcasts & personalized state delivery
   [SOCKET_EVENTS.GAME_STARTED]: (payload: { matchId: string; roomCode: string; roundNumber: number }) => void;
   [SOCKET_EVENTS.GAME_STATE]: (payload: { state: PlayerGameState }) => void;
-  [SOCKET_EVENTS.GAME_ROUND_FINISHED]: (payload: { roundWinner: GameWinner; roundNumber: number; scores: Record<string, number> }) => void;
-  [SOCKET_EVENTS.GAME_FINISHED]: (payload: { winner: GameWinner; finalScores: Record<string, number> }) => void;
+  [SOCKET_EVENTS.GAME_ROUND_FINISHED]: (payload: { matchId?: string; roundWinner: GameWinner; roundNumber: number; scores: Record<string, number> }) => void;
+  [SOCKET_EVENTS.GAME_FINISHED]: (payload: { matchId?: string; winner: GameWinner; finalScores: Record<string, number> }) => void;
   [SOCKET_EVENTS.GAME_PLAYER_ELIMINATED]: (payload: { guestId: string; username: string; cardCount: number; remainingPlayerCount: number }) => void;
   [SOCKET_EVENTS.GAME_ERROR]: (payload: { code: string; message: string }) => void;
 }

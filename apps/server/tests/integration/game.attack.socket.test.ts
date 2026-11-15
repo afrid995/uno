@@ -77,7 +77,7 @@ describe('UNO Attack — Server Socket.IO Multiplayer Integration Tests (Mattel 
     ]);
 
     // Host creates room with variant 'uno_attack'
-    const createRes = await new Promise<{ success: boolean; data?: { roomCode: string } }>((res) => {
+    const createRes = await new Promise<{ success: boolean; data?: { id: string; roomCode: string } }>((res) => {
       s1.emit(
         SOCKET_EVENTS.ROOM_CREATE,
         { maxPlayers: 2, settings: { variant: 'uno_attack' } },
@@ -86,6 +86,7 @@ describe('UNO Attack — Server Socket.IO Multiplayer Integration Tests (Mattel 
     });
     expect(createRes.success).toBe(true);
     const roomCode = createRes.data!.roomCode;
+    const roomId = createRes.data!.id;
 
     // Player 2 joins
     const joinRes = await new Promise<{ success: boolean }>((res) => {
@@ -104,16 +105,20 @@ describe('UNO Attack — Server Socket.IO Multiplayer Integration Tests (Mattel 
     let p2State: PlayerGameState | null = null;
 
     s1.on(SOCKET_EVENTS.GAME_STATE, (data: { state: PlayerGameState }) => {
-      p1State = data.state;
+      if (data.state.roomId === roomId) {
+        p1State = data.state;
+      }
     });
 
     s2.on(SOCKET_EVENTS.GAME_STATE, (data: { state: PlayerGameState }) => {
-      p2State = data.state;
+      if (data.state.roomId === roomId) {
+        p2State = data.state;
+      }
     });
 
-    // Host starts match
+    // Host starts match (immediate for tests)
     const startRes = await new Promise<{ success: boolean }>((res) => {
-      s1.emit(SOCKET_EVENTS.ROOM_START, undefined, (response: any) => res(response));
+      s1.emit(SOCKET_EVENTS.ROOM_START, { immediate: true } as any, (response: any) => res(response));
     });
     expect(startRes.success).toBe(true);
 
@@ -161,6 +166,11 @@ describe('UNO Attack — Server Socket.IO Multiplayer Integration Tests (Mattel 
       afterSession.state.discardPile.length +
       afterSession.state.players.reduce((sum, p) => sum + p.hand.length, 0);
     expect(afterTotalCards).toBe(112);
+
+    await Promise.all([
+      new Promise<void>((res) => s1.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res())),
+      new Promise<void>((res) => s2.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res())),
+    ]);
   });
 
   it('creates and starts a UNO Attack match with 1 Wild Customizable card (110 cards)', async () => {
@@ -173,7 +183,7 @@ describe('UNO Attack — Server Socket.IO Multiplayer Integration Tests (Mattel 
     ]);
 
     // Host creates room with variant 'uno_attack' and 1 customizable card
-    const createRes = await new Promise<{ success: boolean; data?: { roomCode: string } }>((res) => {
+    const createRes = await new Promise<{ success: boolean; data?: { id: string; roomCode: string } }>((res) => {
       s1.emit(
         SOCKET_EVENTS.ROOM_CREATE,
         { maxPlayers: 2, settings: { variant: 'uno_attack', attackCustomizableCount: 1 } },
@@ -182,6 +192,7 @@ describe('UNO Attack — Server Socket.IO Multiplayer Integration Tests (Mattel 
     });
     expect(createRes.success).toBe(true);
     const roomCode = createRes.data!.roomCode;
+    const roomId = createRes.data!.id;
 
     await new Promise<{ success: boolean }>((res) => {
       s2.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, (response: any) => res(response));
@@ -192,11 +203,13 @@ describe('UNO Attack — Server Socket.IO Multiplayer Integration Tests (Mattel 
 
     let p1State: PlayerGameState | null = null;
     s1.on(SOCKET_EVENTS.GAME_STATE, (data: { state: PlayerGameState }) => {
-      p1State = data.state;
+      if (data.state.roomId === roomId) {
+        p1State = data.state;
+      }
     });
 
     const startRes = await new Promise<{ success: boolean }>((res) => {
-      s1.emit(SOCKET_EVENTS.ROOM_START, undefined, (response: any) => res(response));
+      s1.emit(SOCKET_EVENTS.ROOM_START, { immediate: true } as any, (response: any) => res(response));
     });
     expect(startRes.success).toBe(true);
 
@@ -218,6 +231,11 @@ describe('UNO Attack — Server Socket.IO Multiplayer Integration Tests (Mattel 
       session.state.discardPile.length +
       session.state.players.reduce((sum, p) => sum + p.hand.length, 0);
     expect(totalCards).toBe(110);
+
+    await Promise.all([
+      new Promise<void>((res) => s1.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res())),
+      new Promise<void>((res) => s2.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res())),
+    ]);
   });
 
   it('rejects room creation with attackCustomizableCount: 2', async () => {

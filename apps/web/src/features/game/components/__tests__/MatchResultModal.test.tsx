@@ -1,0 +1,191 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { MatchResultModal } from '../MatchResultModal';
+import { useGameStore } from '../../../../stores/gameStore';
+import { useRoomStore } from '../../../../stores/roomStore';
+import { PlayerGameState } from '@uno-ultimate/game-protocol';
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+    useParams: () => ({ roomCode: 'ROOM99' }),
+  };
+});
+
+describe('MatchResultModal Isolation & Navigation Tests', () => {
+  const mockLeaveRoom = vi.fn().mockResolvedValue(true);
+
+  const mockInProgressGameState: PlayerGameState = {
+    id: 'match-new',
+    roomId: 'room-new',
+    status: 'IN_PROGRESS',
+    turnDirection: 'clockwise',
+    dealerIndex: 0,
+    currentPlayerIndex: 0,
+    currentTurnGuestId: 'p1',
+    playerOrder: ['p1', 'p2'],
+    topDiscardCard: { id: 'c1', color: 'red', type: 'number', value: '5', scoreValue: 5, variant: 'classic' },
+    activeColor: 'red',
+    drawPileCount: 90,
+    discardPileCount: 1,
+    turnNumber: 1,
+    sequenceNumber: 1,
+    unoVulnerablePlayerId: null,
+    pendingActionState: null,
+    roundWinner: null,
+    winner: null,
+    players: [
+      { id: 'p1', username: 'Alice', cardCount: 7, isEliminated: false, score: 0, hasDeclaredUno: false },
+      { id: 'p2', username: 'Bob', cardCount: 7, isEliminated: false, score: 0, hasDeclaredUno: false },
+    ],
+    self: {
+      id: 'p1',
+      username: 'Alice',
+      hand: [{ id: 'c2', color: 'blue', type: 'number', value: '7', scoreValue: 7, variant: 'classic' }],
+      isCurrentTurn: true,
+      playableCardIds: ['c2'],
+      canDraw: false,
+      canPass: false,
+      canCallUno: false,
+      canCatchUno: false,
+      canResolveWildDrawFour: false,
+      isTargetedByWildDrawFour: false,
+    },
+    roundNumber: 1,
+    targetScore: 500,
+    variant: 'classic',
+  };
+
+  const mockCompletedGameState: PlayerGameState = {
+    ...mockInProgressGameState,
+    id: 'match-old',
+    status: 'COMPLETED',
+    winner: { id: 'p1', username: 'Alice', score: 520 },
+    players: [
+      { id: 'p1', username: 'Alice', cardCount: 0, isEliminated: false, score: 520, hasDeclaredUno: true },
+      { id: 'p2', username: 'Bob', cardCount: 4, isEliminated: false, score: 140, hasDeclaredUno: false },
+    ],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useRoomStore.setState({
+      leaveRoom: mockLeaveRoom,
+    });
+    useGameStore.getState().reset();
+  });
+
+  it('does NOT render when gameState is null', () => {
+    useGameStore.setState({
+      gameState: null,
+      showMatchResultModal: true,
+      matchWinnerData: { id: 'p1', username: 'Alice', score: 520 },
+    });
+
+    render(
+      <MemoryRouter>
+        <MatchResultModal />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId('match-result-modal')).not.toBeInTheDocument();
+  });
+
+  it('STRICT ISOLATION: does NOT render when gameState is IN_PROGRESS, even if stale showMatchResultModal is true', () => {
+    // Simulate previous match leftover in store before new game starts
+    useGameStore.setState({
+      gameState: mockInProgressGameState,
+      showMatchResultModal: true,
+      matchWinnerData: { id: 'p1', username: 'Alice', score: 520 },
+    });
+
+    render(
+      <MemoryRouter>
+        <MatchResultModal />
+      </MemoryRouter>
+    );
+
+    // Must NOT be visible during an in-progress game!
+    expect(screen.queryByTestId('match-result-modal')).not.toBeInTheDocument();
+    expect(screen.queryByText(/is the Champion!/i)).not.toBeInTheDocument();
+  });
+
+  it('renders champion banner and standings when gameState status is COMPLETED and modal is active', () => {
+    useGameStore.setState({
+      gameState: mockCompletedGameState,
+      showMatchResultModal: true,
+      matchWinnerData: { id: 'p1', username: 'Alice', score: 520 },
+    });
+
+    render(
+      <MemoryRouter>
+        <MatchResultModal />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('match-result-modal')).toBeInTheDocument();
+    expect(screen.getByText(/Alice is the Champion!/i)).toBeInTheDocument();
+    expect(screen.getByText(/520 pts/i)).toBeInTheDocument();
+    expect(screen.getByTestId('match-result-back-home')).toBeInTheDocument();
+    expect(screen.getByTestId('match-result-main-menu')).toBeInTheDocument();
+  });
+
+  it('clicking "Back to Home" resets game store, leaves room, and navigates to /dashboard', async () => {
+    useGameStore.setState({
+      gameState: mockCompletedGameState,
+      showMatchResultModal: true,
+      matchWinnerData: { id: 'p1', username: 'Alice', score: 520 },
+    });
+
+    render(
+      <MemoryRouter>
+        <MatchResultModal />
+      </MemoryRouter>
+    );
+
+    const backHomeBtn = screen.getByTestId('match-result-back-home');
+    fireEvent.click(backHomeBtn);
+
+    await waitFor(() => {
+      expect(mockLeaveRoom).toHaveBeenCalledTimes(1);
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+    });
+
+    // Store state must be completely cleared
+    const state = useGameStore.getState();
+    expect(state.gameState).toBeNull();
+    expect(state.showMatchResultModal).toBe(false);
+    expect(state.matchWinnerData).toBeNull();
+  });
+
+  it('clicking "Main Menu" resets game store, leaves room, and navigates to /dashboard', async () => {
+    useGameStore.setState({
+      gameState: mockCompletedGameState,
+      showMatchResultModal: true,
+      matchWinnerData: { id: 'p1', username: 'Alice', score: 520 },
+    });
+
+    render(
+      <MemoryRouter>
+        <MatchResultModal />
+      </MemoryRouter>
+    );
+
+    const mainMenuBtn = screen.getByTestId('match-result-main-menu');
+    fireEvent.click(mainMenuBtn);
+
+    await waitFor(() => {
+      expect(mockLeaveRoom).toHaveBeenCalledTimes(1);
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+    });
+
+    const state = useGameStore.getState();
+    expect(state.gameState).toBeNull();
+    expect(state.showMatchResultModal).toBe(false);
+    expect(state.matchWinnerData).toBeNull();
+  });
+});

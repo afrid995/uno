@@ -438,7 +438,7 @@ export class GameService {
       session = gameSessionManager.getSessionByRoomCode(roomCode);
     }
 
-    if (!session) return null;
+    if (!session || session.state.status === 'COMPLETED') return null;
 
     // Verify player is an actual member of this match
     if (!session.state.players.some((p) => p.id === guestId)) {
@@ -457,7 +457,7 @@ export class GameService {
    */
   getActivePlayerState(guestId: string, roomCode: string): PlayerGameState | null {
     const session = gameSessionManager.getSessionByRoomCode(roomCode);
-    if (!session) return null;
+    if (!session || session.state.status === 'COMPLETED') return null;
 
     try {
       return getPlayerGameState(session.state, guestId);
@@ -471,13 +471,19 @@ export class GameService {
    */
   async recoverMatchIfActive(roomId: string, roomCode: string): Promise<GameState | null> {
     const existing = gameSessionManager.getSessionByRoomCode(roomCode);
-    if (existing) return existing.state;
+    if (existing) {
+      if (existing.state.status === 'COMPLETED') {
+        gameSessionManager.removeSessionByRoomCode(roomCode);
+        return null;
+      }
+      return existing.state;
+    }
 
     const activeMatch = await gamePersistenceService.findActiveMatchForRoom(roomId);
     if (!activeMatch) return null;
 
     const snapshot = await gamePersistenceService.loadLatestSnapshot(activeMatch.id);
-    if (!snapshot) return null;
+    if (!snapshot || snapshot.status === 'COMPLETED') return null;
 
     gameSessionManager.setSession(activeMatch.id, roomCode, roomId, snapshot);
     logger.info('Recovered active match from database snapshot', { matchId: activeMatch.id, roomCode });

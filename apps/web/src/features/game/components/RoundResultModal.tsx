@@ -12,7 +12,11 @@ export const RoundResultModal: React.FC = () => {
     dismissRoundModal,
   } = useGameStore();
 
-  const isVisible = showRoundResultModal || gameState?.status === 'ROUND_OVER';
+  const isVisible = Boolean(
+    showRoundResultModal &&
+    gameState &&
+    gameState.status === 'ROUND_OVER'
+  );
   if (!isVisible || !gameState) return null;
 
   const winnerName = roundWinnerData?.username || gameState.roundWinner?.username || 'Winner';

@@ -1,14 +1,19 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../../stores/gameStore';
+import { useRoomStore } from '../../../stores/roomStore';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const MatchResultModal: React.FC = () => {
   const navigate = useNavigate();
-  const { roomCode } = useParams<{ roomCode: string }>();
-  const { showMatchResultModal, matchWinnerData, gameState } = useGameStore();
+  const { leaveRoom } = useRoomStore();
+  const { showMatchResultModal, matchWinnerData, gameState, reset } = useGameStore();
 
-  const isVisible = showMatchResultModal || gameState?.status === 'COMPLETED';
+  const isVisible = Boolean(
+    showMatchResultModal &&
+    gameState &&
+    gameState.status === 'COMPLETED'
+  );
   if (!isVisible || !gameState) return null;
 
   const winner = matchWinnerData || gameState.winner;
@@ -16,6 +21,16 @@ export const MatchResultModal: React.FC = () => {
 
   // Sort players by cumulative score descending
   const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
+
+  const handleExitToHome = async () => {
+    reset();
+    try {
+      await leaveRoom();
+    } catch {
+      // Ignore network errors on departure
+    }
+    navigate('/dashboard');
+  };
 
   return (
     <AnimatePresence>
@@ -82,16 +97,16 @@ export const MatchResultModal: React.FC = () => {
 
           {/* Navigation buttons */}
           <div className="flex flex-col sm:flex-row gap-3">
-            {roomCode && (
-              <button
-                onClick={() => navigate(`/lobby/${roomCode}`)}
-                className="flex-1 py-3 px-6 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 active:scale-95 transition-all text-sm shadow-lg shadow-amber-400/20"
-              >
-                Back to Lobby
-              </button>
-            )}
             <button
-              onClick={() => navigate('/')}
+              onClick={handleExitToHome}
+              data-testid="match-result-back-home"
+              className="flex-1 py-3 px-6 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 active:scale-95 transition-all text-sm shadow-lg shadow-amber-400/20"
+            >
+              Back to Home
+            </button>
+            <button
+              onClick={handleExitToHome}
+              data-testid="match-result-main-menu"
               className="py-3 px-6 rounded-xl font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all text-sm"
             >
               Main Menu

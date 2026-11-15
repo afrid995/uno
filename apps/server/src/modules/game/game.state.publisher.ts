@@ -65,6 +65,7 @@ export class GameStatePublisher {
     }
 
     io.to(roomCode).emit(SOCKET_EVENTS.GAME_ROUND_FINISHED, {
+      matchId: state.id,
       roundWinner: state.roundWinner,
       roundNumber: state.roundNumber,
       scores,
@@ -87,6 +88,7 @@ export class GameStatePublisher {
     }
 
     io.to(roomCode).emit(SOCKET_EVENTS.GAME_FINISHED, {
+      matchId: state.id,
       winner: state.winner,
       finalScores,
     });

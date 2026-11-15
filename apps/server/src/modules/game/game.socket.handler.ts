@@ -22,8 +22,11 @@ import {
 import { ERROR_CODES } from '@uno-ultimate/shared';
 import { AppError } from '../../middleware/errorHandler';
 import { HTTP_STATUS } from '@uno-ultimate/shared';
+import { GameState } from '@uno-ultimate/game-engine';
 import { gameService } from './game.service';
 import { gameStatePublisher } from './game.state.publisher';
+import { roomService } from '../room/room.service';
+import { gameSessionManager } from './game.session.manager';
 import { logger } from '../../utils/logger';
 
 type UnoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -49,6 +52,27 @@ export function registerGameHandlers(
     return roomCode;
   };
 
+  const handleGameStateBroadcasts = async (nextState: GameState, roomCode: string) => {
+    gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+
+    if (nextState.status === 'ROUND_OVER') {
+      gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
+    } else if (nextState.status === 'COMPLETED') {
+      gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
+      try {
+        const updatedRoom = await roomService.updateRoomStatus(nextState.roomId, 'FINISHED');
+        io.to(roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: updatedRoom });
+      } catch (statusErr) {
+        logger.warn('Failed to update room status to FINISHED upon match completion', {
+          roomCode,
+          roomId: nextState.roomId,
+          error: String(statusErr),
+        });
+      }
+      gameSessionManager.removeSessionByRoomCode(roomCode);
+    }
+  };
+
   // 1. Handle game:play-card
   socket.on(SOCKET_EVENTS.GAME_PLAY_CARD, async (payload, callback) => {
     try {
@@ -65,14 +89,8 @@ export function registerGameHandlers(
         validated.targetPlayerId
       );
 
-      // Publish personalized projections to all participants
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      // Publish personalized projections and handle round/match completion
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       callback({
         success: true,
@@ -98,8 +116,6 @@ export function registerGameHandlers(
 
       const { nextState, events } = await gameService.drawCard(guestId, roomCode);
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
       const elim = events.find((e) => e.type === 'PLAYER_ELIMINATED');
       if (elim) {
         const pElim = elim.payload as { playerId: string; cardCount: number; eliminationOrder: number };
@@ -113,11 +129,7 @@ export function registerGameHandlers(
         });
       }
 
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       const player = nextState.players.find((p) => p.id === guestId);
       callback({
@@ -142,7 +154,7 @@ export function registerGameHandlers(
 
       const { nextState } = await gameService.passTurn(guestId, roomCode);
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       callback({
         success: true,
@@ -164,7 +176,7 @@ export function registerGameHandlers(
 
       const { nextState } = await gameService.callUno(guestId, roomCode, targetPlayerId);
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       callback({
         success: true,
@@ -190,7 +202,7 @@ export function registerGameHandlers(
         validated.targetPlayerId
       );
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       const penaltyCards = nextState.variant === 'uno_flip' ? 2 : 4;
 
@@ -213,13 +225,7 @@ export function registerGameHandlers(
 
       const { nextState, events } = await gameService.challengeWildDrawFour(guestId, roomCode);
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       const won = events.some((e) => e.type === 'WILD_DRAW_FOUR_CHALLENGE_WON');
 
@@ -245,13 +251,7 @@ export function registerGameHandlers(
 
       const { nextState } = await gameService.acceptWildDrawFour(guestId, roomCode);
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       callback({
         success: true,
@@ -272,13 +272,7 @@ export function registerGameHandlers(
 
       const { nextState, events } = await gameService.challengeWildDrawTwo(guestId, roomCode);
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       const won = events.some((e) => e.type === 'WILD_DRAW_TWO_CHALLENGE_WON');
 
@@ -304,13 +298,7 @@ export function registerGameHandlers(
 
       const { nextState } = await gameService.acceptWildDrawTwo(guestId, roomCode);
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       callback({
         success: true,
@@ -331,13 +319,7 @@ export function registerGameHandlers(
 
       const { nextState, events } = await gameService.challengeWildDrawColor(guestId, roomCode);
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       const won = events.some((e) => e.type === 'WILD_DRAW_COLOR_CHALLENGE_WON');
       const challengeEvent = events.find(
@@ -373,13 +355,7 @@ export function registerGameHandlers(
 
       const { nextState, events } = await gameService.acceptWildDrawColor(guestId, roomCode);
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       const acceptEvent = events.find((e) => e.type === 'WILD_DRAW_COLOR_ACCEPTED');
       const acceptPayload = acceptEvent?.payload as Record<string, unknown> | undefined;
@@ -414,7 +390,7 @@ export function registerGameHandlers(
 
       const { nextState } = await gameService.chooseStartingWildColor(guestId, roomCode, payload.chosenColor);
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       callback({
         success: true,
@@ -443,7 +419,7 @@ export function registerGameHandlers(
         validated.targetPlayerId
       );
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       callback({
         success: true,
@@ -469,8 +445,6 @@ export function registerGameHandlers(
         validated.chosenColor
       );
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
       const elim = events.find((e) => e.type === 'PLAYER_ELIMINATED');
       if (elim) {
         const pElim = elim.payload as { playerId: string; cardCount: number; eliminationOrder: number };
@@ -484,11 +458,7 @@ export function registerGameHandlers(
         });
       }
 
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       const resEvent = events.find((e) => e.type === 'ROULETTE_RESOLVED');
       const cardsRevealed = (resEvent?.payload?.drawnCount as number) ?? 0;
@@ -515,8 +485,6 @@ export function registerGameHandlers(
 
       const { nextState, events } = await gameService.acceptStackPenalty(guestId, roomCode);
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
       const elim = events.find((e) => e.type === 'PLAYER_ELIMINATED');
       if (elim) {
         const pElim = elim.payload as { playerId: string; cardCount: number; eliminationOrder: number };
@@ -530,11 +498,7 @@ export function registerGameHandlers(
         });
       }
 
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       const resEvent = events.find((e) => e.type === 'STACK_PENALTY_RESOLVED');
       const drawnCount = (resEvent?.payload?.drawnCount as number) ?? 0;
@@ -565,13 +529,7 @@ export function registerGameHandlers(
         validated.targetPlayerId
       );
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       callback({
         success: true,
@@ -597,13 +555,7 @@ export function registerGameHandlers(
         validated.targetPlayerId
       );
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       callback({
         success: true,
@@ -629,13 +581,7 @@ export function registerGameHandlers(
         validated.targetPlayerId
       );
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       callback({
         success: true,
@@ -661,7 +607,7 @@ export function registerGameHandlers(
         validated.cardId
       );
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       const allPassed = !nextState.pendingActionState;
       callback({
@@ -688,7 +634,7 @@ export function registerGameHandlers(
         validated.cardId
       );
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       const allPassed = !nextState.pendingActionState;
       callback({
@@ -715,7 +661,7 @@ export function registerGameHandlers(
         validated.cardIds
       );
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       callback({
         success: true,
@@ -742,13 +688,7 @@ export function registerGameHandlers(
         validated.chosenColor as CardColor | undefined
       );
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
-
-      if (nextState.status === 'ROUND_OVER') {
-        gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
-      } else if (nextState.status === 'COMPLETED') {
-        gameStatePublisher.broadcastMatchFinished(io, roomCode, nextState);
-      }
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       callback({
         success: true,
@@ -773,7 +713,7 @@ export function registerGameHandlers(
 
       const { nextState } = await gameService.startNextRound(guestId, roomCode);
 
-      gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+      await handleGameStateBroadcasts(nextState, roomCode);
 
       callback({
         success: true,

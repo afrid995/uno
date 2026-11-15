@@ -1,11 +1,17 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGuestStore } from '../stores/guestStore';
+import { useGameStore } from '../stores/gameStore';
 import { DashboardView } from '../features/guest/components/DashboardView';
 
 export const DashboardPage: React.FC = () => {
   const { guest, isResuming } = useGuestStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Reset any lingering game state when navigating to Dashboard
+    useGameStore.getState().reset();
+  }, []);
 
   useEffect(() => {
     // If not resuming and no guest session exists, redirect back to landing page
