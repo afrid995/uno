@@ -13,7 +13,7 @@ services:
   - type: web
     name: uno-ultimate-server
     runtime: node
-    plan: starter # Starter plan recommended for persistent WebSockets without spindown
+    plan: free # Starter plan recommended for persistent WebSockets without spindown
     region: oregon
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter @uno-ultimate/server... build && pnpm db:deploy
     startCommand: pnpm --filter @uno-ultimate/server start
