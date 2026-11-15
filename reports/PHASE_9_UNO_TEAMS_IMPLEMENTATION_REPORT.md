@@ -279,7 +279,7 @@ Total: **8 tests across 6 test suites passed in 1.6m**.
 | **Phase 9B** | Primary Rules Research & Verification | Recorded in `PHASE_9_UNO_TEAMS_RULES_RESEARCH.md` |
 | **Phase 9D** | Engine, Protocol, Server, Web Implementation | Implemented across all monorepo packages |
 | **Phase 9E** | Unit, Fixture, Socket, Component & E2E Tests | 508 tests passing, 0 regressions |
-| **Phase 9F** | Final Publication Commit | `0c7a54f65b46bc83394322c7c0b3aa6659c367ca` |
+| **Phase 9F** | Final Publication Commit | `7d6763fdb63e5c4d2e6abe790d85d4f5282e1d2a` |
 
 ---
 
