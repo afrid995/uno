@@ -66,19 +66,20 @@ export class UnoFlexAdapter implements GameVariantAdapter {
     const playerIds = config.players.map((p) => p.id);
     const { hands, remainingDeck } = HandManager.dealInitialHands(deck, playerIds, cardsPerHand);
 
-    let drawPile = [...remainingDeck];
+    const drawPile = [...remainingDeck];
 
     // 4. Reveal top card to start discard pile.
     // Mattel Product HNB00 Setup Rule 7:
     // "Flip over the top card of the DRAW PILE and place it FACEUP to form the DISCARD PILE.
     // If this card is an Action Card, ignore it and flip over the next card."
-    // Also reshuffle if Wild card is flipped, ensuring starting card has a concrete color.
+    // All Action Cards (Classic & Flex) and Wild Cards are ignored; keep flipping until a Number Card is reached.
+    const discardPile: Card[] = [];
     let topCard = drawPile.pop()!;
-    while (topCard.type === 'wild') {
-      drawPile = shuffleDeck([...drawPile, topCard], rng);
+    while (topCard.type !== 'number') {
+      discardPile.push(topCard);
       topCard = drawPile.pop()!;
     }
-    const discardPile: Card[] = [topCard];
+    discardPile.push(topCard);
 
     const startingPlayerIndex = (dealerIndex + 1) % playerCount;
     const turnDirection: TurnDirection = 'clockwise';

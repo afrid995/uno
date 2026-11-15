@@ -239,21 +239,7 @@ export class FlexActionProcessor {
       activeColor: nextActiveColor,
     });
 
-    // Victory Check: If active player has 0 cards remaining, round is over!
-    if (remainingHand.length === 0) {
-      return this.handleRoundVictory(
-        state,
-        nextPlayers,
-        playerIndex,
-        nextDiscardPile,
-        card,
-        nextActiveColor,
-        unoVulnerablePlayerId,
-        ctx
-      );
-    }
-
-    // Action Card Resolution (when round is still in progress):
+    // Action Card Resolution:
     let currentDrawPile = state.drawPile;
     let currentDiscardPile = nextDiscardPile;
     let nextPendingState: PendingActionState | null = null;
@@ -516,6 +502,21 @@ export class FlexActionProcessor {
       }
     }
 
+    // Victory Check: If the active player played their last card and no pending action is awaiting resolution
+    if (remainingHand.length === 0 && !nextPendingState) {
+      return this.handleRoundVictory(
+        state,
+        nextPlayers,
+        playerIndex,
+        currentDiscardPile,
+        currentDrawPile,
+        card,
+        nextActiveColor,
+        null,
+        ctx
+      );
+    }
+
     const nextState: GameState = {
       ...state,
       players: nextPlayers,
@@ -541,10 +542,12 @@ export class FlexActionProcessor {
     players: readonly Player[],
     winnerIndex: number,
     discardPile: readonly Card[],
+    drawPile: readonly Card[],
     topCard: Card,
     activeColor: CardColor | null,
     unoVulnerablePlayerId: string | null,
-    ctx: ActionContext
+    ctx: ActionContext,
+    inspectionHand: InspectionHand | null = null
   ): ActionProcessResult {
     const winner = players[winnerIndex];
 
@@ -592,10 +595,13 @@ export class FlexActionProcessor {
       ...state,
       status: isMatchWon ? 'COMPLETED' : 'ROUND_OVER',
       players: updatedPlayers,
-      discardPile,
+      drawPile: [...drawPile],
+      discardPile: [...discardPile],
       topDiscardCard: topCard,
       activeColor,
       unoVulnerablePlayerId,
+      pendingActionState: null,
+      inspectionHand,
       roundWinner: roundWinnerRecord,
       winner: matchWinnerRecord,
       sequenceNumber: ctx.nextSeq(),
@@ -821,6 +827,21 @@ export class FlexActionProcessor {
         challengeWon: false,
         penaltyCards: 6,
       });
+
+      if (offender.hand.length === 0) {
+        return this.handleRoundVictory(
+          state,
+          nextPlayers,
+          offenderIndex,
+          currentDiscardPile,
+          currentDrawPile,
+          state.topDiscardCard,
+          state.activeColor,
+          null,
+          ctx,
+          inspectionHand
+        );
+      }
     } else {
       // Offender was guilty (held matching active color card)
       // Offender draws 4 cards, challenger draws none and takes their turn!
@@ -902,6 +923,23 @@ export class FlexActionProcessor {
       cardsDrawn: 4,
     });
 
+    const offenderIndex = state.players.findIndex((p) => p.id === pending.playedByPlayerId);
+    const offender = state.players[offenderIndex];
+
+    if (offender.hand.length === 0) {
+      return this.handleRoundVictory(
+        state,
+        nextPlayers,
+        offenderIndex,
+        drawRes.nextDiscardPile,
+        drawRes.nextDrawPile,
+        state.topDiscardCard,
+        state.activeColor,
+        null,
+        ctx
+      );
+    }
+
     const nextState: GameState = {
       ...state,
       players: nextPlayers,
@@ -953,6 +991,21 @@ export class FlexActionProcessor {
       cardsDrawn: 2,
     });
 
+    const sourcePlayer = state.players[sourceIndex];
+    if (sourcePlayer.hand.length === 0) {
+      return this.handleRoundVictory(
+        state,
+        nextPlayers,
+        sourceIndex,
+        drawRes.nextDiscardPile,
+        drawRes.nextDrawPile,
+        state.topDiscardCard,
+        state.activeColor,
+        null,
+        ctx
+      );
+    }
+
     const nextState: GameState = {
       ...state,
       players: nextPlayers,
@@ -1003,6 +1056,21 @@ export class FlexActionProcessor {
       cardsDrawn: 4,
     });
 
+    const sourcePlayer = state.players[sourceIndex];
+    if (sourcePlayer.hand.length === 0) {
+      return this.handleRoundVictory(
+        state,
+        nextPlayers,
+        sourceIndex,
+        drawRes.nextDiscardPile,
+        drawRes.nextDrawPile,
+        state.topDiscardCard,
+        state.activeColor,
+        null,
+        ctx
+      );
+    }
+
     const nextState: GameState = {
       ...state,
       players: nextPlayers,
@@ -1039,15 +1107,17 @@ export class FlexActionProcessor {
       UNO_FLEX_RULES.INITIAL_HAND_SIZE
     );
 
-    let drawPile = [...remainingDeck];
+    const drawPile = [...remainingDeck];
 
     // Flip top card for discard pile. If Action Card, ignore action per Mattel rules setup.
+    // All Action Cards (Classic & Flex) and Wild Cards are ignored; keep flipping until a Number Card is reached.
+    const discardPile: Card[] = [];
     let topCard = drawPile.pop()!;
-    while (topCard.type === 'wild') {
-      drawPile = shuffleDeck([...drawPile, topCard], rng);
+    while (topCard.type !== 'number') {
+      discardPile.push(topCard);
       topCard = drawPile.pop()!;
     }
-    const discardPile: Card[] = [topCard];
+    discardPile.push(topCard);
 
     const startingPlayerIndex = (nextDealerIndex + 1) % playerCount;
     const initialPlayers: Player[] = state.players.map((p) => ({

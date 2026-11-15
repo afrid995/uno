@@ -23,6 +23,7 @@ Phase 8 implements the complete, server-authoritative, real-time multiplayer var
    - Every Flex card has a **Regular Side** (center oval color/value) and a **Flex Side** (secondary color/action).
    - A player may only play the Flex side if their Power Card is currently on **Green Checkmark** ($\checkmark$).
    - When a player plays the Flex side, their Power Card immediately flips to **Red** ($\times$).
+   - *Power Card Scope Clarification:* A green Power Card is required *only* to play the **Flex side** of a card (`playMode === 'flex'`). Regular-side action cards (Draw Two, Skip, Reverse, regular side of Flex cards, Wild All Flip) can always be played when matching regardless of whether the player's Power Card is Green or Red.
 3. **The Continuing Color Rule (Mattel Official Rule):**
    - Per page 2 of the official Mattel rules: *“When you play the Flex side of a card, the Regular side color (the color in the center oval) is what continues play, NOT the Flex color.”*
    - Only Wild cards allow the player to call the continuing color.
@@ -39,8 +40,12 @@ Phase 8 implements the complete, server-authoritative, real-time multiplayer var
    - **Flex Wild Draw Four:** Regular mode triggers the official Challenge flow (draw 4 or draw 6); Flex mode acts as a targeted Draw 4 with *no challenge allowed*.
    - **Flex Wild Target Draw Two:** Regular functions as a regular Wild; Flex targets any selected player to draw 2 cards.
    - **Flex Wild All Draw:** Regular functions as a regular Wild; Flex forces *every other player* to draw 2 cards.
-8. **Pure Variant Isolation:**
-   - Classic UNO, UNO Flip, UNO Show 'em No Mercy, and UNO All Wild remain 100% isolated and passing without regressions.
+8. **Opening Discard Card Rule (Mattel Rule 7):**
+   - The top card of the draw pile is flipped faceup to start the discard pile. If this card is an Action Card (Classic Action, Flex Action, or Wild Card), it is ignored and placed faceup on the discard pile, continuing to flip until a Number Card is reached. Power Cards are not flipped by opening cards.
+9. **Final-Card Action Resolution & Penalty Scoring:**
+   - When a player plays their final card, all penalty actions (Draw Two, Flex Draw Two, Flex Wild All Draw, Targeted Draw Two/Four, Wild Draw Four challenge/accept) resolve fully before round conclusion. Drawn penalty cards are added to opponents' hands and counted in the winner's round score.
+10. **Pure Variant Isolation:**
+    - Classic UNO, UNO Flip, UNO Show 'em No Mercy, and UNO All Wild remain 100% isolated and passing without regressions.
 
 ---
 

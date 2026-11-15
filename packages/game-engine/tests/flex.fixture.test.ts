@@ -18,8 +18,10 @@ describe('UNO Flex — Fixture Builder & Invariant Hardening Tests', () => {
     expect(state.players[1].hand).toHaveLength(7);
     expect(state.players[0].powerCardStatus).toBe('green_check');
     expect(state.players[1].powerCardStatus).toBe('green_check');
-    expect(state.discardPile).toHaveLength(1);
-    expect(state.drawPile).toHaveLength(104 - 14 - 1); // 89 cards
+    expect(state.discardPile.length).toBeGreaterThanOrEqual(1);
+    expect(state.topDiscardCard.type).toBe('number');
+    expect(state.activeColor).toBe(state.topDiscardCard.color);
+    expect(state.drawPile.length + state.discardPile.length).toBe(104 - 14); // 90 remaining cards
 
     expect(() => assertValidFlexGameState(state)).not.toThrow();
   });
@@ -33,7 +35,10 @@ describe('UNO Flex — Fixture Builder & Invariant Hardening Tests', () => {
     const state = FlexFixtureBuilder.createInitialGameFixture({ players });
     expect(state.players).toHaveLength(8);
     expect(state.players.every((p) => p.powerCardStatus === 'green_check')).toBe(true);
-    expect(state.drawPile).toHaveLength(104 - 8 * 7 - 1); // 47 cards
+    expect(state.discardPile.length).toBeGreaterThanOrEqual(1);
+    expect(state.topDiscardCard.type).toBe('number');
+    expect(state.activeColor).toBe(state.topDiscardCard.color);
+    expect(state.drawPile.length + state.discardPile.length).toBe(104 - 8 * 7); // 48 remaining cards
     expect(() => assertValidFlexGameState(state)).not.toThrow();
   });
 

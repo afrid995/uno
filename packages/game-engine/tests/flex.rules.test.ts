@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { FlexFixtureBuilder } from '../src/variants/flex/flex.fixture';
 import { FlexActionProcessor } from '../src/variants/flex/flex.actions';
 import { FlexMoveValidator } from '../src/variants/flex/flex.validator';
+import { UnoFlexAdapter } from '../src/variants/flex/flex.adapter';
+import { assertValidFlexGameState } from '../src/variants/flex/flex.invariants';
 import { Card } from '../src/cards/card.types';
 import { GameAction } from '../src/actions/action.types';
 import { deterministicRng } from '../src/testing/deterministic-random';
@@ -754,6 +756,589 @@ describe('UNO Flex — Gameplay Rules & Mechanics Tests (Mattel Product HNB00 / 
       expect(res.nextState.status).toBe('COMPLETED');
       expect(res.nextState.winner?.id).toBe('p1');
       expect(res.nextState.winner?.score).toBeGreaterThanOrEqual(500);
+    });
+  });
+
+  describe('UNO Flex — Opening Discard Card Setup Audit (Mattel Rule 7)', () => {
+    it('ignores Action Cards and Wild Cards on opening flip until a Number Card is reached', () => {
+      const adapter = new UnoFlexAdapter();
+      // Test multiple games to observe deck initialization with various opening cards
+      for (let i = 0; i < 20; i++) {
+        const state = adapter.createGame({
+          matchId: `match_${i}`,
+          roomId: `room_${i}`,
+          variant: 'uno_flex',
+          players: [
+            { id: 'p1', username: 'Alice' },
+            { id: 'p2', username: 'Bob' },
+          ],
+        });
+
+        // Invariant: Top discard card MUST be a number card
+        expect(state.topDiscardCard.type).toBe('number');
+        expect(state.activeColor).toBe(state.topDiscardCard.color);
+        expect(state.discardPile[state.discardPile.length - 1].id).toBe(state.topDiscardCard.id);
+
+        // Every card before the top card in discard pile must have been an action or wild card
+        for (let j = 0; j < state.discardPile.length - 1; j++) {
+          expect(state.discardPile[j].type).not.toBe('number');
+        }
+
+        // Exact 104-card conservation
+        const totalCards =
+          state.drawPile.length +
+          state.discardPile.length +
+          state.players.reduce((sum, p) => sum + p.hand.length, 0);
+        expect(totalCards).toBe(104);
+        expect(() => assertValidFlexGameState(state)).not.toThrow();
+      }
+    });
+
+    it('does not flip power cards if opening card has flip icon', () => {
+      const adapter = new UnoFlexAdapter();
+      const state = adapter.createGame({
+        matchId: 'match_test',
+        roomId: 'room_test',
+        variant: 'uno_flex',
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+        ],
+      });
+
+      // All players must start on green checkmark regardless of whether opening number card had a flip icon
+      expect(state.players[0].powerCardStatus).toBe('green_check');
+      expect(state.players[1].powerCardStatus).toBe('green_check');
+    });
+  });
+
+  describe('UNO Flex — Final-Card Action Resolution & Penalty Scoring Tests (Issue A)', () => {
+    it('resolves regular Draw Two as final card: victim draws 2 cards which are counted in round score', () => {
+      let state = FlexFixtureBuilder.createInitialGameFixture({
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+        ],
+      });
+
+      // Top discard matches Alice's card color
+      state = FlexFixtureBuilder.setTopDiscard(state, (c) => c.color === 'red' && c.type === 'number').nextState;
+
+      // Alice holds only a Red Draw Two as her final card
+      const swapCard = FlexFixtureBuilder.swapCardIntoHand(
+        state,
+        'p1',
+        (c) => c.color === 'red' && c.value === 'draw_two'
+      );
+      state = swapCard.nextState;
+
+      // Empty the rest of Alice's hand
+      const cardsToMove = state.players[0].hand.filter((c) => c.id !== swapCard.card.id);
+      state = {
+        ...state,
+        drawPile: [...state.drawPile, ...cardsToMove],
+        players: state.players.map((p, idx) =>
+          idx === 0 ? { ...p, hand: [swapCard.card] } : p
+        ),
+      };
+
+      const bobHandBefore = state.players[1].hand.length;
+      const bobScoreBefore = state.players[1].hand.reduce((sum, c) => sum + c.scoreValue, 0);
+
+      const res = FlexActionProcessor.process(state, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: swapCard.card.id,
+        playMode: 'regular',
+      });
+
+      // 1. Round is over
+      expect(res.nextState.status).toBe('ROUND_OVER');
+      expect(res.nextState.roundWinner?.id).toBe('p1');
+
+      // 2. Bob drew 2 cards
+      expect(res.nextState.players[1].hand).toHaveLength(bobHandBefore + 2);
+
+      // 3. Bob's 2 drawn cards are included in round score
+      const bobHandAfter = res.nextState.players[1].hand;
+      const expectedScore = bobHandAfter.reduce((sum, c) => sum + c.scoreValue, 0);
+      expect(expectedScore).toBeGreaterThan(bobScoreBefore);
+      expect(res.nextState.roundWinner?.roundScore).toBe(expectedScore);
+      expect(res.nextState.players[0].score).toBe(expectedScore);
+
+      // 4. Invariants and 104-card conservation
+      expect(() => assertValidFlexGameState(res.nextState)).not.toThrow();
+    });
+
+    it('resolves Flex Draw Two (flex side) as final card: all other players draw 1 card each, counted in score', () => {
+      let state = FlexFixtureBuilder.createInitialGameFixture({
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+          { id: 'p3', username: 'Charlie' },
+        ],
+      });
+
+      // Top discard matches
+      const swapCard = FlexFixtureBuilder.swapCardIntoHand(
+        state,
+        'p1',
+        (c) => c.value === 'flex_draw_two'
+      );
+      state = swapCard.nextState;
+
+      state = FlexFixtureBuilder.setTopDiscard(
+        state,
+        (c) => c.color === swapCard.card.flexColor && c.type === 'number'
+      ).nextState;
+
+      const cardsToMove = state.players[0].hand.filter((c) => c.id !== swapCard.card.id);
+      state = {
+        ...state,
+        drawPile: [...state.drawPile, ...cardsToMove],
+        players: state.players.map((p, idx) =>
+          idx === 0 ? { ...p, hand: [swapCard.card] } : p
+        ),
+      };
+
+      const bobHandBefore = state.players[1].hand.length;
+      const charlieHandBefore = state.players[2].hand.length;
+
+      const res = FlexActionProcessor.process(state, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: swapCard.card.id,
+        playMode: 'flex',
+      });
+
+      expect(res.nextState.status).toBe('ROUND_OVER');
+      expect(res.nextState.roundWinner?.id).toBe('p1');
+
+      // Both Bob and Charlie drew 1 card
+      expect(res.nextState.players[1].hand).toHaveLength(bobHandBefore + 1);
+      expect(res.nextState.players[2].hand).toHaveLength(charlieHandBefore + 1);
+
+      const totalOpponentScore =
+        res.nextState.players[1].hand.reduce((s, c) => s + c.scoreValue, 0) +
+        res.nextState.players[2].hand.reduce((s, c) => s + c.scoreValue, 0);
+
+      expect(res.nextState.roundWinner?.roundScore).toBe(totalOpponentScore);
+      expect(() => assertValidFlexGameState(res.nextState)).not.toThrow();
+    });
+
+    it('resolves Flex Wild All Draw (flex side) as final card: all opponents draw 2 cards each, counted in score', () => {
+      let state = FlexFixtureBuilder.createInitialGameFixture({
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+        ],
+      });
+
+      const swapCard = FlexFixtureBuilder.swapCardIntoHand(
+        state,
+        'p1',
+        (c) => c.value === 'flex_wild_all_draw'
+      );
+      state = swapCard.nextState;
+
+      const cardsToMove = state.players[0].hand.filter((c) => c.id !== swapCard.card.id);
+      state = {
+        ...state,
+        drawPile: [...state.drawPile, ...cardsToMove],
+        players: state.players.map((p, idx) =>
+          idx === 0 ? { ...p, hand: [swapCard.card] } : p
+        ),
+      };
+
+      const bobHandBefore = state.players[1].hand.length;
+
+      const res = FlexActionProcessor.process(state, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: swapCard.card.id,
+        playMode: 'flex',
+        chosenColor: 'green',
+      });
+
+      expect(res.nextState.status).toBe('ROUND_OVER');
+      expect(res.nextState.roundWinner?.id).toBe('p1');
+      expect(res.nextState.players[1].hand).toHaveLength(bobHandBefore + 2);
+
+      const expectedScore = res.nextState.players[1].hand.reduce((s, c) => s + c.scoreValue, 0);
+      expect(res.nextState.roundWinner?.roundScore).toBe(expectedScore);
+      expect(() => assertValidFlexGameState(res.nextState)).not.toThrow();
+    });
+
+    it('resolves Flex Wild Target Draw Two with immediate targetPlayerId: target draws 2 cards, counted in score', () => {
+      let state = FlexFixtureBuilder.createInitialGameFixture({
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+        ],
+      });
+
+      const swapCard = FlexFixtureBuilder.swapCardIntoHand(
+        state,
+        'p1',
+        (c) => c.value === 'flex_wild_target_draw_two'
+      );
+      state = swapCard.nextState;
+
+      const cardsToMove = state.players[0].hand.filter((c) => c.id !== swapCard.card.id);
+      state = {
+        ...state,
+        drawPile: [...state.drawPile, ...cardsToMove],
+        players: state.players.map((p, idx) =>
+          idx === 0 ? { ...p, hand: [swapCard.card] } : p
+        ),
+      };
+
+      const bobHandBefore = state.players[1].hand.length;
+
+      const res = FlexActionProcessor.process(state, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: swapCard.card.id,
+        playMode: 'flex',
+        chosenColor: 'blue',
+        targetPlayerId: 'p2',
+      });
+
+      expect(res.nextState.status).toBe('ROUND_OVER');
+      expect(res.nextState.roundWinner?.id).toBe('p1');
+      expect(res.nextState.players[1].hand).toHaveLength(bobHandBefore + 2);
+
+      const expectedScore = res.nextState.players[1].hand.reduce((s, c) => s + c.scoreValue, 0);
+      expect(res.nextState.roundWinner?.roundScore).toBe(expectedScore);
+      expect(() => assertValidFlexGameState(res.nextState)).not.toThrow();
+    });
+
+    it('handles Flex Wild Target Draw Two pending target selection on final card, scores after target chosen', () => {
+      let state = FlexFixtureBuilder.createInitialGameFixture({
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+        ],
+      });
+
+      const swapCard = FlexFixtureBuilder.swapCardIntoHand(
+        state,
+        'p1',
+        (c) => c.value === 'flex_wild_target_draw_two'
+      );
+      state = swapCard.nextState;
+
+      const cardsToMove = state.players[0].hand.filter((c) => c.id !== swapCard.card.id);
+      state = {
+        ...state,
+        drawPile: [...state.drawPile, ...cardsToMove],
+        players: state.players.map((p, idx) =>
+          idx === 0 ? { ...p, hand: [swapCard.card] } : p
+        ),
+      };
+
+      // 1. Play without targetPlayerId: state remains IN_PROGRESS with pending action
+      const res1 = FlexActionProcessor.process(state, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: swapCard.card.id,
+        playMode: 'flex',
+        chosenColor: 'blue',
+      });
+
+      expect(res1.nextState.status).toBe('IN_PROGRESS');
+      expect(res1.nextState.pendingActionState?.type).toBe('AWAITING_TARGETED_DRAW_TWO_SELECTION');
+      expect(res1.nextState.players[0].hand).toHaveLength(0);
+
+      // 2. Select Bob as target
+      const bobHandBefore = res1.nextState.players[1].hand.length;
+      const res2 = FlexActionProcessor.process(res1.nextState, {
+        type: 'CHOOSE_TARGETED_DRAW_TWO_TARGET',
+        playerId: 'p1',
+        targetPlayerId: 'p2',
+      });
+
+      // 3. Victory declared upon target selection
+      expect(res2.nextState.status).toBe('ROUND_OVER');
+      expect(res2.nextState.roundWinner?.id).toBe('p1');
+      expect(res2.nextState.players[1].hand).toHaveLength(bobHandBefore + 2);
+
+      const expectedScore = res2.nextState.players[1].hand.reduce((s, c) => s + c.scoreValue, 0);
+      expect(res2.nextState.roundWinner?.roundScore).toBe(expectedScore);
+      expect(() => assertValidFlexGameState(res2.nextState)).not.toThrow();
+    });
+
+    it('handles Flex Wild Draw Four (flex side) pending target selection on final card, scores after target chosen', () => {
+      let state = FlexFixtureBuilder.createInitialGameFixture({
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+        ],
+      });
+
+      const swapCard = FlexFixtureBuilder.swapCardIntoHand(
+        state,
+        'p1',
+        (c) => c.value === 'flex_wild_draw_four'
+      );
+      state = swapCard.nextState;
+
+      const cardsToMove = state.players[0].hand.filter((c) => c.id !== swapCard.card.id);
+      state = {
+        ...state,
+        drawPile: [...state.drawPile, ...cardsToMove],
+        players: state.players.map((p, idx) =>
+          idx === 0 ? { ...p, hand: [swapCard.card] } : p
+        ),
+      };
+
+      const res1 = FlexActionProcessor.process(state, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: swapCard.card.id,
+        playMode: 'flex',
+        chosenColor: 'yellow',
+      });
+
+      expect(res1.nextState.status).toBe('IN_PROGRESS');
+      expect(res1.nextState.pendingActionState?.type).toBe('AWAITING_TARGETED_DRAW_FOUR_SELECTION');
+
+      const bobHandBefore = res1.nextState.players[1].hand.length;
+      const res2 = FlexActionProcessor.process(res1.nextState, {
+        type: 'CHOOSE_TARGETED_DRAW_FOUR_TARGET',
+        playerId: 'p1',
+        targetPlayerId: 'p2',
+      });
+
+      expect(res2.nextState.status).toBe('ROUND_OVER');
+      expect(res2.nextState.roundWinner?.id).toBe('p1');
+      expect(res2.nextState.players[1].hand).toHaveLength(bobHandBefore + 4);
+
+      const expectedScore = res2.nextState.players[1].hand.reduce((s, c) => s + c.scoreValue, 0);
+      expect(res2.nextState.roundWinner?.roundScore).toBe(expectedScore);
+      expect(() => assertValidFlexGameState(res2.nextState)).not.toThrow();
+    });
+
+    it('handles regular Wild Draw Four as final card with ACCEPT: victim draws 4 cards and round ends with scoring', () => {
+      let state = FlexFixtureBuilder.createInitialGameFixture({
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+        ],
+      });
+
+      const swapCard = FlexFixtureBuilder.swapCardIntoHand(
+        state,
+        'p1',
+        (c) => c.value === 'flex_wild_draw_four'
+      );
+      state = swapCard.nextState;
+
+      const cardsToMove = state.players[0].hand.filter((c) => c.id !== swapCard.card.id);
+      state = {
+        ...state,
+        drawPile: [...state.drawPile, ...cardsToMove],
+        players: state.players.map((p, idx) =>
+          idx === 0 ? { ...p, hand: [swapCard.card] } : p
+        ),
+      };
+
+      const res1 = FlexActionProcessor.process(state, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: swapCard.card.id,
+        playMode: 'regular',
+        chosenColor: 'red',
+      });
+
+      expect(res1.nextState.status).toBe('IN_PROGRESS');
+      expect(res1.nextState.pendingActionState?.type).toBe('AWAITING_WILD_DRAW_FOUR_RESOLUTION');
+
+      const bobHandBefore = res1.nextState.players[1].hand.length;
+
+      // Bob accepts
+      const res2 = FlexActionProcessor.process(res1.nextState, {
+        type: 'ACCEPT_WILD_DRAW_FOUR',
+        playerId: 'p2',
+      });
+
+      expect(res2.nextState.status).toBe('ROUND_OVER');
+      expect(res2.nextState.roundWinner?.id).toBe('p1');
+      expect(res2.nextState.players[1].hand).toHaveLength(bobHandBefore + 4);
+
+      const expectedScore = res2.nextState.players[1].hand.reduce((s, c) => s + c.scoreValue, 0);
+      expect(res2.nextState.roundWinner?.roundScore).toBe(expectedScore);
+      expect(() => assertValidFlexGameState(res2.nextState)).not.toThrow();
+    });
+
+    it('handles regular Wild Draw Four as final card with CHALLENGE: innocent offender wins, challenger draws 6 cards', () => {
+      let state = FlexFixtureBuilder.createInitialGameFixture({
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+        ],
+      });
+
+      // Active color is yellow
+      state = FlexFixtureBuilder.setTopDiscard(state, (c) => c.color === 'yellow' && c.type === 'number').nextState;
+
+      const swapCard = FlexFixtureBuilder.swapCardIntoHand(
+        state,
+        'p1',
+        (c) => c.value === 'flex_wild_draw_four'
+      );
+      state = swapCard.nextState;
+
+      // Alice only had the wild card (she held NO yellow cards, play was legal!)
+      const cardsToMove = state.players[0].hand.filter((c) => c.id !== swapCard.card.id);
+      state = {
+        ...state,
+        drawPile: [...state.drawPile, ...cardsToMove],
+        players: state.players.map((p, idx) =>
+          idx === 0 ? { ...p, hand: [swapCard.card] } : p
+        ),
+      };
+
+      const res1 = FlexActionProcessor.process(state, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: swapCard.card.id,
+        playMode: 'regular',
+        chosenColor: 'green',
+      });
+
+      expect(res1.nextState.pendingActionState?.type).toBe('AWAITING_WILD_DRAW_FOUR_RESOLUTION');
+      const bobHandBefore = res1.nextState.players[1].hand.length;
+
+      // Bob challenges
+      const res2 = FlexActionProcessor.process(res1.nextState, {
+        type: 'CHALLENGE_WILD_DRAW_FOUR',
+        challengerPlayerId: 'p2',
+      });
+
+      // Challenge failed: Bob draws 6 cards (4 + 2 penalty) and Alice wins!
+      expect(res2.nextState.status).toBe('ROUND_OVER');
+      expect(res2.nextState.roundWinner?.id).toBe('p1');
+      expect(res2.nextState.players[1].hand).toHaveLength(bobHandBefore + 6);
+
+      const expectedScore = res2.nextState.players[1].hand.reduce((s, c) => s + c.scoreValue, 0);
+      expect(res2.nextState.roundWinner?.roundScore).toBe(expectedScore);
+      expect(() => assertValidFlexGameState(res2.nextState)).not.toThrow();
+    });
+
+    it('handles regular Wild Draw Four with CHALLENGE when offender bluffed: offender draws 4, round NOT over', () => {
+      let state = FlexFixtureBuilder.createInitialGameFixture({
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+        ],
+      });
+
+      // Active color is blue
+      state = FlexFixtureBuilder.setTopDiscard(state, (c) => c.color === 'blue' && c.type === 'number').nextState;
+
+      const swapCard = FlexFixtureBuilder.swapCardIntoHand(
+        state,
+        'p1',
+        (c) => c.value === 'flex_wild_draw_four'
+      );
+      state = swapCard.nextState;
+
+      // Alice also holds a Blue Number card (illegal bluff play!) - evict second card to preserve swapCard
+      const secondCardToEvict = state.players[0].hand[1].id;
+      const swapBlue = FlexFixtureBuilder.swapCardIntoHand(
+        state,
+        'p1',
+        (c) => c.color === 'blue' && c.type === 'number',
+        secondCardToEvict
+      );
+      state = swapBlue.nextState;
+
+      // Move other 5 cards to draw pile so Alice only has these 2 cards in hand
+      const cardsToMove = state.players[0].hand.filter(
+        (c) => c.id !== swapCard.card.id && c.id !== swapBlue.card.id
+      );
+      state = {
+        ...state,
+        drawPile: [...state.drawPile, ...cardsToMove],
+        players: state.players.map((p, idx) =>
+          idx === 0 ? { ...p, hand: [swapCard.card, swapBlue.card] } : p
+        ),
+      };
+      assertValidFlexGameState(state);
+
+      const res1 = FlexActionProcessor.process(state, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: swapCard.card.id,
+        playMode: 'regular',
+        chosenColor: 'red',
+      });
+
+      // Bob challenges
+      const res2 = FlexActionProcessor.process(res1.nextState, {
+        type: 'CHALLENGE_WILD_DRAW_FOUR',
+        challengerPlayerId: 'p2',
+      });
+
+      // Challenge won by Bob! Alice was guilty, Alice draws 4 cards, game continues!
+      expect(res2.nextState.status).toBe('IN_PROGRESS');
+      expect(res2.nextState.roundWinner).toBeNull();
+      // Alice had 1 remaining card (Blue Number) + 4 drawn penalty cards = 5 cards
+      expect(res2.nextState.players[0].hand).toHaveLength(5);
+      expect(() => assertValidFlexGameState(res2.nextState)).not.toThrow();
+    });
+
+    it('resolves final-card Skip, Reverse, and Wild All Flip ending round immediately', () => {
+      // 1. Skip as final card
+      let state = FlexFixtureBuilder.createInitialGameFixture({
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+        ],
+      });
+      state = FlexFixtureBuilder.setTopDiscard(state, (c) => c.color === 'green' && c.type === 'number').nextState;
+      const swapSkip = FlexFixtureBuilder.swapCardIntoHand(state, 'p1', (c) => c.color === 'green' && c.value === 'skip');
+      state = swapSkip.nextState;
+      const cardsToMove1 = state.players[0].hand.filter((c) => c.id !== swapSkip.card.id);
+      state = {
+        ...state,
+        drawPile: [...state.drawPile, ...cardsToMove1],
+        players: state.players.map((p, idx) => (idx === 0 ? { ...p, hand: [swapSkip.card] } : p)),
+      };
+      const resSkip = FlexActionProcessor.process(state, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: swapSkip.card.id,
+        playMode: 'regular',
+      });
+      expect(resSkip.nextState.status).toBe('ROUND_OVER');
+      expect(resSkip.nextState.roundWinner?.id).toBe('p1');
+
+      // 2. Wild All Flip as final card
+      let state2 = FlexFixtureBuilder.createInitialGameFixture({
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+        ],
+      });
+      const swapFlip = FlexFixtureBuilder.swapCardIntoHand(state2, 'p1', (c) => c.value === 'wild_all_flip');
+      state2 = swapFlip.nextState;
+      const cardsToMove2 = state2.players[0].hand.filter((c) => c.id !== swapFlip.card.id);
+      state2 = {
+        ...state2,
+        drawPile: [...state2.drawPile, ...cardsToMove2],
+        players: state2.players.map((p, idx) => (idx === 0 ? { ...p, hand: [swapFlip.card] } : p)),
+      };
+      const resFlip = FlexActionProcessor.process(state2, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: swapFlip.card.id,
+        playMode: 'regular',
+        chosenColor: 'blue',
+      });
+      expect(resFlip.nextState.status).toBe('ROUND_OVER');
+      expect(resFlip.nextState.roundWinner?.id).toBe('p1');
     });
   });
 });

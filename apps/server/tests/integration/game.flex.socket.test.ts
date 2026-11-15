@@ -304,4 +304,219 @@ describe('UNO Flex — Server Socket.IO Multiplayer Integration Tests', () => {
     expect(opponentAfter).toBe(opponentHandBefore + 4);
     expect(session.state.activeColor).toBe('green');
   });
+
+  it('handles final-card pending Targeted Draw Two over Socket.IO and finishes round on selection', async () => {
+    const s1 = createClient(p1Token);
+    const s2 = createClient(p2Token);
+
+    await Promise.all([
+      new Promise<void>((res) => s1.on('connect', () => res())),
+      new Promise<void>((res) => s2.on('connect', () => res())),
+    ]);
+
+    const createRes = await new Promise<{ success: boolean; data?: { roomCode: string } }>((res) => {
+      s1.emit(
+        SOCKET_EVENTS.ROOM_CREATE,
+        { maxPlayers: 2, settings: { variant: 'uno_flex' } },
+        (response: any) => res(response)
+      );
+    });
+    const roomCode = createRes.data!.roomCode;
+
+    await new Promise<{ success: boolean }>((res) => {
+      s2.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, (response: any) => res(response));
+    });
+    await new Promise<{ success: boolean }>((res) => {
+      s2.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, (response: any) => res(response));
+    });
+
+    let activeState: PlayerGameState | null = null;
+    s1.on(SOCKET_EVENTS.GAME_STATE, (payload: { state: PlayerGameState }) => {
+      activeState = payload.state;
+    });
+
+    await new Promise<{ success: boolean }>((res) => {
+      s1.emit(SOCKET_EVENTS.ROOM_START, { immediate: true } as any, (response: any) => res(response));
+    });
+
+    await new Promise<void>((resolve) => {
+      const check = setInterval(() => {
+        if (activeState) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 50);
+    });
+
+    const session = gameSessionManager.getSessionByRoomCode(roomCode)!;
+    const activePlayerId = session.state.players[session.state.currentPlayerIndex].id;
+    const opponentId = session.state.players.find((p) => p.id !== activePlayerId)!.id;
+    const activeSocket = activePlayerId === p1Id ? s1 : s2;
+
+    const swap = FlexFixtureBuilder.swapCardIntoHand(
+      session.state,
+      activePlayerId,
+      (c) => c.value === 'flex_wild_target_draw_two'
+    );
+    session.state = swap.nextState;
+
+    // Make active player hold ONLY this final card
+    const activeIdx = session.state.players.findIndex((p) => p.id === activePlayerId);
+    const cardsToMove = session.state.players[activeIdx].hand.filter((c) => c.id !== swap.card.id);
+    session.state = {
+      ...session.state,
+      drawPile: [...session.state.drawPile, ...cardsToMove],
+      players: session.state.players.map((p, idx) =>
+        idx === activeIdx ? { ...p, hand: [swap.card] } : p
+      ),
+    };
+    assertValidFlexGameState(session.state);
+
+    // Track round finished broadcast
+    let roundFinishedReceived = false;
+    let roundFinishedPayload: any = null;
+    s1.on(SOCKET_EVENTS.GAME_ROUND_FINISHED, (payload: any) => {
+      roundFinishedReceived = true;
+      roundFinishedPayload = payload;
+    });
+
+    // 1. Play final card without targetPlayerId -> state remains IN_PROGRESS
+    const playRes = await new Promise<{ success: boolean; data?: any }>((res) => {
+      activeSocket.emit(
+        SOCKET_EVENTS.GAME_PLAY_CARD,
+        {
+          cardId: swap.card.id,
+          chosenColor: 'red',
+          playMode: 'flex',
+        },
+        (response: any) => res(response)
+      );
+    });
+    expect(playRes.success).toBe(true);
+    expect(session.state.status).toBe('IN_PROGRESS');
+    expect(session.state.pendingActionState?.type).toBe('AWAITING_TARGETED_DRAW_TWO_SELECTION');
+    expect(roundFinishedReceived).toBe(false);
+
+    // 2. Submit target selection
+    const chooseRes = await new Promise<{ success: boolean; data?: any }>((res) => {
+      activeSocket.emit(
+        SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_TWO,
+        { targetPlayerId: opponentId },
+        (response: any) => res(response)
+      );
+    });
+    expect(chooseRes.success).toBe(true);
+
+    // 3. Round is over, round finished broadcast received
+    expect(session.state.status).toBe('ROUND_OVER');
+    expect(session.state.roundWinner?.id).toBe(activePlayerId);
+    expect(roundFinishedReceived).toBe(true);
+    expect(roundFinishedPayload.roundWinner.id).toBe(activePlayerId);
+  });
+
+  it('handles final-card Wild Draw Four challenge flow over Socket.IO and finishes round on accept', async () => {
+    const s1 = createClient(p1Token);
+    const s2 = createClient(p2Token);
+
+    await Promise.all([
+      new Promise<void>((res) => s1.on('connect', () => res())),
+      new Promise<void>((res) => s2.on('connect', () => res())),
+    ]);
+
+    const createRes = await new Promise<{ success: boolean; data?: { roomCode: string } }>((res) => {
+      s1.emit(
+        SOCKET_EVENTS.ROOM_CREATE,
+        { maxPlayers: 2, settings: { variant: 'uno_flex' } },
+        (response: any) => res(response)
+      );
+    });
+    const roomCode = createRes.data!.roomCode;
+
+    await new Promise<{ success: boolean }>((res) => {
+      s2.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, (response: any) => res(response));
+    });
+    await new Promise<{ success: boolean }>((res) => {
+      s2.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, (response: any) => res(response));
+    });
+
+    let activeState: PlayerGameState | null = null;
+    s1.on(SOCKET_EVENTS.GAME_STATE, (payload: { state: PlayerGameState }) => {
+      activeState = payload.state;
+    });
+
+    await new Promise<{ success: boolean }>((res) => {
+      s1.emit(SOCKET_EVENTS.ROOM_START, { immediate: true } as any, (response: any) => res(response));
+    });
+
+    await new Promise<void>((resolve) => {
+      const check = setInterval(() => {
+        if (activeState) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 50);
+    });
+
+    const session = gameSessionManager.getSessionByRoomCode(roomCode)!;
+    const activePlayerId = session.state.players[session.state.currentPlayerIndex].id;
+    const opponentId = session.state.players.find((p) => p.id !== activePlayerId)!.id;
+    const activeSocket = activePlayerId === p1Id ? s1 : s2;
+    const opponentSocket = opponentId === p1Id ? s1 : s2;
+
+    const swap = FlexFixtureBuilder.swapCardIntoHand(
+      session.state,
+      activePlayerId,
+      (c) => c.value === 'flex_wild_draw_four'
+    );
+    session.state = swap.nextState;
+
+    // Active player has only this final card
+    const activeIdx = session.state.players.findIndex((p) => p.id === activePlayerId);
+    const cardsToMove = session.state.players[activeIdx].hand.filter((c) => c.id !== swap.card.id);
+    session.state = {
+      ...session.state,
+      drawPile: [...session.state.drawPile, ...cardsToMove],
+      players: session.state.players.map((p, idx) =>
+        idx === activeIdx ? { ...p, hand: [swap.card] } : p
+      ),
+    };
+    assertValidFlexGameState(session.state);
+
+    let roundFinishedReceived = false;
+    s1.on(SOCKET_EVENTS.GAME_ROUND_FINISHED, () => {
+      roundFinishedReceived = true;
+    });
+
+    // 1. Active player plays Wild Draw Four on regular side -> awaits resolution
+    const playRes = await new Promise<{ success: boolean; data?: any }>((res) => {
+      activeSocket.emit(
+        SOCKET_EVENTS.GAME_PLAY_CARD,
+        {
+          cardId: swap.card.id,
+          chosenColor: 'blue',
+          playMode: 'regular',
+        },
+        (response: any) => res(response)
+      );
+    });
+    expect(playRes.success).toBe(true);
+    expect(session.state.status).toBe('IN_PROGRESS');
+    expect(session.state.pendingActionState?.type).toBe('AWAITING_WILD_DRAW_FOUR_RESOLUTION');
+    expect(roundFinishedReceived).toBe(false);
+
+    // 2. Opponent accepts
+    const acceptRes = await new Promise<{ success: boolean; data?: any }>((res) => {
+      opponentSocket.emit(
+        SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_FOUR,
+        {},
+        (response: any) => res(response)
+      );
+    });
+    expect(acceptRes.success).toBe(true);
+
+    // 3. Round is over, active player wins
+    expect(session.state.status).toBe('ROUND_OVER');
+    expect(session.state.roundWinner?.id).toBe(activePlayerId);
+    expect(roundFinishedReceived).toBe(true);
+  });
 });
