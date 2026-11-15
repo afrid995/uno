@@ -134,6 +134,7 @@ All quality gates passed with zero regressions across Classic UNO, UNO Flip, UNO
 | **Phase 9 (Implementation)** | `7d6763fdb63e5c4d2e6abe790d85d4f5282e1d2a` | `feat(variant): implement UNO Teams official rules and multiplayer architecture (Phase 9)` |
 | **Phase 9 (Report)** | `1abbd2c6d8fe1be6fc8c1938b15a02c7372d7d8f` | `docs(report): record Phase 9 publication commit hash in implementation report` |
 | **Phase 9.1 (Audit Fixes)** | `422b097e930c236312a9204c6b3f9a37b6e60529` | `fix(teams): resolve Phase 9.1 rules compliance defects, team formation, and direct draw edge cases` |
+| **Phase 9.1 (Report)** | `d96495c5d9f9016673d81256b05b638294d00c0a` | `docs(report): record Phase 9.1 published commit hash in audit report` |
 
 ---
 
