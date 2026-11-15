@@ -209,4 +209,4 @@ Quality gates passed cleanly:
 | Milestone | Commit SHA | Status |
 | :--- | :--- | :--- |
 | **Phase 8 Baseline** | `c854a6027b9e0244d057564225a379e6e6bc2190` | Published on `origin/main` |
-| **Phase 8.1 Rule Audit & Correction** | *(Recorded upon git push)* | Fully verified & ready for publication |
+| **Phase 8.1 Rule Audit & Correction** | `20f236c88f2724994294601c69388e9f76314466` | Published on `origin/main` |
