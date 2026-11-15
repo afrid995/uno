@@ -172,4 +172,5 @@ Executed via `pnpm --filter @uno-ultimate/web test:e2e` against live Vite and Ex
 
 - **Target Commit Message:** `feat(variant): implement UNO Attack with server-authoritative virtual launcher (Phase 10)`
 - **Publication Branch:** `main`
-- **Published Commit SHA:** `PENDING_GIT_PUSH` (updated immediately upon push)
+- **Published Commit SHA:** `c28d9edc530beab9c49eea1d669211cbaabaec27`
+- **Remote Verification:** Verified synchronized with `origin/main` via `git push origin main`.
