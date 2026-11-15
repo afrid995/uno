@@ -55,8 +55,14 @@ export class AttackFixtureBuilder {
       drawnCardId: null,
     }));
 
+    const turnDirection =
+      topCard.value === 'reverse' && updatedPlayers.length > 2
+        ? 'counter_clockwise'
+        : 'clockwise';
+
     const nextState: GameState = {
       ...baseState,
+      turnDirection,
       players: updatedPlayers,
       currentPlayerIndex,
       drawPile: remainingDeck,

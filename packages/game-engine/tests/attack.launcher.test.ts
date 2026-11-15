@@ -76,4 +76,17 @@ describe('AttackLauncher Virtual Card Launcher Mechanics', () => {
     const res = AttackLauncher.evaluatePresses(1, 4, 100, burstRng);
     expect(res.totalCardsToDispense).toBeLessThanOrEqual(ATTACK_LAUNCHER_CONFIG.MAX_BURST_CAPACITY);
   });
+
+  it('clamps dispensed cards to available cards even if burst roll is larger', () => {
+    // Override asks for 7, but only 3 available
+    AttackLauncher.setDeterministicOverride(7);
+    const res = AttackLauncher.evaluatePresses(1, 2, 3);
+    expect(res.totalCardsToDispense).toBe(3);
+  });
+
+  it('dispenses 0 cards when availableCardCount is 0 without error', () => {
+    AttackLauncher.setDeterministicOverride(5);
+    const res = AttackLauncher.evaluatePresses(1, 0, 0);
+    expect(res.totalCardsToDispense).toBe(0);
+  });
 });

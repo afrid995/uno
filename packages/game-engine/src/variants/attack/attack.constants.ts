@@ -16,7 +16,13 @@ export const UNO_ATTACK_RULES = {
   MAX_PLAYERS: 10,
   INITIAL_HAND_SIZE: 7,
   TARGET_WIN_SCORE: 500,
+  /** Total default deck size with all 3 Wild Customizable cards included */
   TOTAL_DECK_SIZE: 112,
+  /** Base non-customizable cards in GTX66 (72 numbers + 28 action + 4 wild + 4 attack-attack + 1 hit 4) */
+  BASE_CARDS_COUNT: 109,
+  DEFAULT_CUSTOMIZABLE_CARDS_COUNT: 3,
+  MIN_CUSTOMIZABLE_CARDS_COUNT: 1,
+  MAX_CUSTOMIZABLE_CARDS_COUNT: 3,
   MISSED_UNO_PENALTY_PRESSES: 2,
 } as const;
 
@@ -29,20 +35,32 @@ export const ATTACK_SCORING = {
   SKIP: 20,
   HIT_2: 20,
   DISCARD_ALL: 30,
+  /** Official Mattel GTX66 rule: Wild Hit 4 is worth 40 points (not 50) */
   WILD_HIT_4: 40,
   WILD: 50,
   WILD_ATTACK_ATTACK: 50,
   WILD_CUSTOMIZABLE: 50,
 } as const;
 
+/**
+ * UNO Ultimate Virtual Launcher Simulation Policies.
+ *
+ * NOTE: The official Mattel GTX66 instruction sheet describes qualitative mechanical behavior:
+ * "If no cards fly out, the lights and sounds will PULSE FASTER AND FASTER each time it's pressed...until BAM!
+ * When cards finally launch, the player who pressed the button must add them to their hand."
+ *
+ * The numerical parameters below (discrete tension levels 0-4, probability thresholds, and burst limits)
+ * are UNO Ultimate application-level simulation policies chosen for stability and game balance.
+ * They do not claim to reproduce Mattel's proprietary internal hardware firmware.
+ */
 export const ATTACK_LAUNCHER_CONFIG = {
-  /** Maximum number of cards that can be dispensed in a single mechanical burst */
+  /** Maximum number of cards that can be dispensed in a single mechanical burst (app policy) */
   MAX_BURST_CAPACITY: 12,
-  /** Maximum tension/pulse stage before mandatory release */
+  /** Maximum tension/pulse stage before mandatory release (app policy) */
   MAX_TENSION_LEVEL: 4,
-  /** Base launch probability per tension level (0 to 4) */
+  /** Base launch probability per tension level (0 to 4) (app policy) */
   TENSION_PROBABILITIES: [0.30, 0.45, 0.60, 0.75, 0.95] as const,
-  /** Number of launcher presses for each action card or rule penalty */
+  /** Number of launcher presses for each action card or rule penalty (official GTX66 rules) */
   PRESSES: {
     HIT_2: 2,
     WILD_HIT_4: 4,

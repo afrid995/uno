@@ -13,6 +13,7 @@ interface CreateRoomModalProps {
 export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClose }) => {
   const [maxPlayers, setMaxPlayers] = useState<number>(ROOM_RULES.DEFAULT_MAX_PLAYERS);
   const [variant, setVariant] = useState<'classic' | 'uno_flip' | 'uno_show_em_no_mercy' | 'uno_all_wild' | 'uno_flex' | 'uno_teams' | 'uno_attack'>('classic');
+  const [attackCustomizableCount, setAttackCustomizableCount] = useState<number>(3);
   const { createRoom, isLoading, error, clearError } = useRoomStore();
   const navigate = useNavigate();
 
@@ -33,7 +34,13 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
     e.preventDefault();
     clearError();
     const payload = variant !== 'classic'
-      ? { maxPlayers, settings: { variant } }
+      ? {
+          maxPlayers,
+          settings: {
+            variant,
+            ...(variant === 'uno_attack' ? { attackCustomizableCount } : {}),
+          },
+        }
       : { maxPlayers };
     const success = await createRoom(payload);
     if (success) {
@@ -52,7 +59,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="glass-panel w-full max-w-md p-6 sm:p-8 rounded-3xl border border-slate-700/80 shadow-2xl relative overflow-hidden"
+          className="glass-panel w-full max-w-md max-h-[90vh] p-6 sm:p-8 rounded-3xl border border-slate-700/80 shadow-2xl relative overflow-y-auto overflow-x-hidden"
         >
           {/* Header Accent */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-uno-red via-uno-yellow to-uno-blue" />
@@ -232,6 +239,41 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                 </button>
               </div>
             </div>
+
+            {/* UNO Attack Customizable Cards Option */}
+            {variant === 'uno_attack' && (
+              <div className="space-y-2 p-3 rounded-2xl bg-slate-900/60 border border-slate-800">
+                <div className="flex justify-between items-center text-xs">
+                  <label className="font-medium text-slate-300 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    Wild Customizable Cards (GTX66)
+                  </label>
+                  <span className="font-mono text-xs text-amber-400 font-bold">
+                    {attackCustomizableCount} {attackCustomizableCount === 1 ? 'Card' : 'Cards'} ({109 + attackCustomizableCount} Total)
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  {[1, 2, 3].map((count) => (
+                    <button
+                      key={count}
+                      type="button"
+                      data-testid={`customizable-count-${count}`}
+                      onClick={() => setAttackCustomizableCount(count)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                        attackCustomizableCount === count
+                          ? 'bg-rose-500/20 text-rose-300 border-rose-500 shadow-glow'
+                          : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-white'
+                      }`}
+                    >
+                      {count} {count === 1 ? 'Card' : 'Cards'}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  Mattel GTX66 rules allow including 1, 2, or 3 customizable cards (110–112 total cards).
+                </p>
+              </div>
+            )}
 
             {/* Max Players Selector */}
             <div className="space-y-3">

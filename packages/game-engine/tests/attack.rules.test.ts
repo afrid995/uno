@@ -386,6 +386,130 @@ describe('UNO Attack Rule Fidelity & State Transitions (Mattel Product GTX66)', 
       assertValidAttackGameState(res.nextState);
     });
 
+    it('ends hand immediately when Hit 2 is played as final card without triggering launcher presses', () => {
+      AttackLauncher.setDeterministicOverride(3);
+
+      const top = fullDeck.find((c) => c.color === 'red' && c.value === '2')!;
+      const hit2 = fullDeck.find((c) => c.color === 'red' && c.value === 'hit_2')!;
+
+      const initial = AttackFixtureBuilder.createInitialGameFixture(4);
+      const custom = AttackFixtureBuilder.setCustomState(
+        initial,
+        {
+          p1: [hit2], // p1 has only this final card!
+          p2: [fullDeck.find((c) => c.id === 'attack_green_1_0')!], // 1 pt
+          p3: [fullDeck.find((c) => c.id === 'attack_green_2_0')!], // 2 pts
+          p4: [fullDeck.find((c) => c.id === 'attack_green_3_0')!], // 3 pts
+        },
+        top
+      );
+
+      const res = adapter.processAction(custom, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: hit2.id,
+      });
+
+      // Mattel GTX66 Going Out: hand ends immediately, p2 does NOT press launcher!
+      expect(res.nextState.status).toBe('ROUND_OVER');
+      expect(res.nextState.roundWinner?.id).toBe('p1');
+      expect(res.nextState.players[1].hand.length).toBe(1); // p2 hand unchanged
+      expect(res.nextState.roundWinner?.roundScore).toBe(1 + 2 + 3); // 6 pts
+
+      assertValidAttackGameState(res.nextState);
+    });
+
+    it('ends hand immediately when Wild Hit 4 is played as final card without triggering launcher presses', () => {
+      AttackLauncher.setDeterministicOverride(4);
+
+      const top = fullDeck.find((c) => c.color === 'red' && c.value === '2')!;
+      const wildHit4 = fullDeck.find((c) => c.value === 'wild_hit_4')!;
+
+      const initial = AttackFixtureBuilder.createInitialGameFixture(4);
+      const custom = AttackFixtureBuilder.setCustomState(
+        initial,
+        {
+          p1: [wildHit4], // p1 has only this final card!
+          p2: [fullDeck.find((c) => c.id === 'attack_green_1_0')!],
+          p3: [fullDeck.find((c) => c.id === 'attack_green_2_0')!],
+          p4: [fullDeck.find((c) => c.id === 'attack_green_3_0')!],
+        },
+        top
+      );
+
+      const res = adapter.processAction(custom, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: wildHit4.id,
+        chosenColor: 'green',
+      });
+
+      // Mattel GTX66 Going Out: hand ends immediately, p2 does NOT press launcher!
+      expect(res.nextState.status).toBe('ROUND_OVER');
+      expect(res.nextState.roundWinner?.id).toBe('p1');
+      expect(res.nextState.players[1].hand.length).toBe(1); // p2 hand unchanged
+
+      assertValidAttackGameState(res.nextState);
+    });
+
+    it('ends hand immediately when Skip or Discard All is played as final card', () => {
+      const top = fullDeck.find((c) => c.color === 'red' && c.value === '2')!;
+      const skipCard = fullDeck.find((c) => c.color === 'red' && c.value === 'skip')!;
+
+      const initial = AttackFixtureBuilder.createInitialGameFixture(4);
+      const custom = AttackFixtureBuilder.setCustomState(
+        initial,
+        {
+          p1: [skipCard],
+          p2: [fullDeck.find((c) => c.id === 'attack_green_1_0')!],
+          p3: [fullDeck.find((c) => c.id === 'attack_green_2_0')!],
+          p4: [fullDeck.find((c) => c.id === 'attack_green_3_0')!],
+        },
+        top
+      );
+
+      const res = adapter.processAction(custom, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: skipCard.id,
+      });
+
+      expect(res.nextState.status).toBe('ROUND_OVER');
+      expect(res.nextState.roundWinner?.id).toBe('p1');
+      assertValidAttackGameState(res.nextState);
+    });
+
+    it('awards exactly 40 points when an opponent is left holding Wild Hit 4 at round end', () => {
+      const top = fullDeck.find((c) => c.color === 'red' && c.value === '2')!;
+      const regularWinningCard = fullDeck.find((c) => c.color === 'red' && c.value === '5')!;
+      const wildHit4 = fullDeck.find((c) => c.value === 'wild_hit_4')!;
+
+      const initial = AttackFixtureBuilder.createInitialGameFixture(4);
+      const custom = AttackFixtureBuilder.setCustomState(
+        initial,
+        {
+          p1: [regularWinningCard],
+          p2: [wildHit4], // Opponent holds Wild Hit 4
+          p3: [fullDeck.find((c) => c.id === 'attack_green_2_0')!], // 2 pts
+          p4: [],
+        },
+        top
+      );
+
+      const res = adapter.processAction(custom, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: regularWinningCard.id,
+      });
+
+      expect(res.nextState.status).toBe('ROUND_OVER');
+      expect(res.nextState.roundWinner?.id).toBe('p1');
+      // Wild Hit 4 (40 pts) + green 2 (2 pts) = 42 points
+      expect(res.nextState.roundWinner?.roundScore).toBe(42);
+      expect(res.nextState.roundWinner?.score).toBe(42);
+      assertValidAttackGameState(res.nextState);
+    });
+
     it('declares match victory (status COMPLETED) when accumulated score reaches 500', () => {
       const top = fullDeck.find((c) => c.color === 'red' && c.value === '2')!;
       const finalCard = fullDeck.find((c) => c.color === 'red' && c.value === '7')!;

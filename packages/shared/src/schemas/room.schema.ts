@@ -17,6 +17,7 @@ export const roomCodeSchema = z
 
 export const roomSettingsSchema = z.object({
   variant: z.enum(['classic', 'uno_flip', 'uno_show_em_no_mercy', 'uno_all_wild', 'uno_flex', 'uno_teams', 'uno_attack']).default('classic'),
+  attackCustomizableCount: z.number().int().min(1).max(3).default(3).optional(),
 }).passthrough();
 export type RoomSettings = z.infer<typeof roomSettingsSchema>;
 

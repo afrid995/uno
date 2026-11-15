@@ -150,7 +150,7 @@ export const LobbyPage: React.FC = () => {
               <h2 className="font-display font-black text-2xl tracking-tight">Starting Game Match</h2>
             </div>
             <p className="text-sm text-white/90">
-              Match countdown initiated ({startingCountdown}s). Preparing the {roomVariant === 'uno_show_em_no_mercy' ? '168-card' : roomVariant === 'uno_all_wild' ? '112-card all-wild' : roomVariant === 'uno_flex' ? '112-card flex' : roomVariant === 'uno_teams' ? '112-card teams' : roomVariant === 'uno_attack' ? '112-card attack' : roomVariant === 'uno_flip' ? '112-card dual-sided' : '108-card'} deck and dealing hands...
+              Match countdown initiated ({startingCountdown}s). Preparing the {roomVariant === 'uno_show_em_no_mercy' ? '168-card' : roomVariant === 'uno_all_wild' ? '112-card all-wild' : roomVariant === 'uno_flex' ? '112-card flex' : roomVariant === 'uno_teams' ? '112-card teams' : roomVariant === 'uno_attack' ? `${109 + (Number((room.settings as Record<string, unknown>)?.attackCustomizableCount) || 3)}-card attack` : roomVariant === 'uno_flip' ? '112-card dual-sided' : '108-card'} deck and dealing hands...
             </p>
           </motion.div>
         )}
@@ -242,7 +242,7 @@ export const LobbyPage: React.FC = () => {
                   : roomVariant === 'uno_teams'
                   ? '112 CARDS • 2–4 TEAMS'
                   : roomVariant === 'uno_attack'
-                  ? '112 CARDS • LAUNCHER'
+                  ? `${109 + (Number((room.settings as Record<string, unknown>)?.attackCustomizableCount) || 3)} CARDS • LAUNCHER`
                   : roomVariant === 'uno_flip'
                   ? '112 DUAL-SIDED CARDS'
                   : '108 CARDS'}

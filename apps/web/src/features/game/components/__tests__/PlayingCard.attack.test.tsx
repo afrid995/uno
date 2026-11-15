@@ -39,7 +39,7 @@ describe('PlayingCard UNO Attack Components (Mattel Product GTX66)', () => {
       color: null,
       type: 'wild',
       value: 'wild_hit_4',
-      scoreValue: 50,
+      scoreValue: 40,
       variant: 'uno_attack',
     };
 

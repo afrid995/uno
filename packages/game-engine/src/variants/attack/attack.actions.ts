@@ -25,7 +25,7 @@ import { HandManager } from '../../players/hand.manager';
 import { AttackDeckFactory } from './attack.deck';
 import { AttackMoveValidator } from './attack.validator';
 import { AttackLauncher } from './attack.launcher';
-import { ATTACK_LAUNCHER_CONFIG } from './attack.constants';
+import { ATTACK_LAUNCHER_CONFIG, UNO_ATTACK_RULES } from './attack.constants';
 import { assertValidAttackGameState } from './attack.invariants';
 
 export class AttackActionProcessor {
@@ -163,148 +163,165 @@ export class AttackActionProcessor {
     let nextPlayerIndex = advanceTurn(1);
     const playerCount = updatedPlayers.length;
 
+    const isGoingOut = remainingHand.length === 0;
+    const availableCardCount = drawPile.length + Math.max(0, discardPile.length - 1);
+
     // Action resolution
     if (card.value === 'reverse') {
-      if (playerCount === 2) {
-        // 2-player game: Reverse acts like Skip! Attacker takes another turn
-        nextPlayerIndex = state.currentPlayerIndex;
-        addEvent('REVERSE_ACTS_AS_SKIP', playerId, { nextPlayerId: playerId });
-      } else {
-        turnDirection = turnDirection === 'clockwise' ? 'counter_clockwise' : 'clockwise';
-        nextPlayerIndex = TurnManager.getNextPlayerIndex(state.currentPlayerIndex, playerCount, turnDirection, 1);
-        addEvent('DIRECTION_REVERSED', playerId, { direction: turnDirection });
+      if (!isGoingOut) {
+        if (playerCount === 2) {
+          // 2-player game: Reverse acts like Skip! Attacker takes another turn
+          nextPlayerIndex = state.currentPlayerIndex;
+          addEvent('REVERSE_ACTS_AS_SKIP', playerId, { nextPlayerId: playerId });
+        } else {
+          turnDirection = turnDirection === 'clockwise' ? 'counter_clockwise' : 'clockwise';
+          nextPlayerIndex = TurnManager.getNextPlayerIndex(state.currentPlayerIndex, playerCount, turnDirection, 1);
+          addEvent('DIRECTION_REVERSED', playerId, { direction: turnDirection });
+        }
       }
     } else if (card.value === 'skip') {
-      if (playerCount === 2) {
-        // 2-player game: Skip gives the player another turn immediately!
-        nextPlayerIndex = state.currentPlayerIndex;
-        addEvent('PLAYER_SKIPPED', updatedPlayers[advanceTurn(1)].id, { skippedBy: playerId });
-      } else {
-        const skippedIndex = advanceTurn(1);
-        addEvent('PLAYER_SKIPPED', updatedPlayers[skippedIndex].id, { skippedBy: playerId });
-        nextPlayerIndex = advanceTurn(2);
+      if (!isGoingOut) {
+        if (playerCount === 2) {
+          // 2-player game: Skip gives the player another turn immediately!
+          nextPlayerIndex = state.currentPlayerIndex;
+          addEvent('PLAYER_SKIPPED', updatedPlayers[advanceTurn(1)].id, { skippedBy: playerId });
+        } else {
+          const skippedIndex = advanceTurn(1);
+          addEvent('PLAYER_SKIPPED', updatedPlayers[skippedIndex].id, { skippedBy: playerId });
+          nextPlayerIndex = advanceTurn(2);
+        }
       }
     } else if (card.value === 'hit_2') {
-      const victimIndex = advanceTurn(1);
-      const victim = updatedPlayers[victimIndex];
+      // Per official Mattel GTX66 rules, once a player is out of cards, the hand is over.
+      // The Wild Attack-Attack exception does NOT apply to Hit 2.
+      if (!isGoingOut) {
+        const victimIndex = advanceTurn(1);
+        const victim = updatedPlayers[victimIndex];
 
-      // Victim must press the launcher twice
-      const evalResult = AttackLauncher.evaluatePresses(
-        ATTACK_LAUNCHER_CONFIG.PRESSES.HIT_2,
-        launcherState.tension,
-        drawPile.length,
-        rng
-      );
+        // Victim must press the launcher twice
+        const evalResult = AttackLauncher.evaluatePresses(
+          ATTACK_LAUNCHER_CONFIG.PRESSES.HIT_2,
+          launcherState.tension,
+          availableCardCount,
+          rng
+        );
 
-      let drawnCards: Card[] = [];
-      if (evalResult.totalCardsToDispense > 0) {
-        const drawRes = DeckManager.drawCards(drawPile, discardPile, evalResult.totalCardsToDispense, rng);
-        drawPile = [...drawRes.newDrawPile];
-        discardPile = [...drawRes.newDiscardPile];
-        drawnCards = [...drawRes.drawnCards];
-      }
-
-      launcherState = {
-        tension: evalResult.finalTension,
-        lastLaunchResult: {
-          playerId: victim.id,
-          cardsLaunched: drawnCards.length,
-          totalPresses: ATTACK_LAUNCHER_CONFIG.PRESSES.HIT_2,
-          timestamp: Date.now(),
-        },
-      };
-
-      updatedPlayers = updatedPlayers.map((p) => {
-        if (p.id === victim.id) {
-          return {
-            ...p,
-            hand: [...p.hand, ...drawnCards],
-            hasDeclaredUno: false,
-          };
+        let drawnCards: Card[] = [];
+        if (evalResult.totalCardsToDispense > 0) {
+          const drawRes = DeckManager.drawCards(drawPile, discardPile, evalResult.totalCardsToDispense, rng);
+          drawPile = [...drawRes.newDrawPile];
+          discardPile = [...drawRes.newDiscardPile];
+          drawnCards = [...drawRes.drawnCards];
         }
-        return p;
-      });
 
-      addEvent('ATTACK_LAUNCHER_RESULT', victim.id, {
-        cardsLaunched: drawnCards.length,
-        presses: ATTACK_LAUNCHER_CONFIG.PRESSES.HIT_2,
-        tension: evalResult.finalTension,
-        drawnCards: drawnCards.map((c) => c.id),
-      });
+        launcherState = {
+          tension: evalResult.finalTension,
+          lastLaunchResult: {
+            playerId: victim.id,
+            cardsLaunched: drawnCards.length,
+            totalPresses: ATTACK_LAUNCHER_CONFIG.PRESSES.HIT_2,
+            timestamp: Date.now(),
+          },
+        };
 
-      addEvent('PLAYER_SKIPPED', victim.id, { skippedBy: playerId });
+        updatedPlayers = updatedPlayers.map((p) => {
+          if (p.id === victim.id) {
+            return {
+              ...p,
+              hand: [...p.hand, ...drawnCards],
+              hasDeclaredUno: false,
+            };
+          }
+          return p;
+        });
 
-      // Turn advancement after Hit 2:
-      // In 2-player game: play returns to attacker
-      // In 3+ player game: play advances to player after victim
-      if (playerCount === 2) {
-        nextPlayerIndex = state.currentPlayerIndex;
-      } else {
-        nextPlayerIndex = advanceTurn(2);
+        addEvent('ATTACK_LAUNCHER_RESULT', victim.id, {
+          cardsLaunched: drawnCards.length,
+          presses: ATTACK_LAUNCHER_CONFIG.PRESSES.HIT_2,
+          tension: evalResult.finalTension,
+          drawnCards: drawnCards.map((c) => c.id),
+        });
+
+        addEvent('PLAYER_SKIPPED', victim.id, { skippedBy: playerId });
+
+        // Turn advancement after Hit 2:
+        // In 2-player game: play returns to attacker
+        // In 3+ player game: play advances to player after victim
+        if (playerCount === 2) {
+          nextPlayerIndex = state.currentPlayerIndex;
+        } else {
+          nextPlayerIndex = advanceTurn(2);
+        }
       }
     } else if (card.value === 'wild_hit_4') {
-      const victimIndex = advanceTurn(1);
-      const victim = updatedPlayers[victimIndex];
+      // Per official Mattel GTX66 rules, once a player is out of cards, the hand is over.
+      // The Wild Attack-Attack exception does NOT apply to Wild Hit 4.
+      if (!isGoingOut) {
+        const victimIndex = advanceTurn(1);
+        const victim = updatedPlayers[victimIndex];
 
-      // Victim must press launcher 4 times
-      const evalResult = AttackLauncher.evaluatePresses(
-        ATTACK_LAUNCHER_CONFIG.PRESSES.WILD_HIT_4,
-        launcherState.tension,
-        drawPile.length,
-        rng
-      );
+        // Victim must press launcher 4 times
+        const evalResult = AttackLauncher.evaluatePresses(
+          ATTACK_LAUNCHER_CONFIG.PRESSES.WILD_HIT_4,
+          launcherState.tension,
+          availableCardCount,
+          rng
+        );
 
-      let drawnCards: Card[] = [];
-      if (evalResult.totalCardsToDispense > 0) {
-        const drawRes = DeckManager.drawCards(drawPile, discardPile, evalResult.totalCardsToDispense, rng);
-        drawPile = [...drawRes.newDrawPile];
-        discardPile = [...drawRes.newDiscardPile];
-        drawnCards = [...drawRes.drawnCards];
-      }
-
-      launcherState = {
-        tension: evalResult.finalTension,
-        lastLaunchResult: {
-          playerId: victim.id,
-          cardsLaunched: drawnCards.length,
-          totalPresses: ATTACK_LAUNCHER_CONFIG.PRESSES.WILD_HIT_4,
-          timestamp: Date.now(),
-        },
-      };
-
-      updatedPlayers = updatedPlayers.map((p) => {
-        if (p.id === victim.id) {
-          return {
-            ...p,
-            hand: [...p.hand, ...drawnCards],
-            hasDeclaredUno: false,
-          };
+        let drawnCards: Card[] = [];
+        if (evalResult.totalCardsToDispense > 0) {
+          const drawRes = DeckManager.drawCards(drawPile, discardPile, evalResult.totalCardsToDispense, rng);
+          drawPile = [...drawRes.newDrawPile];
+          discardPile = [...drawRes.newDiscardPile];
+          drawnCards = [...drawRes.drawnCards];
         }
-        return p;
-      });
 
-      addEvent('ATTACK_LAUNCHER_RESULT', victim.id, {
-        cardsLaunched: drawnCards.length,
-        presses: ATTACK_LAUNCHER_CONFIG.PRESSES.WILD_HIT_4,
-        tension: evalResult.finalTension,
-        drawnCards: drawnCards.map((c) => c.id),
-      });
+        launcherState = {
+          tension: evalResult.finalTension,
+          lastLaunchResult: {
+            playerId: victim.id,
+            cardsLaunched: drawnCards.length,
+            totalPresses: ATTACK_LAUNCHER_CONFIG.PRESSES.WILD_HIT_4,
+            timestamp: Date.now(),
+          },
+        };
 
-      addEvent('PLAYER_SKIPPED', victim.id, { skippedBy: playerId });
+        updatedPlayers = updatedPlayers.map((p) => {
+          if (p.id === victim.id) {
+            return {
+              ...p,
+              hand: [...p.hand, ...drawnCards],
+              hasDeclaredUno: false,
+            };
+          }
+          return p;
+        });
 
-      if (playerCount === 2) {
-        nextPlayerIndex = state.currentPlayerIndex;
-      } else {
-        nextPlayerIndex = advanceTurn(2);
+        addEvent('ATTACK_LAUNCHER_RESULT', victim.id, {
+          cardsLaunched: drawnCards.length,
+          presses: ATTACK_LAUNCHER_CONFIG.PRESSES.WILD_HIT_4,
+          tension: evalResult.finalTension,
+          drawnCards: drawnCards.map((c) => c.id),
+        });
+
+        addEvent('PLAYER_SKIPPED', victim.id, { skippedBy: playerId });
+
+        if (playerCount === 2) {
+          nextPlayerIndex = state.currentPlayerIndex;
+        } else {
+          nextPlayerIndex = advanceTurn(2);
+        }
       }
     } else if (card.value === 'wild_attack_attack') {
+      // Explicit Mattel GTX66 Rule (Page 3):
+      // "If a player goes out using a Wild Attack-Attack card, they may use this command card as normal before the game ends."
       if (targetPlayerId) {
         // Target player provided directly: execute Attack-Attack immediately!
         const victim = updatedPlayers.find((p) => p.id === targetPlayerId)!;
         const evalResult = AttackLauncher.evaluatePresses(
           ATTACK_LAUNCHER_CONFIG.PRESSES.WILD_ATTACK_ATTACK,
           launcherState.tension,
-          drawPile.length,
+          availableCardCount,
           rng
         );
 
@@ -421,10 +438,11 @@ export class AttackActionProcessor {
     };
 
     // Press launcher once
+    const availableCardCount = drawPile.length + Math.max(0, discardPile.length - 1);
     const evalResult = AttackLauncher.evaluatePresses(
       ATTACK_LAUNCHER_CONFIG.PRESSES.VOLUNTARY_OR_UNPLAYABLE_TURN,
       launcherState.tension,
-      drawPile.length,
+      availableCardCount,
       rng
     );
 
@@ -549,10 +567,11 @@ export class AttackActionProcessor {
     let discardPile = [...state.discardPile];
     let launcherState: AttackLauncherState = state.attackLauncherState ?? { tension: 0 };
 
+    const availableCardCount = drawPile.length + Math.max(0, discardPile.length - 1);
     const evalResult = AttackLauncher.evaluatePresses(
       ATTACK_LAUNCHER_CONFIG.PRESSES.MISSED_UNO_PENALTY,
       launcherState.tension,
-      drawPile.length,
+      availableCardCount,
       rng
     );
 
@@ -662,10 +681,11 @@ export class AttackActionProcessor {
     let launcherState: AttackLauncherState = state.attackLauncherState ?? { tension: 0 };
     const victim = state.players.find((p) => p.id === targetPlayerId)!;
 
+    const availableCardCount = drawPile.length + Math.max(0, discardPile.length - 1);
     const evalResult = AttackLauncher.evaluatePresses(
       ATTACK_LAUNCHER_CONFIG.PRESSES.WILD_ATTACK_ATTACK,
       launcherState.tension,
-      drawPile.length,
+      availableCardCount,
       rng
     );
 
@@ -755,16 +775,17 @@ export class AttackActionProcessor {
     _triggeredByPlayerId: string,
     rng: RandomNumberGenerator
   ): ActionProcessResult {
-    // Shuffled 112-card deck
-    const deck = shuffleDeck(AttackDeckFactory.createDeck(), rng);
+    const customizableCount =
+      state.attackCustomizableCount ?? UNO_ATTACK_RULES.DEFAULT_CUSTOMIZABLE_CARDS_COUNT;
+    const deck = shuffleDeck(AttackDeckFactory.createDeck(customizableCount), rng);
     const playerCount = state.players.length;
     const cardsPerHand = 7;
 
     const playerIds = state.players.map((p) => p.id);
     const { hands, remainingDeck } = HandManager.dealInitialHands(deck, playerIds, cardsPerHand);
 
-    const drawPile = [...remainingDeck];
-    const discardPile: Card[] = [];
+    let drawPile = [...remainingDeck];
+    let discardPile: Card[] = [];
 
     // Flip top card from draw pile to start discard pile
     const topCard = drawPile.pop()!;
@@ -775,6 +796,15 @@ export class AttackActionProcessor {
     let currentPlayerIndex = (dealerIndex + 1) % playerCount;
     let activeColor: CardColor | null = topCard.color;
     let pendingActionState: PendingActionState | null = null;
+    let launcherTension = 0;
+
+    let updatedPlayers: Player[] = state.players.map((p) => ({
+      ...p,
+      hand: hands.get(p.id)!,
+      hasDeclaredUno: false,
+      hasDrawnThisTurn: false,
+      drawnCardId: null,
+    }));
 
     // Handle opening card if action/wild
     if (topCard.value === 'reverse') {
@@ -790,6 +820,47 @@ export class AttackActionProcessor {
       } else {
         currentPlayerIndex = (dealerIndex + 2) % playerCount;
       }
+    } else if (topCard.value === 'hit_2') {
+      const victim = updatedPlayers[currentPlayerIndex];
+      const evalResult = AttackLauncher.evaluatePresses(
+        ATTACK_LAUNCHER_CONFIG.PRESSES.HIT_2,
+        0,
+        drawPile.length + Math.max(0, discardPile.length - 1),
+        rng
+      );
+      if (evalResult.totalCardsToDispense > 0) {
+        const drawRes = DeckManager.drawCards(drawPile, discardPile, evalResult.totalCardsToDispense, rng);
+        drawPile = [...drawRes.newDrawPile];
+        discardPile = [...drawRes.newDiscardPile];
+        updatedPlayers = updatedPlayers.map((p) =>
+          p.id === victim.id ? { ...p, hand: [...p.hand, ...drawRes.drawnCards] } : p
+        );
+      }
+      launcherTension = evalResult.finalTension;
+      currentPlayerIndex = playerCount === 2 ? dealerIndex : (dealerIndex + 2) % playerCount;
+    } else if (topCard.value === 'wild_hit_4') {
+      const victim = updatedPlayers[currentPlayerIndex];
+      const evalResult = AttackLauncher.evaluatePresses(
+        ATTACK_LAUNCHER_CONFIG.PRESSES.WILD_HIT_4,
+        0,
+        drawPile.length + Math.max(0, discardPile.length - 1),
+        rng
+      );
+      if (evalResult.totalCardsToDispense > 0) {
+        const drawRes = DeckManager.drawCards(drawPile, discardPile, evalResult.totalCardsToDispense, rng);
+        drawPile = [...drawRes.newDrawPile];
+        discardPile = [...drawRes.newDiscardPile];
+        updatedPlayers = updatedPlayers.map((p) =>
+          p.id === victim.id ? { ...p, hand: [...p.hand, ...drawRes.drawnCards] } : p
+        );
+      }
+      launcherTension = evalResult.finalTension;
+      currentPlayerIndex = playerCount === 2 ? dealerIndex : (dealerIndex + 2) % playerCount;
+      pendingActionState = {
+        type: 'AWAITING_STARTING_WILD_COLOR_SELECTION',
+        designatedPlayerId: updatedPlayers[currentPlayerIndex].id,
+      };
+      activeColor = null;
     } else if (topCard.value === 'wild' || topCard.value === 'wild_customizable') {
       pendingActionState = {
         type: 'AWAITING_STARTING_WILD_COLOR_SELECTION',
@@ -803,14 +874,6 @@ export class AttackActionProcessor {
       };
       activeColor = null;
     }
-
-    const updatedPlayers: Player[] = state.players.map((p) => ({
-      ...p,
-      hand: hands.get(p.id)!,
-      hasDeclaredUno: false,
-      hasDrawnThisTurn: false,
-      drawnCardId: null,
-    }));
 
     const events: GameEventRecord[] = [
       {
@@ -843,7 +906,8 @@ export class AttackActionProcessor {
       unoVulnerablePlayerId: null,
       pendingActionState,
       roundWinner: null,
-      attackLauncherState: { tension: 0 },
+      attackLauncherState: { tension: launcherTension },
+      attackCustomizableCount: state.attackCustomizableCount,
       updatedAt: new Date().toISOString(),
     };
 

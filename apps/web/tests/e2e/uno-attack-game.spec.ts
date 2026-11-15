@@ -134,10 +134,18 @@ test.describe('UNO Ultimate — UNO Attack Multiplayer E2E', () => {
     const activePage = isAliceTurn ? pageAlice : pageBob;
     const inactivePage = isAliceTurn ? pageBob : pageAlice;
 
-    // If starting card is a starting wild, select starting color to continue
-    const startingWildPicker = activePage.locator('[data-testid="wild-color-red"]');
-    if (await startingWildPicker.isVisible({ timeout: 1500 }).catch(() => false)) {
-      await startingWildPicker.click();
+    // If starting card is a starting wild or attack-attack, handle designated action to continue
+    for (const page of [pageAlice, pageBob]) {
+      const startingWildPicker = page.locator('[data-testid="wild-color-red"]');
+      if (await startingWildPicker.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await startingWildPicker.click();
+        break;
+      }
+      const targetBtn = page.locator('[data-testid^="attack-target-"]').first();
+      if (await targetBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await targetBtn.click();
+        break;
+      }
     }
 
     // Active player presses the launcher

@@ -55,15 +55,19 @@ export function assertValidAttackGameState(state: GameState): void {
     }
   }
 
-  // 5. Total 112-card conservation across draw pile, discard pile, and hands
+  // 5. Total card conservation across draw pile, discard pile, and hands (109 base + 1..3 customizable cards)
   const allCardIds = new Set<string>();
   let totalCards = 0;
+  let customizableCount = 0;
 
   for (const card of state.drawPile) {
     if (allCardIds.has(card.id)) {
       throw new AttackInvariantViolationError(`Duplicate card ID detected: "${card.id}" in draw pile.`);
     }
     allCardIds.add(card.id);
+    if (card.value === 'wild_customizable') {
+      customizableCount++;
+    }
     totalCards++;
   }
 
@@ -72,6 +76,9 @@ export function assertValidAttackGameState(state: GameState): void {
       throw new AttackInvariantViolationError(`Duplicate card ID detected: "${card.id}" in discard pile.`);
     }
     allCardIds.add(card.id);
+    if (card.value === 'wild_customizable') {
+      customizableCount++;
+    }
     totalCards++;
   }
 
@@ -83,13 +90,35 @@ export function assertValidAttackGameState(state: GameState): void {
         );
       }
       allCardIds.add(card.id);
+      if (card.value === 'wild_customizable') {
+        customizableCount++;
+      }
       totalCards++;
     }
   }
 
-  if (totalCards !== UNO_ATTACK_RULES.TOTAL_DECK_SIZE) {
+  if (
+    customizableCount < UNO_ATTACK_RULES.MIN_CUSTOMIZABLE_CARDS_COUNT ||
+    customizableCount > UNO_ATTACK_RULES.MAX_CUSTOMIZABLE_CARDS_COUNT
+  ) {
     throw new AttackInvariantViolationError(
-      `Total card conservation violated: found ${totalCards} cards, expected ${UNO_ATTACK_RULES.TOTAL_DECK_SIZE}.`
+      `Invalid Wild Customizable card count ${customizableCount}. Expected between ${UNO_ATTACK_RULES.MIN_CUSTOMIZABLE_CARDS_COUNT} and ${UNO_ATTACK_RULES.MAX_CUSTOMIZABLE_CARDS_COUNT}.`
+    );
+  }
+
+  if (
+    state.attackCustomizableCount !== undefined &&
+    customizableCount !== state.attackCustomizableCount
+  ) {
+    throw new AttackInvariantViolationError(
+      `Wild Customizable card count ${customizableCount} does not match configured count ${state.attackCustomizableCount}.`
+    );
+  }
+
+  const expectedTotalCards = UNO_ATTACK_RULES.BASE_CARDS_COUNT + customizableCount;
+  if (totalCards !== expectedTotalCards) {
+    throw new AttackInvariantViolationError(
+      `Total card conservation violated: found ${totalCards} cards, expected ${expectedTotalCards} (${UNO_ATTACK_RULES.BASE_CARDS_COUNT} base + ${customizableCount} customizable).`
     );
   }
 }

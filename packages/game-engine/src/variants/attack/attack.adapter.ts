@@ -55,8 +55,10 @@ export class UnoAttackAdapter implements GameVariantAdapter {
     const cardsPerHand = config.cardsPerHand ?? this.cardsPerHand;
     const targetScore = config.targetScore ?? this.targetScore;
 
-    // 1. Build and shuffle 112-card Attack deck
-    const deck = shuffleDeck(AttackDeckFactory.createDeck(), rng);
+    // 1. Build and shuffle Attack deck (with configured Customizable cards count, default 3)
+    const customizableCount =
+      config.attackCustomizableCount ?? UNO_ATTACK_RULES.DEFAULT_CUSTOMIZABLE_CARDS_COUNT;
+    const deck = shuffleDeck(AttackDeckFactory.createDeck(customizableCount), rng);
 
     // 2. Determine dealer
     const dealerIndex =
@@ -112,7 +114,7 @@ export class UnoAttackAdapter implements GameVariantAdapter {
       const evalResult = AttackLauncher.evaluatePresses(
         ATTACK_LAUNCHER_CONFIG.PRESSES.HIT_2,
         0,
-        drawPile.length,
+        drawPile.length + Math.max(0, discardPile.length - 1),
         rng
       );
       if (evalResult.totalCardsToDispense > 0) {
@@ -131,7 +133,7 @@ export class UnoAttackAdapter implements GameVariantAdapter {
       const evalResult = AttackLauncher.evaluatePresses(
         ATTACK_LAUNCHER_CONFIG.PRESSES.WILD_HIT_4,
         0,
-        drawPile.length,
+        drawPile.length + Math.max(0, discardPile.length - 1),
         rng
       );
       if (evalResult.totalCardsToDispense > 0) {
@@ -183,6 +185,7 @@ export class UnoAttackAdapter implements GameVariantAdapter {
       roundWinner: null,
       winner: null,
       attackLauncherState: { tension: launcherTension },
+      attackCustomizableCount: customizableCount,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

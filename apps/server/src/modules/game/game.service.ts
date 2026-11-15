@@ -25,7 +25,8 @@ export class GameService {
     roomCode: string,
     hostGuestId: string,
     members: { guestId: string; username: string }[],
-    variant: string = 'classic'
+    variant: string = 'classic',
+    settings: Record<string, unknown> = {}
   ): Promise<GameState> {
     // 1. Guard against duplicate active matches
     const existingMatch = await gamePersistenceService.findActiveMatchForRoom(roomId);
@@ -73,6 +74,10 @@ export class GameService {
 
     const matchId = uuidv4();
     const targetScore = variant === 'uno_show_em_no_mercy' ? 1000 : 500;
+    const attackCustomizableCount =
+      typeof settings?.attackCustomizableCount === 'number'
+        ? settings.attackCustomizableCount
+        : undefined;
 
     // 2. Initialize GameState through official engine factory
     const initialGameState = GameFactory.createGame({
@@ -81,6 +86,7 @@ export class GameService {
       variant,
       players: members.map((m) => ({ id: m.guestId, username: m.username })),
       targetScore,
+      attackCustomizableCount,
     });
 
     // 3. Persist Match, MatchPlayers, and initial sequence 0 snapshot in PostgreSQL

@@ -4,10 +4,20 @@ import { ATTACK_SCORING, UNO_ATTACK_RULES } from './attack.constants';
 const COLORS: readonly ClassicCardColor[] = ['red', 'yellow', 'green', 'blue'];
 
 /**
- * Factory for creating the official 112-card Mattel UNO Attack (Product GTX66) deck.
+ * Factory for creating the official Mattel UNO Attack (Product GTX66) deck.
+ *
+ * NOTE: Official GTX66 rules state:
+ * "Before the game begins, decide how many of these cards to include. You may use only 1 or all 3, it's up to you."
+ * Default is 3 cards (112-card deck). 1 or 2 may also be selected (110 or 111 cards).
  */
 export class AttackDeckFactory {
-  static createDeck(): Card[] {
+  static createDeck(
+    customizableCount: number = UNO_ATTACK_RULES.DEFAULT_CUSTOMIZABLE_CARDS_COUNT
+  ): Card[] {
+    const validCustomizableCount = Math.max(
+      UNO_ATTACK_RULES.MIN_CUSTOMIZABLE_CARDS_COUNT,
+      Math.min(UNO_ATTACK_RULES.MAX_CUSTOMIZABLE_CARDS_COUNT, Math.floor(customizableCount))
+    );
     const deck: Card[] = [];
 
     // 1. Number Cards (1 to 9, two of each per color = 18 per color * 4 = 72 cards)
@@ -102,8 +112,8 @@ export class AttackDeckFactory {
       });
     }
 
-    // 3 Wild Customizable cards (50 pts)
-    for (let i = 0; i < 3; i++) {
+    // Wild Customizable cards (50 pts, between 1 and 3 per GTX66 rules)
+    for (let i = 0; i < validCustomizableCount; i++) {
       deck.push({
         id: `attack_wild_customizable_${i}`,
         color: null,
@@ -124,9 +134,10 @@ export class AttackDeckFactory {
       variant: 'uno_attack',
     });
 
-    if (deck.length !== UNO_ATTACK_RULES.TOTAL_DECK_SIZE) {
+    const expectedTotal = UNO_ATTACK_RULES.BASE_CARDS_COUNT + validCustomizableCount;
+    if (deck.length !== expectedTotal) {
       throw new Error(
-        `Invalid UNO Attack deck size generated: ${deck.length}. Expected exactly ${UNO_ATTACK_RULES.TOTAL_DECK_SIZE}.`
+        `Invalid UNO Attack deck size generated: ${deck.length}. Expected exactly ${expectedTotal}.`
       );
     }
 

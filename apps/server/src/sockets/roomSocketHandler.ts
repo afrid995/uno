@@ -414,13 +414,15 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
           const updatedRoom = await roomService.updateRoomStatus(currentRoom.id, 'IN_GAME');
 
           // Initialize Match and GameState
-          const variant = ((currentRoom.settings as Record<string, unknown>)?.variant as string) || 'classic';
+          const roomSettings = (currentRoom.settings as Record<string, unknown>) || {};
+          const variant = (roomSettings.variant as string) || 'classic';
           const gameState = await gameService.startMatch(
             currentRoom.id,
             currentRoom.roomCode,
             currentRoom.hostGuestId,
             currentRoom.members.map((m) => ({ guestId: m.guestId, username: m.username })),
-            variant
+            variant,
+            roomSettings
           );
 
           // Broadcast game:started

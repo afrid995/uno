@@ -80,5 +80,38 @@ describe('UNO Attack Deck Factory (Mattel Product GTX66)', () => {
     expect(attackWilds.every((c) => c.scoreValue === ATTACK_SCORING.WILD_ATTACK_ATTACK && c.color === null)).toBe(true); // 50
     expect(customWilds.every((c) => c.scoreValue === ATTACK_SCORING.WILD_CUSTOMIZABLE && c.color === null)).toBe(true); // 50
     expect(hitFourWilds.every((c) => c.scoreValue === ATTACK_SCORING.WILD_HIT_4 && c.color === null)).toBe(true); // 40
+    expect(ATTACK_SCORING.WILD_HIT_4).toBe(40);
+    expect(hitFourWilds[0].scoreValue).toBe(40);
+  });
+
+  describe('Wild Customizable Card Configuration (GTX66: 1, 2, or 3 cards)', () => {
+    it('generates 110 cards when configured with 1 customizable card', () => {
+      const customDeck = AttackDeckFactory.createDeck(1);
+      expect(customDeck.length).toBe(110);
+      const customWilds = customDeck.filter((c) => c.value === 'wild_customizable');
+      expect(customWilds.length).toBe(1);
+    });
+
+    it('generates 111 cards when configured with 2 customizable cards', () => {
+      const customDeck = AttackDeckFactory.createDeck(2);
+      expect(customDeck.length).toBe(111);
+      const customWilds = customDeck.filter((c) => c.value === 'wild_customizable');
+      expect(customWilds.length).toBe(2);
+    });
+
+    it('generates 112 cards when configured with 3 customizable cards (default)', () => {
+      const customDeck = AttackDeckFactory.createDeck(3);
+      expect(customDeck.length).toBe(112);
+      const customWilds = customDeck.filter((c) => c.value === 'wild_customizable');
+      expect(customWilds.length).toBe(3);
+    });
+
+    it('clamps counts outside [1, 3] to valid range', () => {
+      const minDeck = AttackDeckFactory.createDeck(0);
+      expect(minDeck.length).toBe(110);
+
+      const maxDeck = AttackDeckFactory.createDeck(5);
+      expect(maxDeck.length).toBe(112);
+    });
   });
 });

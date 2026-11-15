@@ -173,8 +173,9 @@ In physical Mattel UNO Attack units, a battery-powered motorized rubber flywheel
 - If caught by another player before the next player takes their turn, the penalty is **hitting the Launcher button twice**!
 
 ### 6.2 Going Out & Final-Card Resolution
-- When a player plays their last card, the round ends.
-- **Official Final Action Rule:** If the final card is an action card targeting another player (*Hit 2*, *Wild Hit 4*, or *Wild Attack-Attack*), the target player must complete their launcher presses and collect any dispensed cards **before** round victory is declared and scores are totaled.
+- Under Mattel GTX66 "GOING OUT", once a player is out of cards, the hand is over and points are totaled.
+- **Wild Attack-Attack Final Card Exception:** Official GTX66 rules explicitly state on Page 3: *"NOTE: If a player goes out using a Wild Attack-Attack card, they may use this command card as normal before the game ends."* Therefore, when Wild Attack-Attack is the final card played, the attacking player designates a target opponent who must complete their 2 launcher presses, collect any dispensed cards, and only then is round victory declared and scored.
+- **Hit 2 and Wild Hit 4 Final Card Resolution:** Unlike Wild Attack-Attack, *Hit 2* and *Wild Hit 4* contain no such exception note in the official GTX66 rules. Under the general Going Out rule, when a player plays their final card (including Hit 2, Wild Hit 4, Skip, Reverse, Discard All, or Wild), the hand immediately ends without additional launcher presses by the next player. (Audited and confirmed in Phase 10.1).
 
 ### 6.3 Scoring Table
 Points accumulate from all cards remaining in opponents' hands:

@@ -37,7 +37,7 @@ The GTX66 deck contains exactly 112 cards:
 6. **4 Wild Cards:** Value = 50 points.
 7. **4 Wild Attack-Attack Cards:** Value = 50 points.
 8. **3 Wild Customizable Cards:** Value = 50 points.
-9. **1 Wild Hit 4 Card:** Value = 50 points.
+9. **1 Wild Hit 4 Card:** Value = 40 points (official Mattel GTX66 scoring table; audited and corrected in Phase 10.1).
 **Total Cards:** $72 + 8 + 4 + 8 + 8 + 4 + 4 + 3 + 1 = 112\text{ cards}$.
 
 ### 2.3 Key Rules Implemented

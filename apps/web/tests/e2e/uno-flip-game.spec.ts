@@ -119,10 +119,10 @@ test.describe('UNO Ultimate — UNO Flip Multiplayer E2E', () => {
 
     // If the opening card was a Starting Wild card, the designated player chooses starting color to unblock play
     for (const page of [pageAlice, pageBob]) {
-      const startingWildModal = page.locator('text=Starting Wild Card');
-      if (await startingWildModal.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await page.locator('[data-testid="wild-color-blue"]').click();
-        await expect(startingWildModal).not.toBeVisible({ timeout: 5000 });
+      const colorBtn = page.locator('[data-testid="wild-color-blue"]');
+      if (await colorBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await colorBtn.click();
+        await expect(colorBtn).not.toBeVisible({ timeout: 5000 });
         break;
       }
     }
