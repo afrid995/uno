@@ -15,7 +15,7 @@ services:
     runtime: node
     plan: free # Starter plan recommended for persistent WebSockets without spindown
     region: oregon
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @uno-ultimate/server... build && pnpm db:deploy
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm build:server && pnpm db:deploy
     startCommand: pnpm --filter @uno-ultimate/server start
     healthCheckPath: /api/health
     envVars:

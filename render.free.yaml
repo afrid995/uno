@@ -19,7 +19,7 @@ services:
     runtime: node
     plan: free # Strictly free tier ($0/month)
     region: oregon # Render free tier supported region (oregon, ohio, frankfurt, singapore)
-    buildCommand: pnpm install --frozen-lockfile && pnpm build:server && pnpm db:deploy
+    buildCommand: pnpm install --frozen-lockfile && pnpm db:generate && pnpm build:server && pnpm db:deploy
     startCommand: pnpm start:server
     healthCheckPath: /healthz
     envVars:
