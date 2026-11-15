@@ -34,7 +34,7 @@ export class GuestController {
     res.cookie(env.COOKIE_NAME, token, {
       httpOnly: true,
       secure: env.NODE_ENV === 'production',
-      sameSite: env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: env.SESSION_EXPIRATION_HOURS * 60 * 60 * 1000,
       path: '/',
     });

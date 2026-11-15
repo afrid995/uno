@@ -1,0 +1,47 @@
+# Render Blueprint for UNO Ultimate
+# Reference: https://render.com/docs/blueprint-spec
+
+services:
+  # 1. Persistent Node.js Web Service for Backend API and WebSocket server
+  - type: web
+    name: uno-ultimate-server
+    runtime: node
+    plan: starter # Starter plan recommended for persistent WebSockets without spindown
+    region: oregon
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @uno-ultimate/server... build && pnpm db:deploy
+    startCommand: pnpm --filter @uno-ultimate/server start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CORS_ORIGIN
+        sync: false # Set to your Vercel URL (e.g. https://your-app.vercel.app,https://*.vercel.app)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: uno-ultimate-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: COOKIE_NAME
+        value: uno_session
+      - key: SESSION_EXPIRATION_HOURS
+        value: 24
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX_GUEST
+        value: 120
+      - key: ENABLE_TEST_HELPERS
+        value: "false"
+
+databases:
+  # 2. Managed PostgreSQL Database
+  - name: uno-ultimate-db
+    databaseName: uno_ultimate
+    user: uno_admin
+    plan: starter
+    region: oregon
+    postgresMajorVersion: 16

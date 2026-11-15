@@ -8,6 +8,7 @@ import {
   SocketData,
 } from '@uno-ultimate/game-protocol';
 import { env } from '../config/env';
+import { isOriginAllowed } from '../utils/cors';
 import { logger } from '../utils/logger';
 import { guestService } from '../modules/guest/guest.service';
 import { registerRoomHandlers, guestSockets } from './roomSocketHandler';
@@ -28,7 +29,13 @@ function parseCookieHeader(cookieHeader: string): Record<string, string> {
 export function initializeSocketServer(httpServer: HttpServer): Server {
   const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
     cors: {
-      origin: [env.CORS_ORIGIN, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+      origin: (requestOrigin, callback) => {
+        if (isOriginAllowed(requestOrigin)) {
+          callback(null, true);
+        } else {
+          callback(new Error(`Socket origin ${requestOrigin} not permitted by CORS`));
+        }
+      },
       methods: ['GET', 'POST'],
       credentials: true,
     },

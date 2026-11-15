@@ -5,6 +5,9 @@ import {
 } from '@uno-ultimate/game-protocol';
 import { SESSION_TOKEN_STORAGE_KEY } from './apiClient';
 
+const RAW_SOCKET_URL = import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_URL || '';
+const SOCKET_URL = RAW_SOCKET_URL ? RAW_SOCKET_URL.replace(/\/+$/, '') : undefined;
+
 export type UnoClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 class SocketClientManager {
@@ -19,13 +22,15 @@ class SocketClientManager {
         // ignore
       }
 
-      this.socket = io({
+      this.socket = io(SOCKET_URL, {
         path: '/socket.io',
         withCredentials: true,
         autoConnect: true,
         reconnection: true,
-        reconnectionAttempts: 10,
+        reconnectionAttempts: 15,
         reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        transports: ['websocket', 'polling'],
         auth: {
           token,
         },

@@ -3,12 +3,16 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env';
+import { isOriginAllowed } from './utils/cors';
 import { errorHandler } from './middleware/errorHandler';
 import apiRoutes from './routes';
 import { HTTP_STATUS, ERROR_CODES } from '@uno-ultimate/shared';
 
 export function createApp(): Express {
   const app = express();
+
+  // Trust reverse proxy (Render, Vercel, Cloudflare, etc.) so client IP and secure cookies resolve accurately
+  app.set('trust proxy', 1);
 
   // Security headers
   app.use(
@@ -21,7 +25,13 @@ export function createApp(): Express {
   // CORS configuration
   app.use(
     cors({
-      origin: [env.CORS_ORIGIN, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+      origin: (requestOrigin, callback) => {
+        if (isOriginAllowed(requestOrigin)) {
+          callback(null, true);
+        } else {
+          callback(new Error(`Origin ${requestOrigin} not permitted by CORS`));
+        }
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
@@ -32,6 +42,11 @@ export function createApp(): Express {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser(env.COOKIE_SECRET));
+
+  // Root lightweight health check for hosting platforms
+  app.get(['/healthz', '/health'], (_req: Request, res: Response) => {
+    res.status(HTTP_STATUS.OK).send('OK');
+  });
 
   // Mount API routes
   app.use('/api', apiRoutes);

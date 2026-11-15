@@ -1,6 +1,6 @@
 import { ApiResponse } from '@uno-ultimate/shared';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 
 export const SESSION_TOKEN_STORAGE_KEY = 'uno_guest_token';
 

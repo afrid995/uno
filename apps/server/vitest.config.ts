@@ -8,5 +8,8 @@ export default defineConfig({
     testTimeout: 10000,
     hookTimeout: 10000,
     fileParallelism: false, // Run integration tests sequentially to avoid DB locks
+    sequence: {
+      concurrent: false,
+    },
   },
 });
