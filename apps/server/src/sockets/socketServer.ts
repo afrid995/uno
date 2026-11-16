@@ -13,6 +13,7 @@ import { logger } from '../utils/logger';
 import { guestService } from '../modules/guest/guest.service';
 import { registerRoomHandlers, registerAuthenticatedGuestSocket, guestSockets } from './roomSocketHandler';
 import { registerGameHandlers } from '../modules/game/game.socket.handler';
+import { registerChatHandlers } from '../modules/chat/chat.socket.handler';
 
 function parseCookieHeader(cookieHeader: string): Record<string, string> {
   const list: Record<string, string> = {};
@@ -133,6 +134,9 @@ export function initializeSocketServer(httpServer: HttpServer): Server {
 
     // Register Game Action Handlers
     registerGameHandlers(io, socket, guestSockets);
+
+    // Register Chat Event Handlers
+    registerChatHandlers(io, socket);
 
     // Ping / Pong heartbeat test
     socket.on(SOCKET_EVENTS.PING, () => {

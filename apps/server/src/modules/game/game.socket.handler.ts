@@ -102,6 +102,16 @@ export function registerGameHandlers(
       // Publish personalized projections and handle round/match completion
       await handleGameStateBroadcasts(nextState, roomCode);
 
+      // Broadcast card animation to room so all players see the card move to the discard pile
+      io.to(roomCode).emit(SOCKET_EVENTS.GAME_CARD_ANIMATION, {
+        id: `${nextState.id}-${nextState.sequenceNumber}-PLAY-${validated.cardId}`,
+        type: 'PLAY',
+        playerId: guestId,
+        playerUsername: socket.data.username || nextState.players.find((p) => p.id === guestId)?.username,
+        card: nextState.topDiscardCard,
+        sequenceNumber: nextState.sequenceNumber,
+      });
+
       const playerState = getPlayerGameState(nextState, guestId);
       if (typeof callback === 'function') {
         callback({
@@ -146,6 +156,23 @@ export function registerGameHandlers(
       }
 
       await handleGameStateBroadcasts(nextState, roomCode);
+
+      const drawnCardEvent = events.find((e) => e.type === 'CARD_DRAWN' || e.type === 'CARDS_LAUNCHED');
+      const cardsDrawnCount =
+        (drawnCardEvent?.payload?.count as number) ??
+        (drawnCardEvent?.payload?.cardsDrawn as number) ??
+        1;
+
+      if (cardsDrawnCount > 0) {
+        io.to(roomCode).emit(SOCKET_EVENTS.GAME_CARD_ANIMATION, {
+          id: `${nextState.id}-${nextState.sequenceNumber}-DRAW-${guestId}`,
+          type: 'DRAW',
+          playerId: guestId,
+          playerUsername: socket.data.username || nextState.players.find((p) => p.id === guestId)?.username,
+          cardCount: cardsDrawnCount,
+          sequenceNumber: nextState.sequenceNumber,
+        });
+      }
 
       const player = nextState.players.find((p) => p.id === guestId);
       const playerState = getPlayerGameState(nextState, guestId);
@@ -302,6 +329,15 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
+      io.to(roomCode).emit(SOCKET_EVENTS.GAME_CARD_ANIMATION, {
+        id: `${nextState.id}-${nextState.sequenceNumber}-DRAW-${guestId}`,
+        type: 'DRAW',
+        playerId: guestId,
+        playerUsername: socket.data.username || nextState.players.find((p) => p.id === guestId)?.username,
+        cardCount: 4,
+        sequenceNumber: nextState.sequenceNumber,
+      });
+
       const playerState = getPlayerGameState(nextState, guestId);
       const durationMs = Date.now() - startTime;
       logger.info('Wild draw four accepted successfully', {
@@ -382,6 +418,15 @@ export function registerGameHandlers(
       const { nextState } = await gameService.acceptWildDrawTwo(guestId, roomCode);
 
       await handleGameStateBroadcasts(nextState, roomCode);
+
+      io.to(roomCode).emit(SOCKET_EVENTS.GAME_CARD_ANIMATION, {
+        id: `${nextState.id}-${nextState.sequenceNumber}-DRAW-${guestId}`,
+        type: 'DRAW',
+        playerId: guestId,
+        playerUsername: socket.data.username || nextState.players.find((p) => p.id === guestId)?.username,
+        cardCount: 2,
+        sequenceNumber: nextState.sequenceNumber,
+      });
 
       const playerState = getPlayerGameState(nextState, guestId);
       const durationMs = Date.now() - startTime;
@@ -481,6 +526,17 @@ export function registerGameHandlers(
         typeof acceptPayload?.cardsDrawn === 'number'
           ? acceptPayload.cardsDrawn
           : 0;
+
+      if (cardsDrawn > 0) {
+        io.to(roomCode).emit(SOCKET_EVENTS.GAME_CARD_ANIMATION, {
+          id: `${nextState.id}-${nextState.sequenceNumber}-DRAW-${guestId}`,
+          type: 'DRAW',
+          playerId: guestId,
+          playerUsername: socket.data.username || nextState.players.find((p) => p.id === guestId)?.username,
+          cardCount: cardsDrawn,
+          sequenceNumber: nextState.sequenceNumber,
+        });
+      }
 
       const playerState = getPlayerGameState(nextState, guestId);
       const durationMs = Date.now() - startTime;
@@ -739,6 +795,17 @@ export function registerGameHandlers(
       const drawnCount = (resEvent?.payload?.drawnCount as number) ?? 0;
       const targetPlayer = nextState.players.find((p) => p.id === guestId);
       const eliminated = !!targetPlayer?.isEliminated;
+
+      if (drawnCount > 0) {
+        io.to(roomCode).emit(SOCKET_EVENTS.GAME_CARD_ANIMATION, {
+          id: `${nextState.id}-${nextState.sequenceNumber}-DRAW-${guestId}`,
+          type: 'DRAW',
+          playerId: guestId,
+          playerUsername: socket.data.username || nextState.players.find((p) => p.id === guestId)?.username,
+          cardCount: drawnCount,
+          sequenceNumber: nextState.sequenceNumber,
+        });
+      }
 
       const playerState = getPlayerGameState(nextState, guestId);
       const durationMs = Date.now() - startTime;

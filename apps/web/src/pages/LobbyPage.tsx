@@ -17,6 +17,9 @@ import { useGuestStore } from '../stores/guestStore';
 import { useGameStore } from '../stores/gameStore';
 import { PlayerCard } from '../features/room/components/PlayerCard';
 import { InviteLinkCard } from '../features/room/components/InviteLinkCard';
+import { useChatStore } from '../stores/chatStore';
+import { ChatPanel } from '../features/chat/ChatPanel';
+import { ChatToggleButton } from '../features/chat/ChatToggleButton';
 
 export const LobbyPage: React.FC = () => {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -49,6 +52,15 @@ export const LobbyPage: React.FC = () => {
     const cleanup = initSocketListeners();
     return () => cleanup();
   }, [initSocketListeners]);
+
+  // Initialize chat listeners for the lobby
+  useEffect(() => {
+    if (!roomCode) return;
+    const cleanupChat = useChatStore.getState().initChatListeners(roomCode);
+    return () => {
+      cleanupChat();
+    };
+  }, [roomCode]);
 
   // Navigate to game if room status is already IN_GAME
   useEffect(() => {
@@ -177,13 +189,18 @@ export const LobbyPage: React.FC = () => {
           </h1>
         </div>
 
-        {/* Player count indicator */}
-        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-xs text-slate-300">
-          <Users className="w-4 h-4 text-uno-blue" />
-          <span className="font-bold font-mono text-white">
-            {room.playerCount} / {room.maxPlayers}
-          </span>
-          <span className="text-slate-500">Players</span>
+        {/* Right Header Actions */}
+        <div className="flex items-center gap-2">
+          <ChatToggleButton />
+
+          {/* Player count indicator */}
+          <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-xs text-slate-300">
+            <Users className="w-4 h-4 text-uno-blue" />
+            <span className="font-bold font-mono text-white">
+              {room.playerCount} / {room.maxPlayers}
+            </span>
+            <span className="text-slate-500">Players</span>
+          </div>
         </div>
       </div>
 
@@ -489,6 +506,9 @@ export const LobbyPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* Floating Chat Panel */}
+      <ChatPanel />
     </div>
   );
 };

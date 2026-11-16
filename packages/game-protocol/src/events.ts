@@ -6,7 +6,7 @@ import {
   ReadyStatusInput,
   UpdateRoomSettingsInput,
 } from '@uno-ultimate/shared';
-import { PlayerGameState, CardColor, GameWinner } from '@uno-ultimate/game-engine';
+import { PlayerGameState, CardColor, GameWinner, Card } from '@uno-ultimate/game-engine';
 import { z } from 'zod';
 
 export interface SocketAck<T = unknown> {
@@ -51,6 +51,12 @@ export const SOCKET_EVENTS = {
   ROOM_CLOSED: 'room:closed',
   ROOM_STARTING: 'room:starting',
 
+  // Real-Time Chat Events
+  ROOM_CHAT_SEND: 'room:chat-send',
+  ROOM_CHAT_GET_HISTORY: 'room:chat-get-history',
+  ROOM_CHAT_MESSAGE: 'room:chat-message',
+  ROOM_CHAT_HISTORY: 'room:chat-history',
+
   // Phase 4 & Phase 5 Gameplay Actions: Client to Server
   GAME_START: 'game:start',
   GAME_PLAY_CARD: 'game:play-card',
@@ -84,6 +90,7 @@ export const SOCKET_EVENTS = {
   GAME_ROUND_FINISHED: 'game:round-finished',
   GAME_FINISHED: 'game:finished',
   GAME_PLAYER_ELIMINATED: 'game:player-eliminated',
+  GAME_CARD_ANIMATION: 'game:card-animation',
   GAME_ERROR: 'game:error',
 } as const;
 
@@ -184,6 +191,39 @@ export const chooseAttackTargetInputSchema = z.object({
 });
 export type ChooseAttackTargetInput = z.infer<typeof chooseAttackTargetInputSchema>;
 
+export const sendChatMessageInputSchema = z.object({
+  message: z
+    .string()
+    .trim()
+    .min(1, 'Message cannot be empty')
+    .max(300, 'Message cannot exceed 300 characters'),
+});
+export type SendChatMessageInput = z.infer<typeof sendChatMessageInputSchema>;
+
+export interface ChatMessageDto {
+  id: string;
+  roomId: string;
+  senderGuestId: string;
+  senderUsername: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface ChatHistoryDto {
+  roomId: string;
+  messages: ChatMessageDto[];
+}
+
+export interface CardAnimationEvent {
+  id: string;
+  type: 'PLAY' | 'DRAW';
+  playerId: string;
+  playerUsername?: string;
+  card?: Card;
+  cardCount?: number;
+  sequenceNumber: number;
+}
+
 /**
  * Socket.IO client-to-server event signatures
  */
@@ -226,6 +266,16 @@ export interface ClientToServerEvents {
   [SOCKET_EVENTS.ROOM_RESUME]: (
     payload: JoinRoomInput,
     callback: (response: SocketAck<RoomPublicDto>) => void
+  ) => void;
+
+  // Real-Time Chat operations
+  [SOCKET_EVENTS.ROOM_CHAT_SEND]: (
+    payload: SendChatMessageInput,
+    callback: (response: SocketAck<ChatMessageDto>) => void
+  ) => void;
+  [SOCKET_EVENTS.ROOM_CHAT_GET_HISTORY]: (
+    payload: Record<string, never> | undefined,
+    callback: (response: SocketAck<ChatHistoryDto>) => void
   ) => void;
 
   // Gameplay operations
@@ -346,6 +396,8 @@ export interface ServerToClientEvents {
   [SOCKET_EVENTS.ROOM_ERROR]: (payload: { code: string; message: string }) => void;
   [SOCKET_EVENTS.ROOM_CLOSED]: (payload: { reason: string }) => void;
   [SOCKET_EVENTS.ROOM_STARTING]: (payload: { countdownSeconds: number; version: number }) => void;
+  [SOCKET_EVENTS.ROOM_CHAT_MESSAGE]: (payload: ChatMessageDto) => void;
+  [SOCKET_EVENTS.ROOM_CHAT_HISTORY]: (payload: ChatHistoryDto) => void;
 
   // Gameplay broadcasts & personalized state delivery
   [SOCKET_EVENTS.GAME_STARTED]: (payload: { matchId: string; roomCode: string; roundNumber: number }) => void;
@@ -353,6 +405,7 @@ export interface ServerToClientEvents {
   [SOCKET_EVENTS.GAME_ROUND_FINISHED]: (payload: { matchId?: string; roundWinner: GameWinner; roundNumber: number; scores: Record<string, number> }) => void;
   [SOCKET_EVENTS.GAME_FINISHED]: (payload: { matchId?: string; winner: GameWinner; finalScores: Record<string, number> }) => void;
   [SOCKET_EVENTS.GAME_PLAYER_ELIMINATED]: (payload: { guestId: string; username: string; cardCount: number; remainingPlayerCount: number }) => void;
+  [SOCKET_EVENTS.GAME_CARD_ANIMATION]: (payload: CardAnimationEvent) => void;
   [SOCKET_EVENTS.GAME_ERROR]: (payload: { code: string; message: string }) => void;
 }
 

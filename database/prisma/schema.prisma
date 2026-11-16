@@ -37,6 +37,7 @@ model GuestSession {
   memberships  RoomMember[]
   wonMatches   Match[]       @relation("MatchWinner")
   matchPlayers MatchPlayer[]
+  chatMessages ChatMessage[]
 
   @@index([tokenHash], map: "idx_guest_sessions_token_hash")
   @@index([expiresAt], map: "idx_guest_sessions_expires_at")
@@ -56,9 +57,10 @@ model Room {
   expiresAt   DateTime   @db.Timestamptz(6)
 
   // Relations
-  host    GuestSession @relation("HostGuest", fields: [hostGuestId], references: [id], onDelete: Cascade)
-  members RoomMember[]
-  matches Match[]
+  host         GuestSession  @relation("HostGuest", fields: [hostGuestId], references: [id], onDelete: Cascade)
+  members      RoomMember[]
+  matches      Match[]
+  chatMessages ChatMessage[]
 
   @@index([roomCode], map: "idx_rooms_room_code")
   @@index([status], map: "idx_rooms_status")
@@ -169,3 +171,21 @@ model GameSnapshot {
   @@index([matchId], map: "idx_game_snapshots_match_id")
   @@map("game_snapshots")
 }
+
+model ChatMessage {
+  id        String       @id @default(uuid()) @db.Uuid
+  roomId    String       @db.Uuid
+  guestId   String       @db.Uuid
+  username  String       @db.VarChar(50)
+  message   String       @db.VarChar(300)
+  createdAt DateTime     @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  room  Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  guest GuestSession @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt], map: "idx_chat_messages_room_created_at")
+  @@index([guestId], map: "idx_chat_messages_guest_id")
+  @@map("chat_messages")
+}
+

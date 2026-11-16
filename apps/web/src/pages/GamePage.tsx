@@ -3,8 +3,31 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../stores/gameStore';
 import { useRoomStore } from '../stores/roomStore';
 import { useGuestStore } from '../stores/guestStore';
+import { useChatStore } from '../stores/chatStore';
 import { GameBoard } from '../features/game/components/GameBoard';
+import { CardAnimationOverlay } from '../features/game/components/CardAnimationOverlay';
+import { ChatPanel } from '../features/chat/ChatPanel';
+import { ChatToggleButton } from '../features/chat/ChatToggleButton';
 import { LogOut, Copy, Check } from 'lucide-react';
+
+const getVariantTitle = (variant?: string): string => {
+  switch (variant) {
+    case 'uno_flip':
+      return 'UNO FLIP';
+    case 'uno_show_em_no_mercy':
+      return "UNO SHOW 'EM NO MERCY";
+    case 'uno_all_wild':
+      return 'UNO ALL WILD';
+    case 'uno_flex':
+      return 'UNO FLEX';
+    case 'uno_teams':
+      return 'UNO TEAMS';
+    case 'uno_attack':
+      return 'UNO ATTACK';
+    default:
+      return 'CLASSIC UNO';
+  }
+};
 
 export const GamePage: React.FC = () => {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -12,6 +35,7 @@ export const GamePage: React.FC = () => {
   const { guest } = useGuestStore();
   const { leaveRoom } = useRoomStore();
   const { initGameListeners, gameState } = useGameStore();
+  const { initChatListeners } = useChatStore();
 
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -27,15 +51,19 @@ export const GamePage: React.FC = () => {
       return;
     }
 
-    const cleanup = initGameListeners(roomCode);
+    const cleanupGame = initGameListeners(roomCode);
+    const cleanupChat = initChatListeners(roomCode);
     return () => {
-      cleanup();
+      cleanupGame();
+      cleanupChat();
       useGameStore.getState().reset();
+      useChatStore.getState().reset();
     };
-  }, [roomCode, guest, initGameListeners, navigate]);
+  }, [roomCode, guest, initGameListeners, initChatListeners, navigate]);
 
   const handleLeave = async () => {
     useGameStore.getState().reset();
+    useChatStore.getState().reset();
     await leaveRoom();
     navigate('/dashboard');
   };
@@ -59,7 +87,7 @@ export const GamePage: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
             <span className="font-display font-black text-sm tracking-wide text-white">
-              CLASSIC UNO
+              {getVariantTitle(gameState?.variant)}
             </span>
           </div>
 
@@ -87,8 +115,10 @@ export const GamePage: React.FC = () => {
           )}
         </div>
 
-        {/* Leave Match Control */}
-        <div>
+        {/* Right side controls: Chat Toggle & Leave Match */}
+        <div className="flex items-center gap-2">
+          <ChatToggleButton />
+
           {confirmLeave ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-rose-400 font-medium hidden sm:inline">
@@ -123,6 +153,12 @@ export const GamePage: React.FC = () => {
       <main className="w-full flex-1 flex flex-col justify-center">
         <GameBoard />
       </main>
+
+      {/* Floating Card Animation Layer */}
+      <CardAnimationOverlay />
+
+      {/* Floating Real-Time Chat Panel */}
+      <ChatPanel />
     </div>
   );
 };

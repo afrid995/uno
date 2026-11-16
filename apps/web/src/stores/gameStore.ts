@@ -5,8 +5,10 @@ import {
   CardColor,
   GameWinner,
   SOCKET_EVENTS,
+  CardAnimationEvent,
 } from '@uno-ultimate/game-protocol';
 import { socketManager } from '../services/socketClient';
+import { useCardAnimationStore } from './cardAnimationStore';
 
 interface GameStateStore {
   gameState: PlayerGameState | null;
@@ -1028,9 +1030,15 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
       set({ error: payload.message });
     };
 
+    const handleCardAnimation = (payload: CardAnimationEvent) => {
+      const selfId = get().gameState?.self.id || '';
+      useCardAnimationStore.getState().triggerAnimation(payload, selfId);
+    };
+
     socket.on(SOCKET_EVENTS.GAME_STATE, handleGameState);
     socket.on(SOCKET_EVENTS.GAME_ROUND_FINISHED, handleRoundFinished);
     socket.on(SOCKET_EVENTS.GAME_FINISHED, handleGameFinished);
+    socket.on(SOCKET_EVENTS.GAME_CARD_ANIMATION, handleCardAnimation);
     socket.on(SOCKET_EVENTS.GAME_ERROR, handleGameError);
 
     // Request initial state or resume
@@ -1040,7 +1048,9 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
       socket.off(SOCKET_EVENTS.GAME_STATE, handleGameState);
       socket.off(SOCKET_EVENTS.GAME_ROUND_FINISHED, handleRoundFinished);
       socket.off(SOCKET_EVENTS.GAME_FINISHED, handleGameFinished);
+      socket.off(SOCKET_EVENTS.GAME_CARD_ANIMATION, handleCardAnimation);
       socket.off(SOCKET_EVENTS.GAME_ERROR, handleGameError);
+      useCardAnimationStore.getState().clearAnimations();
       set(initialGameState);
     };
   },
