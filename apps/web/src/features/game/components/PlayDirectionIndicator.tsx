@@ -1,0 +1,188 @@
+import React from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { RotateCw, RotateCcw } from 'lucide-react';
+
+export interface PlayDirectionIndicatorProps {
+  direction: 'clockwise' | 'counter_clockwise';
+  className?: string;
+  showBadge?: boolean;
+}
+
+export const PlayDirectionIndicator: React.FC<PlayDirectionIndicatorProps> = ({
+  direction,
+  className = '',
+  showBadge = true,
+}) => {
+  const isClockwise = direction === 'clockwise';
+  const shouldReduceMotion = useReducedMotion();
+
+  // Colors
+  const strokeColor = isClockwise ? '#06b6d4' : '#f43f5e'; // cyan vs rose
+  const glowColor = isClockwise ? 'rgba(6, 182, 212, 0.35)' : 'rgba(244, 63, 94, 0.35)';
+
+  return (
+    <div
+      data-testid="play-direction-indicator"
+      data-direction={direction}
+      className={`absolute inset-0 pointer-events-none flex items-center justify-center overflow-visible select-none ${className}`}
+      aria-label={`Play direction: ${isClockwise ? 'Clockwise' : 'Counter-Clockwise'}`}
+    >
+      {/* SVG Oval Orbit Track with Direction Chevrons */}
+      <svg
+        className="w-full h-full max-w-[760px] max-h-[460px] overflow-visible"
+        viewBox="0 0 600 360"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <filter id={`glow-${direction}`} x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+
+          <linearGradient id={`grad-${direction}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={strokeColor} stopOpacity="0.8" />
+            <stop offset="50%" stopColor={isClockwise ? '#10b981' : '#f59e0b'} stopOpacity="0.9" />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity="0.8" />
+          </linearGradient>
+
+          {/* Marker arrows */}
+          <marker
+            id={`arrow-head-${direction}`}
+            markerWidth="8"
+            markerHeight="8"
+            refX="4"
+            refY="4"
+            orient="auto"
+          >
+            <path
+              d="M1,1 L7,4 L1,7 Z"
+              fill={strokeColor}
+            />
+          </marker>
+        </defs>
+
+        {/* Ambient Glow Ellipse */}
+        <ellipse
+          cx="300"
+          cy="180"
+          rx="250"
+          ry="140"
+          stroke={glowColor}
+          strokeWidth="6"
+          strokeDasharray="8 12"
+          className="opacity-40"
+        />
+
+        {/* Animated Dashed Flow Path */}
+        <motion.ellipse
+          data-testid="direction-track"
+          cx="300"
+          cy="180"
+          rx="250"
+          ry="140"
+          stroke={`url(#grad-${direction})`}
+          strokeWidth="2.5"
+          strokeDasharray="16 16"
+          strokeLinecap="round"
+          filter={`url(#glow-${direction})`}
+          animate={
+            shouldReduceMotion
+              ? { strokeDashoffset: 0 }
+              : { strokeDashoffset: isClockwise ? [0, -64] : [0, 64] }
+          }
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
+        />
+
+        {/* Tangential Direction Arrow Markers */}
+        {/* Top: 12 o'clock (300, 40) - points Right if CW, Left if CCW */}
+        <g
+          transform={`translate(300, 40) rotate(${isClockwise ? 0 : 180})`}
+          className="transition-transform duration-500"
+        >
+          <path
+            d="M-8,-5 L4,0 L-8,5"
+            stroke={strokeColor}
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </g>
+
+        {/* Right: 3 o'clock (550, 180) - points Down if CW, Up if CCW */}
+        <g
+          transform={`translate(550, 180) rotate(${isClockwise ? 90 : 270})`}
+          className="transition-transform duration-500"
+        >
+          <path
+            d="M-8,-5 L4,0 L-8,5"
+            stroke={strokeColor}
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </g>
+
+        {/* Bottom: 6 o'clock (300, 320) - points Left if CW, Right if CCW */}
+        <g
+          transform={`translate(300, 320) rotate(${isClockwise ? 180 : 0})`}
+          className="transition-transform duration-500"
+        >
+          <path
+            d="M-8,-5 L4,0 L-8,5"
+            stroke={strokeColor}
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </g>
+
+        {/* Left: 9 o'clock (50, 180) - points Up if CW, Down if CCW */}
+        <g
+          transform={`translate(50, 180) rotate(${isClockwise ? 270 : 90})`}
+          className="transition-transform duration-500"
+        >
+          <path
+            d="M-8,-5 L4,0 L-8,5"
+            stroke={strokeColor}
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </g>
+      </svg>
+
+      {/* Center Direction Badge Pill */}
+      {showBadge && (
+        <div
+          data-testid="direction-badge"
+          className={`absolute top-2 sm:top-4 px-3 py-1 rounded-full text-[10px] sm:text-xs font-display font-bold uppercase tracking-wider flex items-center gap-1.5 border shadow-lg backdrop-blur-md transition-all duration-300 ${
+            isClockwise
+              ? 'bg-slate-900/90 text-cyan-300 border-cyan-500/40 shadow-cyan-950/40'
+              : 'bg-slate-900/90 text-rose-300 border-rose-500/40 shadow-rose-950/40'
+          }`}
+        >
+          {isClockwise ? (
+            <>
+              <RotateCw className="w-3.5 h-3.5 text-cyan-400 animate-spin-slow" />
+              <span>Clockwise</span>
+            </>
+          ) : (
+            <>
+              <RotateCcw className="w-3.5 h-3.5 text-rose-400 animate-spin-reverse-slow" />
+              <span>Counter-Clockwise</span>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};

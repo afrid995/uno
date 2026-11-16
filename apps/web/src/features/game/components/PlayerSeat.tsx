@@ -64,6 +64,14 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
           <Award className="w-3 h-3 text-amber-400/80" />
           <span>{player.score} pts</span>
         </p>
+        {isCurrentTurn && !isEliminated && (
+          <div
+            data-testid="playing-badge"
+            className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-display font-black text-[9px] uppercase tracking-wider shadow-md animate-pulse"
+          >
+            PLAYING
+          </div>
+        )}
       </div>
 
       {/* Cards Remaining Fan / Count or Eliminated Badge */}

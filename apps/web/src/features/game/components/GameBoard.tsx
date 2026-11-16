@@ -1,12 +1,9 @@
 import React from 'react';
 import { useGameStore } from '../../../stores/gameStore';
 import { Card } from '@uno-ultimate/game-protocol';
-import { PlayerSeat } from './PlayerSeat';
-import { DiscardPile } from './DiscardPile';
-import { DrawPile } from './DrawPile';
+import { RoundTable } from './RoundTable';
 import { PlayerHand } from './PlayerHand';
 import { UnoButton } from './UnoButton';
-import { ChallengePanel } from './ChallengePanel';
 import { GameScoreboard } from './GameScoreboard';
 import { WildColorPicker } from './WildColorPicker';
 import { RoundResultModal } from './RoundResultModal';
@@ -18,9 +15,7 @@ import { TargetedDrawFourModal } from './TargetedDrawFourModal';
 import { ForcedSwapModal } from './ForcedSwapModal';
 import { FlexCardChoiceModal } from './FlexCardChoiceModal';
 import { TeamPassModal } from './TeamPassModal';
-import { AttackLauncher } from './AttackLauncher';
 import { AttackTargetModal } from './AttackTargetModal';
-import { StackPenaltyBanner } from './StackPenaltyBanner';
 import { AlertCircle, RotateCcw, RotateCw, Skull } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -65,17 +60,13 @@ export const GameBoard: React.FC = () => {
     );
   }
 
-  const { self, players, currentTurnGuestId, turnDirection, unoVulnerablePlayerId } = gameState;
+  const { self, players, currentTurnGuestId, turnDirection } = gameState;
   const opponents = players.filter((p) => p.id !== self.id);
   const selfPublic = players.find((p) => p.id === self.id);
   const currentTurnPlayer = players.find((p) => p.id === currentTurnGuestId);
   const isMyTurn = self.isCurrentTurn;
   const isAllWild = gameState.variant === 'uno_all_wild';
   const isUnoAttack = gameState.variant === 'uno_attack';
-  const pendingStack =
-    gameState.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION'
-      ? gameState.pendingActionState
-      : null;
 
   const hasDrawn = !!self.hasDrawnThisTurn;
   const drawnCard = self.drawnCardId ? self.hand.find((c) => c.id === self.drawnCardId) : null;
@@ -272,75 +263,16 @@ export const GameBoard: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Opponents Area (Top / Around table) */}
-      <div className="w-full flex items-center justify-center gap-3 sm:gap-6 flex-wrap py-2">
-        {opponents.map((opponent) => (
-          <PlayerSeat
-            key={opponent.id}
-            player={opponent}
-            isCurrentTurn={opponent.id === currentTurnGuestId}
-            isVulnerableToUno={unoVulnerablePlayerId === opponent.id}
-            onCatchUno={() => challengeUno(opponent.id)}
-          />
-        ))}
-      </div>
-
-      {/* Center Table Area (Discard Pile, Draw Pile & Challenge Banner) */}
-      <div className="my-auto py-4 flex flex-col items-center justify-center space-y-4">
-        {/* Starting Wild banner if waiting for designated player */}
-        {self.isAwaitingStartingColor && !self.canChooseStartingColor && (
-          <div data-testid="starting-wild-waiting-banner" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-400/40 text-amber-300 text-xs font-semibold animate-pulse shadow-md">
-            <span>🎨 Starting Wild Card: Waiting for {currentTurnPlayer?.username} to choose the starting color...</span>
-          </div>
-        )}
-
-        {/* Stack attack resolution banner */}
-        {pendingStack && (
-          <StackPenaltyBanner
-            pendingStack={pendingStack}
-            isTarget={!!self.isTargetedByStack}
-            canStack={!!self.canStack}
-            targetUsername={
-              players.find((p) => p.id === pendingStack.targetPlayerId)?.username ?? 'Player'
-            }
-            isLoading={isActionLoading}
-            onAcceptPenalty={acceptStackPenalty}
-          />
-        )}
-
-        {/* Wild Draw Four challenge or inspected hand banner */}
-        <ChallengePanel />
-
-        {/* Draw & Discard Piles / Attack Launcher */}
-        <div className="flex items-center justify-center gap-6 sm:gap-12">
-          {/* Draw Pile or Virtual Attack Launcher */}
-          {isUnoAttack ? (
-            <AttackLauncher
-              cardCount={gameState.drawPileCount}
-              canPress={self.canDraw}
-              isLoading={isActionLoading}
-              launcherState={gameState.attackLauncherState}
-              activePlayerUsername={currentTurnPlayer?.username}
-              isMyTurn={isMyTurn}
-              onPress={drawCard}
-            />
-          ) : (
-            <DrawPile
-              drawCount={gameState.drawPileCount}
-              canDraw={self.canDraw}
-              isLoading={isActionLoading}
-              onDraw={drawCard}
-            />
-          )}
-
-          {/* Discard Pile */}
-          <DiscardPile
-            topCard={gameState.topDiscardCard}
-            activeColor={gameState.activeColor}
-            discardCount={gameState.discardPileCount}
-          />
-        </div>
-      </div>
+      {/* Round-Table Arena with Circular Play Direction and Seated Players */}
+      <RoundTable
+        gameState={gameState}
+        self={self}
+        selfPublic={selfPublic}
+        isActionLoading={isActionLoading}
+        onDrawCard={drawCard}
+        onChallengeUno={challengeUno}
+        onAcceptStackPenalty={acceptStackPenalty}
+      />
 
       {/* Eliminated Player Spectator Banner */}
       {self.isEliminated && (
