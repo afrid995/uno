@@ -379,6 +379,11 @@ describe('Mattel 42001 Official Rules Verification', () => {
       let currentState = {
         ...baseState,
         topDiscardCard: CardFactory.createNumberCard('red', '5', 1),
+        activeColor: 'red' as const,
+        drawPile: [
+          ...baseState.drawPile,
+          CardFactory.createNumberCard('red', '7', 1),
+        ],
         turnDirection: 'clockwise' as const,
         sequenceNumber: 0,
         currentPlayerIndex: 0,

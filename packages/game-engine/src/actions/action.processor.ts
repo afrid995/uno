@@ -380,30 +380,73 @@ export class ActionProcessor {
     const drawResult = DeckManager.drawCards(state.drawPile, state.discardPile, 1, rng);
     const drawnCard = drawResult.drawnCards[0];
 
-    const updatedPlayer = {
-      ...player,
-      hand: drawnCard ? [...player.hand, drawnCard] : player.hand,
-      hasDrawnThisTurn: true,
-      drawnCardId: drawnCard ? drawnCard.id : null,
-      hasDeclaredUno: false, // drawing resets declared UNO status
-    };
+    const isPlayable = drawnCard
+      ? MoveValidator.isCardMatch(drawnCard, state.activeColor, state.topDiscardCard)
+      : false;
 
-    const newPlayers = [...state.players];
-    newPlayers[playerIndex] = updatedPlayer;
+    if (isPlayable) {
+      // Case A: Drawn card is playable
+      // Add drawn card to hand, keep turn with player so they can choose to play it or keep it
+      const updatedPlayer = {
+        ...player,
+        hand: drawnCard ? [...player.hand, drawnCard] : player.hand,
+        hasDrawnThisTurn: true,
+        drawnCardId: drawnCard ? drawnCard.id : null,
+        hasDeclaredUno: false, // drawing resets declared UNO status
+      };
 
-    addEvent('CARD_DRAWN', playerId, { cardId: drawnCard?.id });
+      const newPlayers = [...state.players];
+      newPlayers[playerIndex] = updatedPlayer;
 
-    // When the next player draws a card, any previous player's missed-UNO challenge window closes!
-    return {
-      ...state,
-      players: newPlayers,
-      drawPile: drawResult.newDrawPile,
-      discardPile: drawResult.newDiscardPile,
-      unoVulnerablePlayerId: null,
-      inspectionHand: null,
-      sequenceNumber: seq + 1,
-      updatedAt: new Date().toISOString(),
-    };
+      addEvent('CARD_DRAWN', playerId, { cardId: drawnCard?.id, isPlayable: true });
+
+      // When the next player draws a card, any previous player's missed-UNO challenge window closes!
+      return {
+        ...state,
+        players: newPlayers,
+        drawPile: drawResult.newDrawPile,
+        discardPile: drawResult.newDiscardPile,
+        unoVulnerablePlayerId: null,
+        inspectionHand: null,
+        sequenceNumber: seq + 1,
+        updatedAt: new Date().toISOString(),
+      };
+    } else {
+      // Case B: Drawn card is not playable
+      // Add card to hand, end player's turn according to rules, pass to next eligible player
+      const updatedPlayer = {
+        ...player,
+        hand: drawnCard ? [...player.hand, drawnCard] : player.hand,
+        hasDrawnThisTurn: false,
+        drawnCardId: null,
+        hasDeclaredUno: false,
+      };
+
+      const newPlayers = [...state.players];
+      newPlayers[playerIndex] = updatedPlayer;
+
+      const nextPlayerIndex = TurnManager.getNextPlayerIndex(
+        state.currentPlayerIndex,
+        state.players.length,
+        state.turnDirection,
+        1
+      );
+
+      addEvent('CARD_DRAWN', playerId, { cardId: drawnCard?.id, isPlayable: false });
+
+      return {
+        ...state,
+        players: newPlayers,
+        currentPlayerIndex: nextPlayerIndex,
+        turnNumber: state.turnNumber + 1,
+        drawPile: drawResult.newDrawPile,
+        discardPile: drawResult.newDiscardPile,
+        unoVulnerablePlayerId: null,
+        inspectionHand: null,
+        sequenceNumber: seq + 1,
+        updatedAt: new Date().toISOString(),
+      };
+    }
   }
 
   private static processPassTurn(

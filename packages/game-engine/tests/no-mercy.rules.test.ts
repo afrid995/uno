@@ -526,11 +526,20 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
         ],
       });
 
-      const { nextState: s1, card: roulette } = NoMercyFixtureBuilder.injectPlayableCard(
+      let { nextState: s1, card: roulette } = NoMercyFixtureBuilder.injectPlayableCard(
         state,
         'p1',
         'wild_color_roulette'
       );
+
+      // Ensure draw pile has a non-blue card then a blue card so Bob draws without exceeding 25 cards
+      const blueCard = s1.drawPile.find((c) => c.color === 'blue' && c.type === 'number')!;
+      const nonBlueCard = s1.drawPile.find((c) => c.color === 'red' && c.type === 'number')!;
+      const remainingDraw = s1.drawPile.filter((c) => c.id !== blueCard.id && c.id !== nonBlueCard.id);
+      s1 = {
+        ...s1,
+        drawPile: [...remainingDraw, blueCard, nonBlueCard],
+      };
 
       const res1 = NoMercyActionProcessor.process(s1, {
         type: 'PLAY_CARD',

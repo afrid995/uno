@@ -15,6 +15,7 @@ import { DeckManager } from '../../deck/deck.manager';
 import { HandManager } from '../../players/hand.manager';
 import { Player } from '../../players/player.types';
 import { TurnManager } from '../../turns/turn.manager';
+import { MoveValidator } from '../../validation/move.validator';
 import { RandomNumberGenerator, defaultCryptoRng, shuffleDeck } from '../../deck/deck.shuffle';
 import { TeamsMoveValidator } from './teams.validator';
 import { UNO_TEAMS_RULES } from './teams.constants';
@@ -735,32 +736,78 @@ export class TeamsActionProcessor {
     }
 
     const partnerId = getPartnerId(playerId, state);
-    const updatedPlayers = state.players.map((p) => {
-      if (p.id === playerId) {
-        return {
-          ...p,
-          hand: newHand,
-          hasDrawnThisTurn: true,
-          drawnCardId: drawnCard.id,
-          hasDeclaredUno: false,
-        };
-      }
-      if (p.id === partnerId) {
-        return {
-          ...p,
-          hand: partnerHand,
-          isOut: partnerIsOut,
-        };
-      }
-      return p;
-    });
+    const stillHoldsDrawnCard = newHand.some((c) => c.id === drawnCard.id);
+    const isPlayable = stillHoldsDrawnCard && MoveValidator.isCardMatch(drawnCard, state.activeColor, state.topDiscardCard);
 
-    return {
-      ...state,
-      players: updatedPlayers,
-      drawPile: drawResult.newDrawPile,
-      discardPile: drawResult.newDiscardPile,
-    };
+    if (isPlayable) {
+      // Case A: Playable card drawn -> turn stays with player
+      const updatedPlayers = state.players.map((p) => {
+        if (p.id === playerId) {
+          return {
+            ...p,
+            hand: newHand,
+            hasDrawnThisTurn: true,
+            drawnCardId: drawnCard.id,
+            hasDeclaredUno: false,
+          };
+        }
+        if (p.id === partnerId) {
+          return {
+            ...p,
+            hand: partnerHand,
+            isOut: partnerIsOut,
+          };
+        }
+        return p;
+      });
+
+      return {
+        ...state,
+        players: updatedPlayers,
+        drawPile: drawResult.newDrawPile,
+        discardPile: drawResult.newDiscardPile,
+        unoVulnerablePlayerId: null,
+      };
+    } else {
+      // Case B: Unplayable card drawn (or split to partner) -> turn ends immediately
+      const updatedPlayers = state.players.map((p) => {
+        if (p.id === playerId) {
+          return {
+            ...p,
+            hand: newHand,
+            hasDrawnThisTurn: false,
+            drawnCardId: null,
+            hasDeclaredUno: false,
+          };
+        }
+        if (p.id === partnerId) {
+          return {
+            ...p,
+            hand: partnerHand,
+            isOut: partnerIsOut,
+          };
+        }
+        return p;
+      });
+
+      const nextPlayerIndex = this.getNextActivePlayerIndex(
+        state.currentPlayerIndex,
+        state.players.length,
+        state.turnDirection,
+        1,
+        updatedPlayers
+      );
+
+      return {
+        ...state,
+        players: updatedPlayers,
+        currentPlayerIndex: nextPlayerIndex,
+        turnNumber: state.turnNumber + 1,
+        drawPile: drawResult.newDrawPile,
+        discardPile: drawResult.newDiscardPile,
+        unoVulnerablePlayerId: null,
+      };
+    }
   }
 
   private static handlePassTurn(

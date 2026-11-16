@@ -5,6 +5,7 @@ import { FlexMoveValidator } from '../src/variants/flex/flex.validator';
 import { UnoFlexAdapter } from '../src/variants/flex/flex.adapter';
 import { assertValidFlexGameState } from '../src/variants/flex/flex.invariants';
 import { Card } from '../src/cards/card.types';
+import { CardFactory } from '../src/cards/card.factory';
 import { GameAction } from '../src/actions/action.types';
 import { deterministicRng } from '../src/testing/deterministic-random';
 
@@ -165,9 +166,11 @@ describe('UNO Flex — Gameplay Rules & Mechanics Tests (Mattel Product HNB00 / 
 
     // Now test flipping back from red_x to green_check on second play
     let state2 = res1.nextState;
-    // Advance turn back to Alice (Bob draws and passes)
+    // Advance turn back to Alice (Bob draws; if playable, Bob passes)
     state2 = FlexActionProcessor.process(state2, { type: 'DRAW_CARD', playerId: 'p2' }).nextState;
-    state2 = FlexActionProcessor.process(state2, { type: 'PASS_TURN', playerId: 'p2' }).nextState;
+    if (state2.currentPlayerIndex === 1) {
+      state2 = FlexActionProcessor.process(state2, { type: 'PASS_TURN', playerId: 'p2' }).nextState;
+    }
 
     expect(state2.currentPlayerIndex).toBe(0); // Alice's turn again
 

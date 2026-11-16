@@ -8,6 +8,7 @@ import { gameSessionManager } from '../../src/modules/game/game.session.manager'
 import { gamePersistenceService } from '../../src/modules/game/game.persistence.service';
 import { activeCountdownTimers, cancelAllCountdownTimersForTesting, PRODUCTION_COUNTDOWN_MS, setCountdownDurationForTesting, resetCountdownDurationForTesting } from '../../src/sockets/roomSocketHandler';
 import { prisma } from '@uno-ultimate/database';
+import { CardFactory } from '@uno-ultimate/game-engine';
 import { SOCKET_EVENTS, PlayerGameState } from '@uno-ultimate/game-protocol';
 
 describe('Game Socket.IO Multiplayer Integration Tests', () => {
@@ -620,6 +621,16 @@ describe('Game Socket.IO Multiplayer Integration Tests', () => {
 
     // Restore persistence service and retry action -> must succeed cleanly
     spy.mockRestore();
+
+    // Ensure drawn card matches active color (Case A) so hasDrawnThisTurn remains true
+    const targetColor = session!.state.activeColor ?? 'red';
+    session!.state = {
+      ...session!.state,
+      drawPile: [
+        ...session!.state.drawPile,
+        CardFactory.createNumberCard(targetColor, '9', 888),
+      ],
+    };
 
     const successDrawAck = await new Promise<any>((resolve) => {
       activeSocket.emit(SOCKET_EVENTS.GAME_DRAW_CARD, {}, resolve);

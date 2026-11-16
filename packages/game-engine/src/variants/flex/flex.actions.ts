@@ -624,33 +624,80 @@ export class FlexActionProcessor {
     const drawRes = this.drawCards(state.drawPile, state.discardPile, 1, rng);
     const drawnCard = drawRes.drawnCards[0];
 
-    const updatedPlayer: Player = {
-      ...player,
-      hand: [...player.hand, drawnCard],
-      hasDrawnThisTurn: true,
-      drawnCardId: drawnCard.id,
-      hasDeclaredUno: false,
-    };
+    const isPlayable =
+      FlexMoveValidator.isRegularMatch(drawnCard, state.activeColor, state.topDiscardCard) ||
+      (player.powerCardStatus === 'green_check' &&
+        FlexMoveValidator.isFlexMatch(drawnCard, state.activeColor, state.topDiscardCard));
 
-    const nextPlayers = state.players.map((p, idx) => (idx === playerIndex ? updatedPlayer : p));
+    if (isPlayable) {
+      // Case A: Drawn card is playable -> turn stays with player so they can choose to play or pass
+      const updatedPlayer: Player = {
+        ...player,
+        hand: [...player.hand, drawnCard],
+        hasDrawnThisTurn: true,
+        drawnCardId: drawnCard.id,
+        hasDeclaredUno: false,
+      };
 
-    ctx.addEvent('game:card-drawn', player.id, {
-      cardCount: 1,
-      cardId: drawnCard.id,
-    });
+      const nextPlayers = state.players.map((p, idx) => (idx === playerIndex ? updatedPlayer : p));
 
-    const nextState: GameState = {
-      ...state,
-      players: nextPlayers,
-      drawPile: drawRes.nextDrawPile,
-      discardPile: drawRes.nextDiscardPile,
-      unoVulnerablePlayerId: null, // Clears missed UNO vulnerability as next player took action
-      sequenceNumber: ctx.nextSeq(),
-      updatedAt: ctx.timestamp,
-    };
+      ctx.addEvent('game:card-drawn', player.id, {
+        cardCount: 1,
+        cardId: drawnCard.id,
+        isPlayable: true,
+      });
 
-    assertValidFlexGameState(nextState);
-    return { nextState, events: ctx.events };
+      const nextState: GameState = {
+        ...state,
+        players: nextPlayers,
+        drawPile: drawRes.nextDrawPile,
+        discardPile: drawRes.nextDiscardPile,
+        unoVulnerablePlayerId: null, // Clears missed UNO vulnerability as next player took action
+        sequenceNumber: ctx.nextSeq(),
+        updatedAt: ctx.timestamp,
+      };
+
+      assertValidFlexGameState(nextState);
+      return { nextState, events: ctx.events };
+    } else {
+      // Case B: Drawn card is not playable -> turn ends immediately and passes to next player
+      const updatedPlayer: Player = {
+        ...player,
+        hand: [...player.hand, drawnCard],
+        hasDrawnThisTurn: false,
+        drawnCardId: null,
+        hasDeclaredUno: false,
+      };
+
+      const nextPlayers = state.players.map((p, idx) => (idx === playerIndex ? updatedPlayer : p));
+      const nextPlayerIndex = TurnManager.getNextPlayerIndex(
+        state.currentPlayerIndex,
+        state.players.length,
+        state.turnDirection,
+        1
+      );
+
+      ctx.addEvent('game:card-drawn', player.id, {
+        cardCount: 1,
+        cardId: drawnCard.id,
+        isPlayable: false,
+      });
+
+      const nextState: GameState = {
+        ...state,
+        players: nextPlayers,
+        currentPlayerIndex: nextPlayerIndex,
+        turnNumber: state.turnNumber + 1,
+        drawPile: drawRes.nextDrawPile,
+        discardPile: drawRes.nextDiscardPile,
+        unoVulnerablePlayerId: null,
+        sequenceNumber: ctx.nextSeq(),
+        updatedAt: ctx.timestamp,
+      };
+
+      assertValidFlexGameState(nextState);
+      return { nextState, events: ctx.events };
+    }
   }
 
   private static processPassTurn(

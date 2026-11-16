@@ -11,6 +11,7 @@ import { NoMercyMoveValidator } from './no-mercy.validator';
 import { getNoMercyDrawPenalty, getNoMercyStackCardValue, UNO_NO_MERCY_RULES } from './no-mercy.constants';
 import { HandManager } from '../../players/hand.manager';
 import { NoMercyDeckFactory } from './no-mercy.deck';
+import { assertValidNoMercyGameState } from './no-mercy.invariants';
 
 interface ActionContext {
   readonly events: GameEventRecord[];
@@ -1078,44 +1079,33 @@ export class NoMercyActionProcessor {
       );
     }
 
-    // If a playable card was drawn, player plays it immediately
+    // If a playable card was drawn, keep turn with player so they can explicitly play it
     if (playableCard) {
-      const intermediatePlayers = state.players.map((p, idx) =>
+      const updatedPlayers = state.players.map((p, idx) =>
         idx === playerIndex
           ? {
               ...p,
               hand: newHand,
               hasDrawnThisTurn: true,
               drawnCardId: playableCard.id,
+              hasDeclaredUno: false,
             }
           : p
       );
 
-      const intermediateState: GameState = {
+      const nextState: GameState = {
         ...state,
-        players: intermediatePlayers,
+        players: updatedPlayers,
         drawPile: newDrawPile,
         discardPile: newDiscardPile,
         setAsideCards: newSetAsideCards,
+        unoVulnerablePlayerId: null,
         sequenceNumber: ctx.getSeq(),
+        updatedAt: ctx.timestamp,
       };
 
-      // Auto-determine color if playableCard is a wild card
-      let chosenColor = action.chosenColor;
-      if (playableCard.type === 'wild' && !chosenColor && playableCard.value !== 'wild_color_roulette') {
-        chosenColor = this.getOptimalColor(newHand, state.activeColor);
-      }
-
-      return this.processPlayCard(
-        intermediateState,
-        {
-          playerId: player.id,
-          cardId: playableCard.id,
-          chosenColor,
-        },
-        rng,
-        ctx
-      );
+      assertValidNoMercyGameState(nextState);
+      return { nextState, events: ctx.events };
     }
 
     // Deck exhausted without playable card (rare edge case)
@@ -1124,7 +1114,9 @@ export class NoMercyActionProcessor {
         ? {
             ...p,
             hand: newHand,
-            hasDrawnThisTurn: true,
+            hasDrawnThisTurn: false,
+            drawnCardId: null,
+            hasDeclaredUno: false,
           }
         : p
     );
@@ -1148,6 +1140,7 @@ export class NoMercyActionProcessor {
       updatedAt: ctx.timestamp,
     };
 
+    assertValidNoMercyGameState(nextState);
     return { nextState, events: ctx.events };
   }
 

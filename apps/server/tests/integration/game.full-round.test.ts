@@ -133,6 +133,7 @@ describe('Game Full Round & Multi-Round Match Lifecycle Integration Tests', () =
     const cardRedSkip = CardFactory.createActionCard('red', 'skip', 96);
     const cardBlueD2 = CardFactory.createActionCard('blue', 'draw_two', 95);
     const cardWild = CardFactory.createWildCard('wild', 94);
+    const cardRed1 = CardFactory.createNumberCard('red', '1', 93);
 
     session!.state = {
       ...session!.state,
@@ -142,6 +143,7 @@ describe('Game Full Round & Multi-Round Match Lifecycle Integration Tests', () =
       turnDirection: 'clockwise',
       unoVulnerablePlayerId: null,
       pendingActionState: null,
+      drawPile: [...session!.state.drawPile, cardRed1],
       players: [
         {
           ...session!.state.players[0],

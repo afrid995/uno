@@ -512,32 +512,74 @@ export class FlipActionProcessor {
         }
 
         const drawnCard = drawResult.drawnCards[0];
-        const updatedPlayers = state.players.map((p, idx) =>
-          idx === playerIndex
-            ? {
-                ...p,
-                hand: [...p.hand, drawnCard],
-                hasDrawnThisTurn: true,
-                drawnCardId: drawnCard.id,
-              }
-            : p
-        );
+        const isPlayable = FlipMoveValidator.isCardMatch(drawnCard, state.activeColor, state.topDiscardCard);
 
-        generatedEvents.push({
-          type: 'CARDS_DRAWN',
-          playerId: player.id,
-          payload: { count: 1, reason: 'PLAYER_DRAW' },
-          timestamp,
-        });
+        if (isPlayable) {
+          // Case A: Drawn card is playable -> turn stays with player
+          const updatedPlayers = state.players.map((p, idx) =>
+            idx === playerIndex
+              ? {
+                  ...p,
+                  hand: [...p.hand, drawnCard],
+                  hasDrawnThisTurn: true,
+                  drawnCardId: drawnCard.id,
+                }
+              : p
+          );
 
-        intermediateState = {
-          ...state,
-          players: updatedPlayers,
-          drawPile: drawResult.newDrawPile,
-          discardPile: drawResult.newDiscardPile,
-          unoVulnerablePlayerId: null, // Drawing clears vulnerability
-          updatedAt: timestamp,
-        };
+          generatedEvents.push({
+            type: 'CARDS_DRAWN',
+            playerId: player.id,
+            payload: { count: 1, reason: 'PLAYER_DRAW', isPlayable: true, cardId: drawnCard.id },
+            timestamp,
+          });
+
+          intermediateState = {
+            ...state,
+            players: updatedPlayers,
+            drawPile: drawResult.newDrawPile,
+            discardPile: drawResult.newDiscardPile,
+            unoVulnerablePlayerId: null, // Drawing clears vulnerability
+            updatedAt: timestamp,
+          };
+        } else {
+          // Case B: Drawn card is not playable -> turn ends immediately and passes to next player
+          const nextPlayerIndex = TurnManager.getNextPlayerIndex(
+            state.currentPlayerIndex,
+            state.players.length,
+            state.turnDirection,
+            1
+          );
+
+          const updatedPlayers = state.players.map((p, idx) =>
+            idx === playerIndex
+              ? {
+                  ...p,
+                  hand: [...p.hand, drawnCard],
+                  hasDrawnThisTurn: false,
+                  drawnCardId: null,
+                }
+              : p
+          );
+
+          generatedEvents.push({
+            type: 'CARDS_DRAWN',
+            playerId: player.id,
+            payload: { count: 1, reason: 'PLAYER_DRAW', isPlayable: false, cardId: drawnCard.id },
+            timestamp,
+          });
+
+          intermediateState = {
+            ...state,
+            players: updatedPlayers,
+            currentPlayerIndex: nextPlayerIndex,
+            turnNumber: state.turnNumber + 1,
+            drawPile: drawResult.newDrawPile,
+            discardPile: drawResult.newDiscardPile,
+            unoVulnerablePlayerId: null,
+            updatedAt: timestamp,
+          };
+        }
         break;
       }
 

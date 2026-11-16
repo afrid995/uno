@@ -14,6 +14,8 @@ export interface PlayerPrivateView {
   readonly canPass: boolean;
   readonly canCallUno: boolean;
   readonly canCatchUno: boolean;
+  readonly hasDrawnThisTurn?: boolean;
+  readonly drawnCardId?: string | null;
   readonly canResolveWildDrawFour: boolean;
   readonly isTargetedByWildDrawFour: boolean;
   readonly canResolveWildDrawTwo?: boolean;
@@ -183,7 +185,14 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
       state.pendingActionState.designatedPlayerId === playerId);
 
   const canDraw = !player.isEliminated && !player.isOut && isCurrentTurn && !player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
-  const canPass = !player.isEliminated && !player.isOut && isCurrentTurn && player.hasDrawnThisTurn && state.status === 'IN_PROGRESS' && !isPendingAction;
+  const canPass =
+    !player.isEliminated &&
+    !player.isOut &&
+    isCurrentTurn &&
+    player.hasDrawnThisTurn &&
+    state.status === 'IN_PROGRESS' &&
+    !isPendingAction &&
+    state.variant !== 'uno_show_em_no_mercy';
 
   const partner = state.variant === 'uno_teams' && player.teamId
     ? state.players.find((p) => p.teamId === player.teamId && p.id !== player.id)
@@ -211,6 +220,8 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     canPass,
     canCallUno,
     canCatchUno,
+    hasDrawnThisTurn: player.hasDrawnThisTurn,
+    drawnCardId: player.drawnCardId,
     canResolveWildDrawFour,
     isTargetedByWildDrawFour: isVictimOfWdf,
     canResolveWildDrawTwo,

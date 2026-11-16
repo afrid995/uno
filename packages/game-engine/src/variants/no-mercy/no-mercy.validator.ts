@@ -260,6 +260,17 @@ export class NoMercyMoveValidator {
       };
     }
 
+    // If player drew this turn, only that newly drawn card can be played
+    if (player.hasDrawnThisTurn) {
+      if (player.drawnCardId !== cardId) {
+        return {
+          valid: false,
+          code: 'INVALID_CARD_MATCH',
+          message: 'After drawing, you may only play the card that was just drawn.',
+        };
+      }
+    }
+
     // Wild Color Roulette: Next player chooses color, so chosenColor is not required on play
     if (card.value === 'wild_color_roulette') {
       return { valid: true };
@@ -312,6 +323,14 @@ export class NoMercyMoveValidator {
         valid: false,
         code: 'INVALID_PLAYER',
         message: 'Player is invalid or eliminated.',
+      };
+    }
+
+    if (player.hasDrawnThisTurn) {
+      return {
+        valid: false,
+        code: 'ALREADY_DRAWN',
+        message: 'You have already drawn a card this turn.',
       };
     }
 

@@ -77,6 +77,10 @@ export const GameBoard: React.FC = () => {
       ? gameState.pendingActionState
       : null;
 
+  const hasDrawn = !!self.hasDrawnThisTurn;
+  const drawnCard = self.drawnCardId ? self.hand.find((c) => c.id === self.drawnCardId) : null;
+  const isDrawnCardPlayable = drawnCard ? self.playableCardIds.includes(drawnCard.id) : false;
+
   const handleCardClick = (card: Card) => {
     if (gameState.variant === 'uno_flex') {
       const isFlexCard = card.flexColor !== undefined || card.value.startsWith('flex_');
@@ -361,9 +365,54 @@ export const GameBoard: React.FC = () => {
             onCallUno={callUno}
           />
 
-          {/* Pass Turn Button (Official Rule: only after drawing on current turn) */}
-          {self.canPass && (
+          {/* Drawn Card Action Controls (Case A) */}
+          {isMyTurn && hasDrawn && (
+            <div className="flex items-center gap-2">
+              {isDrawnCardPlayable && drawnCard && (
+                <motion.button
+                  data-testid="play-drawn-card-btn"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  disabled={isActionLoading}
+                  onClick={() => handleCardClick(drawnCard)}
+                  className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-display font-bold text-xs uppercase tracking-wider border border-emerald-400 shadow-lg cursor-pointer"
+                >
+                  Play Drawn Card
+                </motion.button>
+              )}
+
+              {self.canPass ? (
+                <motion.button
+                  data-testid="keep-card-btn"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  disabled={isActionLoading}
+                  onClick={passTurn}
+                  className="px-4 py-2 rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 text-white font-display font-bold text-xs uppercase tracking-wider border border-slate-600 shadow-lg cursor-pointer"
+                >
+                  Keep Card / End Turn
+                </motion.button>
+              ) : (
+                <button
+                  data-testid="keep-card-disabled-btn"
+                  disabled
+                  title="Drawn card must be played under this variant's rules."
+                  className="px-4 py-2 rounded-2xl bg-slate-800 text-slate-500 font-display font-bold text-xs uppercase tracking-wider border border-slate-700 shadow-sm cursor-not-allowed opacity-50"
+                >
+                  Keep Card / End Turn
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Fallback Pass Turn Button if self.canPass but not hasDrawn */}
+          {!hasDrawn && self.canPass && (
             <motion.button
+              data-testid="pass-turn-btn"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               whileHover={{ scale: 1.05 }}
