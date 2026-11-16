@@ -13,6 +13,14 @@ export interface LastResolvedPenalty {
   readonly resolvedAt: string;
 }
 
+export interface LastResolvedTargetAction {
+  readonly actionType: string;
+  readonly playerId: string;
+  readonly sequenceNumber: number;
+  readonly resolvedAt: string;
+  readonly targetPlayerId?: string;
+}
+
 export interface ActiveGameSession {
   matchId: string;
   roomCode: string;
@@ -20,6 +28,7 @@ export interface ActiveGameSession {
   state: GameState;
   lockPromise: Promise<void>;
   lastResolvedPenalty?: LastResolvedPenalty;
+  lastResolvedTargetAction?: LastResolvedTargetAction;
 }
 
 export class GameSessionManager {

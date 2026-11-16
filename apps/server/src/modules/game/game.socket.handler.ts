@@ -102,19 +102,25 @@ export function registerGameHandlers(
       // Publish personalized projections and handle round/match completion
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      callback({
-        success: true,
-        data: {
+      const playerState = getPlayerGameState(nextState, guestId);
+      if (typeof callback === 'function') {
+        callback({
           success: true,
-          roundOver: nextState.status === 'ROUND_OVER',
-          matchOver: nextState.status === 'COMPLETED',
-        },
-      });
+          data: {
+            success: true,
+            roundOver: nextState.status === 'ROUND_OVER',
+            matchOver: nextState.status === 'COMPLETED',
+            state: playerState,
+          },
+        });
+      }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to play card';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
       logger.warn('game:play-card rejected', { error: message, code, guestId: socket.data.guestId });
-      callback({ success: false, error: { code, message } });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -142,17 +148,23 @@ export function registerGameHandlers(
       await handleGameStateBroadcasts(nextState, roomCode);
 
       const player = nextState.players.find((p) => p.id === guestId);
-      callback({
-        success: true,
-        data: {
-          cardDrawn: true,
-          cardId: player?.drawnCardId ?? undefined,
-        },
-      });
+      const playerState = getPlayerGameState(nextState, guestId);
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: {
+            cardDrawn: true,
+            cardId: player?.drawnCardId ?? undefined,
+            state: playerState,
+          },
+        });
+      }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to draw card';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -166,14 +178,19 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      callback({
-        success: true,
-        data: { passed: true },
-      });
+      const playerState = getPlayerGameState(nextState, guestId);
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { passed: true, state: playerState },
+        });
+      }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to pass turn';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -188,14 +205,19 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      callback({
-        success: true,
-        data: { declared: true },
-      });
+      const playerState = getPlayerGameState(nextState, guestId);
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { declared: true, state: playerState },
+        });
+      }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to call UNO';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -215,15 +237,20 @@ export function registerGameHandlers(
       await handleGameStateBroadcasts(nextState, roomCode);
 
       const penaltyCards = nextState.variant === 'uno_flip' ? 2 : 4;
+      const playerState = getPlayerGameState(nextState, guestId);
 
-      callback({
-        success: true,
-        data: { success: true, penaltyCards },
-      });
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { success: true, penaltyCards, state: playerState },
+        });
+      }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to challenge missed UNO';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -238,18 +265,24 @@ export function registerGameHandlers(
       await handleGameStateBroadcasts(nextState, roomCode);
 
       const won = events.some((e) => e.type === 'WILD_DRAW_FOUR_CHALLENGE_WON');
+      const playerState = getPlayerGameState(nextState, guestId);
 
-      callback({
-        success: true,
-        data: {
-          challengeWon: won,
-          penaltyCards: won ? 4 : 6,
-        },
-      });
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: {
+            challengeWon: won,
+            penaltyCards: won ? 4 : 6,
+            state: playerState,
+          },
+        });
+      }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to challenge Wild Draw Four';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -313,6 +346,7 @@ export function registerGameHandlers(
       await handleGameStateBroadcasts(nextState, roomCode);
 
       const won = events.some((e) => e.type === 'WILD_DRAW_TWO_CHALLENGE_WON');
+      const playerState = getPlayerGameState(nextState, guestId);
 
       if (typeof callback === 'function') {
         callback({
@@ -320,6 +354,7 @@ export function registerGameHandlers(
           data: {
             challengeWon: won,
             penaltyCards: won ? 2 : 4,
+            state: playerState,
           },
         });
       }
@@ -403,17 +438,24 @@ export function registerGameHandlers(
           ? 0
           : 2;
 
-      callback({
-        success: true,
-        data: {
-          challengeWon: won,
-          penaltyCards,
-        },
-      });
+      const playerState = getPlayerGameState(nextState, guestId);
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: {
+            challengeWon: won,
+            penaltyCards,
+            state: playerState,
+          },
+        });
+      }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to challenge Wild Draw Color';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -476,28 +518,58 @@ export function registerGameHandlers(
   // 12. Handle game:choose-starting-wild-color & game:choose-color
   const handleChooseStartingWildColor = async (
     payload: { chosenColor: CardColor },
-    callback: (response: {
+    callback?: (response: {
       success: boolean;
-      data?: { success: boolean; chosenColor?: CardColor };
+      data?: { success: boolean; chosenColor?: CardColor; state?: unknown };
       error?: { code: string; message: string };
     }) => void
   ) => {
+    const startTime = Date.now();
     try {
       const guestId = getAuthenticatedGuestId();
       const roomCode = getActiveRoomCode();
+
+      logger.info('Choosing starting/wild color', {
+        action: 'CHOOSE_COLOR_START',
+        roomCode,
+        guestId,
+        chosenColor: payload.chosenColor,
+      });
 
       const { nextState } = await gameService.chooseStartingWildColor(guestId, roomCode, payload.chosenColor);
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      callback({
-        success: true,
-        data: { success: true, chosenColor: payload.chosenColor },
+      const playerState = getPlayerGameState(nextState, guestId);
+      const durationMs = Date.now() - startTime;
+
+      logger.info('Starting/wild color selected successfully', {
+        action: 'CHOOSE_COLOR_COMPLETE',
+        roomCode,
+        guestId,
+        chosenColor: payload.chosenColor,
+        durationMs,
       });
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { success: true, chosenColor: payload.chosenColor, state: playerState },
+        });
+      }
     } catch (err: unknown) {
+      const durationMs = Date.now() - startTime;
       const message = (err as Error).message || 'Failed to choose starting color';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      logger.warn('Failed to choose starting color', {
+        action: 'CHOOSE_COLOR_FAILED',
+        error: message,
+        code,
+        durationMs,
+      });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   };
 
@@ -506,10 +578,18 @@ export function registerGameHandlers(
 
   // 14. Handle game:choose-7s-swap
   socket.on(SOCKET_EVENTS.GAME_CHOOSE_7S_SWAP, async (payload, callback) => {
+    const startTime = Date.now();
     try {
       const guestId = getAuthenticatedGuestId();
       const roomCode = getActiveRoomCode();
       const validated = await choose7sSwapInputSchema.parseAsync(payload);
+
+      logger.info('Processing 7s hand swap', {
+        action: 'CHOOSE_7S_SWAP_START',
+        roomCode,
+        guestId,
+        targetPlayerId: validated.targetPlayerId,
+      });
 
       const { nextState } = await gameService.choose7sSwapTarget(
         guestId,
@@ -519,23 +599,52 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      callback({
-        success: true,
-        data: { success: true, targetPlayerId: validated.targetPlayerId },
+      const playerState = getPlayerGameState(nextState, guestId);
+      const durationMs = Date.now() - startTime;
+      logger.info('7s hand swap completed successfully', {
+        action: 'CHOOSE_7S_SWAP_COMPLETE',
+        roomCode,
+        guestId,
+        targetPlayerId: validated.targetPlayerId,
+        durationMs,
       });
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { success: true, targetPlayerId: validated.targetPlayerId, state: playerState },
+        });
+      }
     } catch (err: unknown) {
+      const durationMs = Date.now() - startTime;
       const message = (err as Error).message || 'Failed to select 7s swap target';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      logger.warn('Failed to select 7s swap target', {
+        action: 'CHOOSE_7S_SWAP_FAILED',
+        error: message,
+        code,
+        durationMs,
+      });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
   // 15. Handle game:choose-roulette-color
   socket.on(SOCKET_EVENTS.GAME_CHOOSE_ROULETTE_COLOR, async (payload, callback) => {
+    const startTime = Date.now();
     try {
       const guestId = getAuthenticatedGuestId();
       const roomCode = getActiveRoomCode();
       const validated = await chooseRouletteColorInputSchema.parseAsync(payload);
+
+      logger.info('Processing Color Roulette selection', {
+        action: 'CHOOSE_ROULETTE_COLOR_START',
+        roomCode,
+        guestId,
+        chosenColor: validated.chosenColor,
+      });
 
       const { nextState, events } = await gameService.chooseColorRouletteColor(
         guestId,
@@ -563,14 +672,36 @@ export function registerGameHandlers(
       const victimPlayer = nextState.players.find((p) => p.id === guestId);
       const eliminated = !!victimPlayer?.isEliminated;
 
-      callback({
-        success: true,
-        data: { success: true, cardsRevealed, eliminated },
+      const playerState = getPlayerGameState(nextState, guestId);
+      const durationMs = Date.now() - startTime;
+      logger.info('Color Roulette resolved successfully', {
+        action: 'CHOOSE_ROULETTE_COLOR_COMPLETE',
+        roomCode,
+        guestId,
+        cardsRevealed,
+        eliminated,
+        durationMs,
       });
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { success: true, cardsRevealed, eliminated, state: playerState },
+        });
+      }
     } catch (err: unknown) {
+      const durationMs = Date.now() - startTime;
       const message = (err as Error).message || 'Failed to resolve Color Roulette';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      logger.warn('Failed to resolve Color Roulette', {
+        action: 'CHOOSE_ROULETTE_COLOR_FAILED',
+        error: message,
+        code,
+        durationMs,
+      });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -645,10 +776,18 @@ export function registerGameHandlers(
 
   // 17. Handle game:choose-targeted-draw-two
   socket.on(SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_TWO, async (payload, callback) => {
+    const startTime = Date.now();
     try {
       const guestId = getAuthenticatedGuestId();
       const roomCode = getActiveRoomCode();
       const validated = await chooseTargetedDrawTwoInputSchema.parseAsync(payload);
+
+      logger.info('Processing Targeted Draw Two', {
+        action: 'CHOOSE_TARGETED_DRAW_TWO_START',
+        roomCode,
+        guestId,
+        targetPlayerId: validated.targetPlayerId,
+      });
 
       const { nextState } = await gameService.chooseTargetedDrawTwoTarget(
         guestId,
@@ -658,23 +797,53 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      callback({
-        success: true,
-        data: { success: true, targetPlayerId: validated.targetPlayerId },
+      const playerState = getPlayerGameState(nextState, guestId);
+      const durationMs = Date.now() - startTime;
+
+      logger.info('Completed Targeted Draw Two', {
+        action: 'CHOOSE_TARGETED_DRAW_TWO_SUCCESS',
+        roomCode,
+        guestId,
+        targetPlayerId: validated.targetPlayerId,
+        durationMs,
       });
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { success: true, targetPlayerId: validated.targetPlayerId, state: playerState },
+        });
+      }
     } catch (err: unknown) {
+      const durationMs = Date.now() - startTime;
       const message = (err as Error).message || 'Failed to choose Targeted Draw Two target';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      logger.warn('Failed to choose Targeted Draw Two target', {
+        action: 'CHOOSE_TARGETED_DRAW_TWO_FAILED',
+        error: message,
+        code,
+        durationMs,
+      });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
   // 17b. Handle game:choose-targeted-draw-four
   socket.on(SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_FOUR, async (payload, callback) => {
+    const startTime = Date.now();
     try {
       const guestId = getAuthenticatedGuestId();
       const roomCode = getActiveRoomCode();
       const validated = await chooseTargetedDrawFourInputSchema.parseAsync(payload);
+
+      logger.info('Processing Targeted Draw Four', {
+        action: 'CHOOSE_TARGETED_DRAW_FOUR_START',
+        roomCode,
+        guestId,
+        targetPlayerId: validated.targetPlayerId,
+      });
 
       const { nextState } = await gameService.chooseTargetedDrawFourTarget(
         guestId,
@@ -684,23 +853,53 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      callback({
-        success: true,
-        data: { success: true, targetPlayerId: validated.targetPlayerId },
+      const playerState = getPlayerGameState(nextState, guestId);
+      const durationMs = Date.now() - startTime;
+
+      logger.info('Completed Targeted Draw Two', {
+        action: 'CHOOSE_TARGETED_DRAW_TWO_SUCCESS',
+        roomCode,
+        guestId,
+        targetPlayerId: validated.targetPlayerId,
+        durationMs,
       });
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { success: true, targetPlayerId: validated.targetPlayerId, state: playerState },
+        });
+      }
     } catch (err: unknown) {
+      const durationMs = Date.now() - startTime;
       const message = (err as Error).message || 'Failed to choose Targeted Draw Four target';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      logger.warn('Failed to choose Targeted Draw Four target', {
+        action: 'CHOOSE_TARGETED_DRAW_FOUR_FAILED',
+        error: message,
+        code,
+        durationMs,
+      });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
   // 18. Handle game:choose-forced-swap
   socket.on(SOCKET_EVENTS.GAME_CHOOSE_FORCED_SWAP, async (payload, callback) => {
+    const startTime = Date.now();
     try {
       const guestId = getAuthenticatedGuestId();
       const roomCode = getActiveRoomCode();
       const validated = await chooseForcedSwapInputSchema.parseAsync(payload);
+
+      logger.info('Processing Forced Swap', {
+        action: 'CHOOSE_FORCED_SWAP_START',
+        roomCode,
+        guestId,
+        targetPlayerId: validated.targetPlayerId,
+      });
 
       const { nextState } = await gameService.chooseForcedSwapTarget(
         guestId,
@@ -710,14 +909,36 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      callback({
-        success: true,
-        data: { success: true, targetPlayerId: validated.targetPlayerId },
+      const playerState = getPlayerGameState(nextState, guestId);
+      const durationMs = Date.now() - startTime;
+
+      logger.info('Completed Targeted Draw Two', {
+        action: 'CHOOSE_TARGETED_DRAW_TWO_SUCCESS',
+        roomCode,
+        guestId,
+        targetPlayerId: validated.targetPlayerId,
+        durationMs,
       });
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { success: true, targetPlayerId: validated.targetPlayerId, state: playerState },
+        });
+      }
     } catch (err: unknown) {
+      const durationMs = Date.now() - startTime;
       const message = (err as Error).message || 'Failed to choose Forced Swap target';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      logger.warn('Failed to choose Forced Swap target', {
+        action: 'CHOOSE_FORCED_SWAP_FAILED',
+        error: message,
+        code,
+        durationMs,
+      });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -737,14 +958,20 @@ export function registerGameHandlers(
       await handleGameStateBroadcasts(nextState, roomCode);
 
       const allPassed = !nextState.pendingActionState;
-      callback({
-        success: true,
-        data: { success: true, allPassed },
-      });
+      const playerState = getPlayerGameState(nextState, guestId);
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { success: true, allPassed, state: playerState },
+        });
+      }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to submit initial team pass';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -764,14 +991,20 @@ export function registerGameHandlers(
       await handleGameStateBroadcasts(nextState, roomCode);
 
       const allPassed = !nextState.pendingActionState;
-      callback({
-        success: true,
-        data: { success: true, allPassed },
-      });
+      const playerState = getPlayerGameState(nextState, guestId);
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { success: true, allPassed, state: playerState },
+        });
+      }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to submit team card pass';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -790,23 +1023,37 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      callback({
-        success: true,
-        data: { success: true, cardsPassed: validated.cardIds.length },
-      });
+      const playerState = getPlayerGameState(nextState, guestId);
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { success: true, cardsPassed: validated.cardIds.length, state: playerState },
+        });
+      }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to submit team split hand pass';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
   // 22. Handle game:choose-attack-target
   socket.on(SOCKET_EVENTS.GAME_CHOOSE_ATTACK_TARGET, async (payload, callback) => {
+    const startTime = Date.now();
     try {
       const guestId = getAuthenticatedGuestId();
       const roomCode = getActiveRoomCode();
       const validated = await chooseAttackTargetInputSchema.parseAsync(payload);
+
+      logger.info('Processing Attack target selection', {
+        action: 'CHOOSE_ATTACK_TARGET_START',
+        roomCode,
+        guestId,
+        targetPlayerId: validated.targetPlayerId,
+      });
 
       const { nextState } = await gameService.chooseAttackTarget(
         guestId,
@@ -817,18 +1064,41 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      callback({
-        success: true,
-        data: {
-          success: true,
-          roundOver: nextState.status === 'ROUND_OVER',
-          matchOver: nextState.status === 'COMPLETED',
-        },
+      const playerState = getPlayerGameState(nextState, guestId);
+      const durationMs = Date.now() - startTime;
+
+      logger.info('Completed Targeted Draw Two', {
+        action: 'CHOOSE_TARGETED_DRAW_TWO_SUCCESS',
+        roomCode,
+        guestId,
+        targetPlayerId: validated.targetPlayerId,
+        durationMs,
       });
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: {
+            success: true,
+            roundOver: nextState.status === 'ROUND_OVER',
+            matchOver: nextState.status === 'COMPLETED',
+            state: playerState,
+          },
+        });
+      }
     } catch (err: unknown) {
+      const durationMs = Date.now() - startTime;
       const message = (err as Error).message || 'Failed to choose attack target';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      logger.warn('Failed to choose attack target', {
+        action: 'CHOOSE_ATTACK_TARGET_FAILED',
+        error: message,
+        code,
+        durationMs,
+      });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -842,14 +1112,20 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      callback({
-        success: true,
-        data: { started: true },
-      });
+      const playerState = getPlayerGameState(nextState, guestId);
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { started: true, state: playerState },
+        });
+      }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to start next round';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 }

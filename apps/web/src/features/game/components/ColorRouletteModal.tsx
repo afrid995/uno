@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Target } from 'lucide-react';
 
@@ -13,7 +13,15 @@ export const ColorRouletteModal: React.FC<ColorRouletteModalProps> = ({
   isLoading = false,
   onSelectColor,
 }) => {
+  const [selectedColor, setSelectedColor] = useState<'red' | 'yellow' | 'green' | 'blue' | null>(null);
+
   if (!isOpen) return null;
+
+  const handleSelect = (color: 'red' | 'yellow' | 'green' | 'blue') => {
+    if (isLoading) return;
+    setSelectedColor(color);
+    onSelectColor(color);
+  };
 
   const colors: { id: 'red' | 'yellow' | 'green' | 'blue'; label: string; bg: string; text: string; border: string; glow: string }[] = [
     { id: 'red', label: 'Red', bg: 'bg-rose-600 hover:bg-rose-500', text: 'text-white', border: 'border-rose-400', glow: 'shadow-glow-red' },
@@ -52,12 +60,19 @@ export const ColorRouletteModal: React.FC<ColorRouletteModalProps> = ({
                 key={c.id}
                 data-testid={`roulette-color-${c.id}`}
                 disabled={isLoading}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => onSelectColor(c.id)}
-                className={`py-4 px-3 rounded-2xl font-display font-black text-sm tracking-wide uppercase border-2 shadow-lg transition-all cursor-pointer disabled:opacity-50 ${c.bg} ${c.text} ${c.border} ${c.glow}`}
+                whileHover={isLoading ? {} : { scale: 1.05 }}
+                whileTap={isLoading ? {} : { scale: 0.95 }}
+                onClick={() => handleSelect(c.id)}
+                className={`py-4 px-3 rounded-2xl font-display font-black text-sm tracking-wide uppercase border-2 shadow-lg transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 ${c.bg} ${c.text} ${c.border} ${c.glow}`}
               >
-                {c.label}
+                {isLoading && selectedColor === c.id ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <span>Drawing...</span>
+                  </>
+                ) : (
+                  <span>{c.label}</span>
+                )}
               </motion.button>
             ))}
           </div>

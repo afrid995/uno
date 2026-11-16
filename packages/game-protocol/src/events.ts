@@ -231,35 +231,35 @@ export interface ClientToServerEvents {
   // Gameplay operations
   [SOCKET_EVENTS.GAME_PLAY_CARD]: (
     payload: PlayCardInput,
-    callback: (response: SocketAck<{ success: boolean; roundOver?: boolean; matchOver?: boolean }>) => void
+    callback: (response: SocketAck<{ success: boolean; roundOver?: boolean; matchOver?: boolean; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_DRAW_CARD]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ cardDrawn: boolean; cardId?: string }>) => void
+    callback: (response: SocketAck<{ cardDrawn: boolean; cardId?: string; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_PASS_TURN]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ passed: boolean }>) => void
+    callback: (response: SocketAck<{ passed: boolean; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_COLOR]: (
     payload: { chosenColor: CardColor },
-    callback: (response: SocketAck<{ success: boolean; chosenColor?: CardColor }>) => void
+    callback: (response: SocketAck<{ success: boolean; chosenColor?: CardColor; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_STARTING_WILD_COLOR]: (
     payload: { chosenColor: CardColor },
-    callback: (response: SocketAck<{ success: boolean; chosenColor?: CardColor }>) => void
+    callback: (response: SocketAck<{ success: boolean; chosenColor?: CardColor; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_UNO]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ declared: boolean }>) => void
+    callback: (response: SocketAck<{ declared: boolean; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHALLENGE_UNO]: (
     payload: ChallengeUnoInput,
-    callback: (response: SocketAck<{ success: boolean; penaltyCards: number }>) => void
+    callback: (response: SocketAck<{ success: boolean; penaltyCards: number; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_FOUR]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number }>) => void
+    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_FOUR]: (
     payload: Record<string, never> | undefined,
@@ -267,7 +267,7 @@ export interface ClientToServerEvents {
   ) => void;
   [SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_TWO]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number }>) => void
+    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_TWO]: (
     payload: Record<string, never> | undefined,
@@ -275,7 +275,7 @@ export interface ClientToServerEvents {
   ) => void;
   [SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_COLOR]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number }>) => void
+    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_COLOR]: (
     payload: Record<string, never> | undefined,
@@ -283,11 +283,11 @@ export interface ClientToServerEvents {
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_7S_SWAP]: (
     payload: Choose7sSwapInput,
-    callback: (response: SocketAck<{ success: boolean; targetPlayerId: string }>) => void
+    callback: (response: SocketAck<{ success: boolean; targetPlayerId: string; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_ROULETTE_COLOR]: (
     payload: ChooseRouletteColorInput,
-    callback: (response: SocketAck<{ success: boolean; cardsRevealed: number; eliminated: boolean }>) => void
+    callback: (response: SocketAck<{ success: boolean; cardsRevealed: number; eliminated: boolean; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY]: (
     payload: AcceptStackPenaltyInput,
@@ -295,35 +295,35 @@ export interface ClientToServerEvents {
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_TWO]: (
     payload: ChooseTargetedDrawTwoInput,
-    callback: (response: SocketAck<{ success: boolean; targetPlayerId: string }>) => void
+    callback: (response: SocketAck<{ success: boolean; targetPlayerId: string; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_FOUR]: (
     payload: ChooseTargetedDrawFourInput,
-    callback: (response: SocketAck<{ success: boolean; targetPlayerId: string }>) => void
+    callback: (response: SocketAck<{ success: boolean; targetPlayerId: string; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_FORCED_SWAP]: (
     payload: ChooseForcedSwapInput,
-    callback: (response: SocketAck<{ success: boolean; targetPlayerId: string }>) => void
+    callback: (response: SocketAck<{ success: boolean; targetPlayerId: string; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_TEAM_INITIAL_PASS]: (
     payload: TeamInitialPassInput,
-    callback: (response: SocketAck<{ success: boolean; allPassed: boolean }>) => void
+    callback: (response: SocketAck<{ success: boolean; allPassed: boolean; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_TEAM_CARD_PASS]: (
     payload: TeamCardPassInput,
-    callback: (response: SocketAck<{ success: boolean; allPassed: boolean }>) => void
+    callback: (response: SocketAck<{ success: boolean; allPassed: boolean; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_TEAM_SPLIT_HAND_PASS]: (
     payload: TeamSplitHandPassInput,
-    callback: (response: SocketAck<{ success: boolean; cardsPassed: number }>) => void
+    callback: (response: SocketAck<{ success: boolean; cardsPassed: number; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_ATTACK_TARGET]: (
     payload: ChooseAttackTargetInput,
-    callback: (response: SocketAck<{ success: boolean; roundOver?: boolean; matchOver?: boolean }>) => void
+    callback: (response: SocketAck<{ success: boolean; roundOver?: boolean; matchOver?: boolean; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_NEXT_ROUND]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ started: boolean }>) => void
+    callback: (response: SocketAck<{ started: boolean; state?: unknown }>) => void
   ) => void;
 }
 

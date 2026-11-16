@@ -81,16 +81,37 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   clearError: () => set({ error: null }),
 
   playCard: async (cardId, chosenColor, playMode, targetPlayerId) => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null, selectedCardForWild: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while playing card. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(
         SOCKET_EVENTS.GAME_PLAY_CARD,
         { cardId, chosenColor, playMode, targetPlayerId },
         (res) => {
+          if (isSettled) return;
+          isSettled = true;
+          clearTimeout(timer);
           set({ isActionLoading: false });
           if (res.success) {
+            if (res.data?.state) {
+              set({ gameState: res.data.state as PlayerGameState });
+            }
             resolve(true);
           } else {
             set({ error: res.error?.message || 'Failed to play card' });
@@ -102,13 +123,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   drawCard: async () => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while drawing card. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_DRAW_CARD, {}, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to draw card' });
@@ -119,13 +161,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   passTurn: async () => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while passing turn. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_PASS_TURN, {}, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to pass turn' });
@@ -136,13 +199,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   callUno: async () => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while calling UNO. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_UNO, {}, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to declare UNO' });
@@ -153,16 +237,37 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   challengeUno: async (targetPlayerId) => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while challenging UNO. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(
         SOCKET_EVENTS.GAME_CHALLENGE_UNO,
         { targetPlayerId },
         (res) => {
+          if (isSettled) return;
+          isSettled = true;
+          clearTimeout(timer);
           set({ isActionLoading: false });
           if (res.success) {
+            if (res.data?.state) {
+              set({ gameState: res.data.state as PlayerGameState });
+            }
             resolve(true);
           } else {
             set({ error: res.error?.message || 'UNO challenge failed' });
@@ -174,13 +279,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   challengeWildDrawFour: async () => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while challenging Wild Draw Four. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_FOUR, {}, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to challenge Wild Draw Four' });
@@ -229,13 +355,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   challengeWildDrawTwo: async () => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while challenging Wild Draw Two. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_TWO, {}, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to challenge Wild Draw Two' });
@@ -284,13 +431,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   challengeWildDrawColor: async () => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while challenging Wild Draw Color. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_COLOR, {}, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to challenge Wild Draw Color' });
@@ -339,13 +507,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   chooseStartingWildColor: async (chosenColor: CardColor) => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while choosing starting color. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_CHOOSE_STARTING_WILD_COLOR, { chosenColor }, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to choose starting color' });
@@ -356,13 +545,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   choose7sSwap: async (targetPlayerId: string) => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while swapping hands. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_CHOOSE_7S_SWAP, { targetPlayerId }, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to swap hands' });
@@ -373,13 +583,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   chooseRouletteColor: async (chosenColor: 'red' | 'yellow' | 'green' | 'blue') => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while choosing roulette color. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_CHOOSE_ROULETTE_COLOR, { chosenColor }, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to choose roulette color' });
@@ -428,13 +659,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   chooseTargetedDrawTwo: async (targetPlayerId: string) => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while targeting player. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_TWO, { targetPlayerId }, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to target player' });
@@ -445,13 +697,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   chooseTargetedDrawFour: async (targetPlayerId: string) => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while targeting player for Draw 4. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_FOUR, { targetPlayerId }, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to target player for Draw 4' });
@@ -462,13 +735,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   chooseForcedSwap: async (targetPlayerId: string) => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while swapping hands. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_CHOOSE_FORCED_SWAP, { targetPlayerId }, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to swap hands' });
@@ -479,13 +773,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   chooseAttackTarget: async (targetPlayerId: string) => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while selecting attack target. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_CHOOSE_ATTACK_TARGET, { targetPlayerId }, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to select attack target' });
@@ -496,13 +811,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   teamInitialPass: async (cardId: string) => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while submitting initial team pass. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_TEAM_INITIAL_PASS, { cardId }, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to pass initial card' });
@@ -513,13 +849,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   teamCardPass: async (cardId: string) => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while passing card to teammate. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_TEAM_CARD_PASS, { cardId }, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to pass card to teammate' });
@@ -530,13 +887,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   teamSplitHandPass: async (cardIds: string[]) => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while passing split hand cards. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_TEAM_SPLIT_HAND_PASS, { cardIds }, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to pass split hand cards' });
@@ -547,13 +925,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   startNextRound: async () => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while starting next round. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_NEXT_ROUND, {}, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false, showRoundResultModal: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to start next round' });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PublicPlayer } from '@uno-ultimate/game-protocol';
 import { Target, User } from 'lucide-react';
@@ -16,7 +16,15 @@ export const TargetedDrawFourModal: React.FC<TargetedDrawFourModalProps> = ({
   isLoading = false,
   onSelectTarget,
 }) => {
+  const [activeTargetId, setActiveTargetId] = useState<string | null>(null);
+
   if (!isOpen) return null;
+
+  const handleSelect = (playerId: string) => {
+    if (isLoading) return;
+    setActiveTargetId(playerId);
+    onSelectTarget(playerId);
+  };
 
   return (
     <AnimatePresence>
@@ -43,33 +51,46 @@ export const TargetedDrawFourModal: React.FC<TargetedDrawFourModalProps> = ({
           </div>
 
           <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-            {eligiblePlayers.map((player) => (
-              <button
-                key={player.id}
-                data-testid={`targeted-draw-four-target-${player.id}`}
-                disabled={isLoading}
-                onClick={() => onSelectTarget(player.id)}
-                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-slate-700/80 hover:border-purple-400/80 transition-all text-left group cursor-pointer disabled:opacity-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-800 group-hover:bg-purple-500/20 text-slate-300 group-hover:text-purple-400 flex items-center justify-center font-bold transition-colors">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="font-display font-bold text-sm text-white group-hover:text-purple-300 transition-colors">
-                      {player.username}
+            {eligiblePlayers.length === 0 ? (
+              <div className="p-4 text-center text-xs text-slate-400 bg-slate-900/50 rounded-2xl border border-slate-800">
+                No eligible opponents available to target.
+              </div>
+            ) : (
+              eligiblePlayers.map((player) => (
+                <button
+                  key={player.id}
+                  data-testid={`targeted-draw-four-target-${player.id}`}
+                  disabled={isLoading}
+                  onClick={() => handleSelect(player.id)}
+                  className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-slate-700/80 hover:border-purple-400/80 transition-all text-left group cursor-pointer disabled:opacity-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 group-hover:bg-purple-500/20 text-slate-300 group-hover:text-purple-400 flex items-center justify-center font-bold transition-colors">
+                      <User className="w-5 h-5" />
                     </div>
-                    <div className="text-[11px] text-slate-400 font-mono">
-                      {player.cardCount} {player.cardCount === 1 ? 'card' : 'cards'}
+                    <div>
+                      <div className="font-display font-bold text-sm text-white group-hover:text-purple-300 transition-colors">
+                        {player.username}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-mono">
+                        {player.cardCount} {player.cardCount === 1 ? 'card' : 'cards'}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="px-3 py-1.5 rounded-xl bg-purple-500/10 group-hover:bg-purple-500 text-purple-400 group-hover:text-white font-display font-bold text-xs transition-colors">
-                  Target (+4)
-                </div>
-              </button>
-            ))}
+                  <div className="px-3 py-1.5 rounded-xl bg-purple-500/10 group-hover:bg-purple-500 text-purple-400 group-hover:text-white font-display font-bold text-xs transition-colors flex items-center gap-1.5">
+                    {isLoading && activeTargetId === player.id ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                        <span>Targeting...</span>
+                      </>
+                    ) : (
+                      <span>Target (+4)</span>
+                    )}
+                  </div>
+                </button>
+              ))
+            )}
           </div>
         </motion.div>
       </div>

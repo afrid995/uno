@@ -171,6 +171,36 @@ export class GameService {
         }
       }
 
+      // Safe idempotent duplicate modal / targeted action check
+      const isTargetModalAction =
+        action.type === 'CHOOSE_7S_SWAP_TARGET' ||
+        action.type === 'CHOOSE_FORCED_SWAP_TARGET' ||
+        action.type === 'CHOOSE_COLOR_ROULETTE_COLOR' ||
+        action.type === 'CHOOSE_TARGETED_DRAW_TWO_TARGET' ||
+        action.type === 'CHOOSE_TARGETED_DRAW_FOUR_TARGET' ||
+        action.type === 'CHOOSE_ATTACK_TARGET' ||
+        action.type === 'CHOOSE_STARTING_WILD_COLOR';
+
+      if (isTargetModalAction && 'playerId' in action) {
+        if (
+          !activeSession.state.pendingActionState &&
+          activeSession.lastResolvedTargetAction &&
+          activeSession.lastResolvedTargetAction.playerId === action.playerId &&
+          activeSession.lastResolvedTargetAction.actionType === action.type
+        ) {
+          logger.info(`Safely absorbed duplicate ${action.type} request from player`, {
+            matchId: activeSession.matchId,
+            roomCode,
+            playerId: action.playerId,
+            sequenceNumber: activeSession.state.sequenceNumber,
+          });
+          return {
+            nextState: activeSession.state,
+            events: [],
+          };
+        }
+      }
+
       // 1. Process action through pure engine
       let processResult: ActionProcessResult;
       try {
@@ -217,6 +247,19 @@ export class GameService {
         };
       } else {
         activeSession.lastResolvedPenalty = undefined;
+      }
+
+      // Record last resolved modal / target action for idempotency tracking
+      if (isTargetModalAction && 'playerId' in action) {
+        activeSession.lastResolvedTargetAction = {
+          actionType: action.type,
+          playerId: action.playerId,
+          sequenceNumber: nextState.sequenceNumber,
+          resolvedAt: new Date().toISOString(),
+          targetPlayerId: 'targetPlayerId' in action ? (action as { targetPlayerId?: string }).targetPlayerId : undefined,
+        };
+      } else if (action.type !== 'ACCEPT_WILD_DRAW_FOUR' && action.type !== 'ACCEPT_WILD_DRAW_TWO' && action.type !== 'ACCEPT_WILD_DRAW_COLOR' && action.type !== 'ACCEPT_STACK_PENALTY') {
+        activeSession.lastResolvedTargetAction = undefined;
       }
 
       return processResult;

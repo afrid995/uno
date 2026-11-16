@@ -913,10 +913,30 @@ export class NoMercyActionProcessor {
     action: { playerId: string; targetPlayerId: string },
     ctx: ActionContext
   ): ActionProcessResult {
-    const sourceIndex = state.currentPlayerIndex;
+    const pending = state.pendingActionState as { type: string; sourcePlayerId?: string } | null;
+    const sourcePlayerId = pending?.sourcePlayerId || action.playerId;
+    if (action.playerId !== sourcePlayerId) {
+      throw new Error('Only the player who played the 7 card can choose a swap target.');
+    }
+
+    const sourceIndex = state.players.findIndex((p) => p.id === sourcePlayerId);
+    if (sourceIndex === -1) {
+      throw new Error(`Source player ${sourcePlayerId} not found in game.`);
+    }
     const sourcePlayer = state.players[sourceIndex];
+
     const targetIndex = state.players.findIndex((p) => p.id === action.targetPlayerId);
+    if (targetIndex === -1) {
+      throw new Error(`Target player ${action.targetPlayerId} not found in game.`);
+    }
     const targetPlayer = state.players[targetIndex];
+
+    if (sourcePlayer.id === targetPlayer.id) {
+      throw new Error('Cannot swap hands with yourself.');
+    }
+    if (targetPlayer.isEliminated) {
+      throw new Error('Cannot swap hands with an eliminated player.');
+    }
 
     const sourceHand = [...sourcePlayer.hand];
     const targetHand = [...targetPlayer.hand];
