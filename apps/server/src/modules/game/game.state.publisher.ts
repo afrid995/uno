@@ -20,10 +20,21 @@ export class GameStatePublisher {
   publishToPlayer(
     guestId: string,
     state: GameState,
-    guestSockets: Map<string, UnoSocket>
+    guestSockets: Map<string, UnoSocket>,
+    io?: UnoServer
   ): void {
-    const socket = guestSockets.get(guestId);
-    if (!socket) {
+    let socket = guestSockets.get(guestId);
+    if ((!socket || !socket.connected) && io) {
+      for (const [, s] of io.sockets.sockets) {
+        if (s.data.guestId === guestId && s.connected) {
+          socket = s as UnoSocket;
+          guestSockets.set(guestId, socket);
+          break;
+        }
+      }
+    }
+
+    if (!socket || !socket.connected) {
       logger.debug('Cannot publish state to disconnected player; awaiting reconnect', { guestId });
       return;
     }
@@ -42,10 +53,11 @@ export class GameStatePublisher {
    */
   publishToAllParticipants(
     state: GameState,
-    guestSockets: Map<string, UnoSocket>
+    guestSockets: Map<string, UnoSocket>,
+    io?: UnoServer
   ): void {
     for (const player of state.players) {
-      this.publishToPlayer(player.id, state, guestSockets);
+      this.publishToPlayer(player.id, state, guestSockets, io);
     }
   }
 

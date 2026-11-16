@@ -71,8 +71,17 @@ export const StackPenaltyBanner: React.FC<StackPenaltyBannerProps> = ({
           onClick={onAcceptPenalty}
           className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 font-display font-bold text-xs uppercase tracking-wider text-white shadow-lg border border-rose-400 flex items-center justify-center gap-2 shrink-0 cursor-pointer disabled:opacity-50"
         >
-          <ShieldAlert className="w-4 h-4" />
-          <span>Accept (+{pendingStack.accumulatedPenalty})</span>
+          {isLoading ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Accepting...</span>
+            </>
+          ) : (
+            <>
+              <ShieldAlert className="w-4 h-4" />
+              <span>Accept (+{pendingStack.accumulatedPenalty})</span>
+            </>
+          )}
         </button>
       )}
     </motion.div>

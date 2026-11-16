@@ -658,7 +658,14 @@ describe('UNO Ultimate — Variant-Specific Draw Rules Implementation & Verifica
   // =========================================================================
   describe('7. UNO Attack — Official Mattel GTX66 Rules', () => {
     it('pressing launcher with 0 cards launched: turn ends immediately', () => {
-      const attackState = AttackFixtureBuilder.createInitialGameFixture(2);
+      let attackState = AttackFixtureBuilder.createInitialGameFixture(2);
+      if (attackState.pendingActionState) {
+        attackState = {
+          ...attackState,
+          pendingActionState: null,
+          activeColor: attackState.activeColor || 'red',
+        };
+      }
 
       AttackLauncher.setDeterministicOverride(0);
       try {
@@ -675,7 +682,14 @@ describe('UNO Ultimate — Variant-Specific Draw Rules Implementation & Verifica
     });
 
     it('pressing launcher with 1+ cards launched: cards added to hand, TURN ENDS IMMEDIATELY, cards cannot be played', () => {
-      const attackState = AttackFixtureBuilder.createInitialGameFixture(2);
+      let attackState = AttackFixtureBuilder.createInitialGameFixture(2);
+      if (attackState.pendingActionState) {
+        attackState = {
+          ...attackState,
+          pendingActionState: null,
+          activeColor: attackState.activeColor || 'red',
+        };
+      }
       const initialHandCount = attackState.players[0].hand.length;
 
       AttackLauncher.setDeterministicOverride(3);

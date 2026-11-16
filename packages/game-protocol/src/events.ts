@@ -263,7 +263,7 @@ export interface ClientToServerEvents {
   ) => void;
   [SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_FOUR]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ accepted: boolean; cardsDrawn: number }>) => void
+    callback: (response: SocketAck<{ accepted: boolean; cardsDrawn: number; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_TWO]: (
     payload: Record<string, never> | undefined,
@@ -271,7 +271,7 @@ export interface ClientToServerEvents {
   ) => void;
   [SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_TWO]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ accepted: boolean; cardsDrawn: number }>) => void
+    callback: (response: SocketAck<{ accepted: boolean; cardsDrawn: number; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_COLOR]: (
     payload: Record<string, never> | undefined,
@@ -279,7 +279,7 @@ export interface ClientToServerEvents {
   ) => void;
   [SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_COLOR]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ accepted: boolean; cardsDrawn: number }>) => void
+    callback: (response: SocketAck<{ accepted: boolean; cardsDrawn: number; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_7S_SWAP]: (
     payload: Choose7sSwapInput,
@@ -291,7 +291,7 @@ export interface ClientToServerEvents {
   ) => void;
   [SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY]: (
     payload: AcceptStackPenaltyInput,
-    callback: (response: SocketAck<{ success: boolean; cardsDrawn: number; eliminated: boolean }>) => void
+    callback: (response: SocketAck<{ success: boolean; cardsDrawn: number; eliminated: boolean; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_CHOOSE_TARGETED_DRAW_TWO]: (
     payload: ChooseTargetedDrawTwoInput,

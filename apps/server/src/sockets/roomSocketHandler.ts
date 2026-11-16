@@ -57,6 +57,53 @@ export function cancelAllCountdownTimersForTesting(): void {
   roomService.shutdown();
 }
 
+export async function registerAuthenticatedGuestSocket(
+  io: UnoServer,
+  socket: UnoSocket,
+  guestId: string
+): Promise<void> {
+  const existingSocket = guestSockets.get(guestId);
+  if (existingSocket && existingSocket.id !== socket.id) {
+    logger.info('Replacing previous socket for guest', {
+      guestId,
+      oldSocketId: existingSocket.id,
+      newSocketId: socket.id,
+    });
+    existingSocket.emit(SOCKET_EVENTS.ROOM_ERROR, {
+      code: 'SESSION_REPLACED',
+      message: 'Your session has connected in another tab or device.',
+    });
+    existingSocket.disconnect(true);
+  }
+  guestSockets.set(guestId, socket);
+
+  try {
+    const activeRoom = await roomService.restoreConnection(guestId);
+    if (activeRoom) {
+      socket.data.currentRoomCode = activeRoom.roomCode;
+      socket.join(activeRoom.roomCode);
+      io.to(activeRoom.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: activeRoom });
+      logger.info('Restored player connection in room on socket auth/reconnect', {
+        guestId,
+        roomCode: activeRoom.roomCode,
+      });
+
+      // If room is IN_GAME, also deliver active player game state
+      if (activeRoom.status === 'IN_GAME') {
+        const playerState = gameService.getActivePlayerState(guestId, activeRoom.roomCode);
+        if (playerState) {
+          socket.emit(SOCKET_EVENTS.GAME_STATE, { state: playerState });
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn('Failed to restore connection for authenticated socket', {
+      guestId,
+      error: String(err),
+    });
+  }
+}
+
 export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
   const cancelCountdownIfActive = (roomCode: string, reason?: string) => {
     const timer = activeCountdownTimers.get(roomCode);
@@ -80,41 +127,7 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
 
   // Register socket in active guest map
   if (socket.data.guestId) {
-    const existingSocket = guestSockets.get(socket.data.guestId);
-    if (existingSocket && existingSocket.id !== socket.id) {
-      logger.info('Replacing previous socket for guest', {
-        guestId: socket.data.guestId,
-        oldSocketId: existingSocket.id,
-        newSocketId: socket.id,
-      });
-      existingSocket.emit(SOCKET_EVENTS.ROOM_ERROR, {
-        code: 'SESSION_REPLACED',
-        message: 'Your session has connected in another tab or device.',
-      });
-      existingSocket.disconnect(true);
-    }
-    guestSockets.set(socket.data.guestId, socket);
-
-    // If guest was disconnected and reconnected, restore connection
-    roomService.restoreConnection(socket.data.guestId).then((activeRoom) => {
-      if (activeRoom) {
-        socket.data.currentRoomCode = activeRoom.roomCode;
-        socket.join(activeRoom.roomCode);
-        io.to(activeRoom.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: activeRoom });
-        logger.info('Restored player connection in room on socket reconnect', {
-          guestId: socket.data.guestId,
-          roomCode: activeRoom.roomCode,
-        });
-
-        // If room is IN_GAME, also deliver active player game state
-        if (activeRoom.status === 'IN_GAME') {
-          const playerState = gameService.getActivePlayerState(socket.data.guestId!, activeRoom.roomCode);
-          if (playerState) {
-            socket.emit(SOCKET_EVENTS.GAME_STATE, { state: playerState });
-          }
-        }
-      }
-    });
+    registerAuthenticatedGuestSocket(io, socket, socket.data.guestId);
   }
 
   // Handle room:create

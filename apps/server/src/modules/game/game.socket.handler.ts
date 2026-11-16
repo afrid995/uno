@@ -22,7 +22,7 @@ import {
 import { ERROR_CODES } from '@uno-ultimate/shared';
 import { AppError } from '../../middleware/errorHandler';
 import { HTTP_STATUS } from '@uno-ultimate/shared';
-import { GameState } from '@uno-ultimate/game-engine';
+import { GameState, getPlayerGameState } from '@uno-ultimate/game-engine';
 import { gameService } from './game.service';
 import { gameStatePublisher } from './game.state.publisher';
 import { roomService } from '../room/room.service';
@@ -44,8 +44,15 @@ export function registerGameHandlers(
     return socket.data.guestId;
   };
 
-  const getActiveRoomCode = (): string => {
-    const roomCode = socket.data.currentRoomCode;
+  const getActiveRoomCode = (explicitRoomCode?: string): string => {
+    let roomCode = explicitRoomCode || socket.data.currentRoomCode;
+    if (!roomCode && socket.data.guestId) {
+      roomCode = gameSessionManager.getRoomCodeForGuest(socket.data.guestId) || undefined;
+      if (roomCode) {
+        socket.data.currentRoomCode = roomCode;
+        socket.join(roomCode);
+      }
+    }
     if (!roomCode) {
       throw new AppError(HTTP_STATUS.BAD_REQUEST, ERROR_CODES.NOT_IN_ROOM, 'Not currently in a game room');
     }
@@ -53,7 +60,10 @@ export function registerGameHandlers(
   };
 
   const handleGameStateBroadcasts = async (nextState: GameState, roomCode: string) => {
-    gameStatePublisher.publishToAllParticipants(nextState, guestSockets);
+    if (socket.data.guestId && (!guestSockets.has(socket.data.guestId) || guestSockets.get(socket.data.guestId)?.id !== socket.id)) {
+      guestSockets.set(socket.data.guestId, socket);
+    }
+    gameStatePublisher.publishToAllParticipants(nextState, guestSockets, io);
 
     if (nextState.status === 'ROUND_OVER') {
       gameStatePublisher.broadcastRoundFinished(io, roomCode, nextState);
@@ -245,22 +255,50 @@ export function registerGameHandlers(
 
   // 7. Handle game:accept-wild-draw-four
   socket.on(SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_FOUR, async (_payload, callback) => {
+    const startTime = Date.now();
     try {
       const guestId = getAuthenticatedGuestId();
       const roomCode = getActiveRoomCode();
+      logger.info('Processing accept wild draw four', {
+        action: 'ACCEPT_WILD_DRAW_FOUR_START',
+        roomCode,
+        guestId,
+      });
 
       const { nextState } = await gameService.acceptWildDrawFour(guestId, roomCode);
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      callback({
-        success: true,
-        data: { accepted: true, cardsDrawn: 4 },
+      const playerState = getPlayerGameState(nextState, guestId);
+      const durationMs = Date.now() - startTime;
+      logger.info('Wild draw four accepted successfully', {
+        action: 'ACCEPT_WILD_DRAW_FOUR_COMPLETE',
+        roomCode,
+        guestId,
+        durationMs,
+        cardsDrawn: 4,
+        nextPlayerIndex: nextState.currentPlayerIndex,
       });
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { accepted: true, cardsDrawn: 4, state: playerState },
+        });
+      }
     } catch (err: unknown) {
+      const durationMs = Date.now() - startTime;
       const message = (err as Error).message || 'Failed to accept Wild Draw Four';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      logger.warn('Failed to accept Wild Draw Four', {
+        action: 'ACCEPT_WILD_DRAW_FOUR_FAILED',
+        error: message,
+        code,
+        durationMs,
+      });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -276,38 +314,70 @@ export function registerGameHandlers(
 
       const won = events.some((e) => e.type === 'WILD_DRAW_TWO_CHALLENGE_WON');
 
-      callback({
-        success: true,
-        data: {
-          challengeWon: won,
-          penaltyCards: won ? 2 : 4,
-        },
-      });
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: {
+            challengeWon: won,
+            penaltyCards: won ? 2 : 4,
+          },
+        });
+      }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to challenge Wild Draw Two';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
   // 9. Handle game:accept-wild-draw-two
   socket.on(SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_TWO, async (_payload, callback) => {
+    const startTime = Date.now();
     try {
       const guestId = getAuthenticatedGuestId();
       const roomCode = getActiveRoomCode();
+      logger.info('Processing accept wild draw two', {
+        action: 'ACCEPT_WILD_DRAW_TWO_START',
+        roomCode,
+        guestId,
+      });
 
       const { nextState } = await gameService.acceptWildDrawTwo(guestId, roomCode);
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      callback({
-        success: true,
-        data: { accepted: true, cardsDrawn: 2 },
+      const playerState = getPlayerGameState(nextState, guestId);
+      const durationMs = Date.now() - startTime;
+      logger.info('Wild draw two accepted successfully', {
+        action: 'ACCEPT_WILD_DRAW_TWO_COMPLETE',
+        roomCode,
+        guestId,
+        durationMs,
+        cardsDrawn: 2,
+        nextPlayerIndex: nextState.currentPlayerIndex,
       });
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { accepted: true, cardsDrawn: 2, state: playerState },
+        });
+      }
     } catch (err: unknown) {
+      const durationMs = Date.now() - startTime;
       const message = (err as Error).message || 'Failed to accept Wild Draw Two';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      logger.warn('Failed to accept Wild Draw Two', {
+        action: 'ACCEPT_WILD_DRAW_TWO_FAILED',
+        error: message,
+        code,
+        durationMs,
+      });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -349,9 +419,15 @@ export function registerGameHandlers(
 
   // 11. Handle game:accept-wild-draw-color
   socket.on(SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_COLOR, async (_payload, callback) => {
+    const startTime = Date.now();
     try {
       const guestId = getAuthenticatedGuestId();
       const roomCode = getActiveRoomCode();
+      logger.info('Processing accept wild draw color', {
+        action: 'ACCEPT_WILD_DRAW_COLOR_START',
+        roomCode,
+        guestId,
+      });
 
       const { nextState, events } = await gameService.acceptWildDrawColor(guestId, roomCode);
 
@@ -364,14 +440,36 @@ export function registerGameHandlers(
           ? acceptPayload.cardsDrawn
           : 0;
 
-      callback({
-        success: true,
-        data: { accepted: true, cardsDrawn },
+      const playerState = getPlayerGameState(nextState, guestId);
+      const durationMs = Date.now() - startTime;
+      logger.info('Wild draw color accepted successfully', {
+        action: 'ACCEPT_WILD_DRAW_COLOR_COMPLETE',
+        roomCode,
+        guestId,
+        durationMs,
+        cardsDrawn,
+        nextPlayerIndex: nextState.currentPlayerIndex,
       });
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { accepted: true, cardsDrawn, state: playerState },
+        });
+      }
     } catch (err: unknown) {
+      const durationMs = Date.now() - startTime;
       const message = (err as Error).message || 'Failed to accept Wild Draw Color';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      logger.warn('Failed to accept Wild Draw Color', {
+        action: 'ACCEPT_WILD_DRAW_COLOR_FAILED',
+        error: message,
+        code,
+        durationMs,
+      });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 
@@ -478,10 +576,16 @@ export function registerGameHandlers(
 
   // 16. Handle game:accept-stack-penalty
   socket.on(SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY, async (payload, callback) => {
+    const startTime = Date.now();
     try {
       await acceptStackPenaltyInputSchema.parseAsync(payload);
       const guestId = getAuthenticatedGuestId();
       const roomCode = getActiveRoomCode();
+      logger.info('Processing accept stack penalty', {
+        action: 'ACCEPT_STACK_PENALTY_START',
+        roomCode,
+        guestId,
+      });
 
       const { nextState, events } = await gameService.acceptStackPenalty(guestId, roomCode);
 
@@ -505,14 +609,37 @@ export function registerGameHandlers(
       const targetPlayer = nextState.players.find((p) => p.id === guestId);
       const eliminated = !!targetPlayer?.isEliminated;
 
-      callback({
-        success: true,
-        data: { success: true, cardsDrawn: drawnCount, eliminated },
+      const playerState = getPlayerGameState(nextState, guestId);
+      const durationMs = Date.now() - startTime;
+      logger.info('Stack penalty accepted successfully', {
+        action: 'ACCEPT_STACK_PENALTY_COMPLETE',
+        roomCode,
+        guestId,
+        durationMs,
+        cardsDrawn: drawnCount,
+        eliminated,
+        nextPlayerIndex: nextState.currentPlayerIndex,
       });
+
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          data: { success: true, cardsDrawn: drawnCount, eliminated, state: playerState },
+        });
+      }
     } catch (err: unknown) {
+      const durationMs = Date.now() - startTime;
       const message = (err as Error).message || 'Failed to accept stack penalty';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      callback({ success: false, error: { code, message } });
+      logger.warn('Failed to accept stack penalty', {
+        action: 'ACCEPT_STACK_PENALTY_FAILED',
+        error: message,
+        code,
+        durationMs,
+      });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: { code, message } });
+      }
     }
   });
 

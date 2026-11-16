@@ -839,7 +839,8 @@ export class NoMercyActionProcessor {
       lastCardValue: CardValue;
     };
 
-    const playerIndex = state.currentPlayerIndex;
+    const targetIdx = state.players.findIndex((p) => p.id === pending.targetPlayerId);
+    const playerIndex = targetIdx !== -1 ? targetIdx : state.currentPlayerIndex;
     const player = state.players[playerIndex];
 
     const { drawnCards, newDrawPile, newDiscardPile, newSetAsideCards } = this.drawCards(

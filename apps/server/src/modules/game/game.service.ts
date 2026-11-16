@@ -144,6 +144,33 @@ export class GameService {
     }
 
     return gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      // Safe idempotent duplicate accept check: if victim already resolved penalty and state advanced
+      if (
+        (action.type === 'ACCEPT_WILD_DRAW_FOUR' ||
+          action.type === 'ACCEPT_WILD_DRAW_TWO' ||
+          action.type === 'ACCEPT_WILD_DRAW_COLOR' ||
+          action.type === 'ACCEPT_STACK_PENALTY') &&
+        'playerId' in action
+      ) {
+        if (
+          !activeSession.state.pendingActionState &&
+          activeSession.lastResolvedPenalty &&
+          activeSession.lastResolvedPenalty.victimPlayerId === action.playerId &&
+          activeSession.lastResolvedPenalty.actionType === action.type
+        ) {
+          logger.info(`Safely absorbed duplicate ${action.type} request from victim`, {
+            matchId: activeSession.matchId,
+            roomCode,
+            playerId: action.playerId,
+            sequenceNumber: activeSession.state.sequenceNumber,
+          });
+          return {
+            nextState: activeSession.state,
+            events: [],
+          };
+        }
+      }
+
       // 1. Process action through pure engine
       let processResult: ActionProcessResult;
       try {
@@ -160,6 +187,37 @@ export class GameService {
 
       // 3. ONLY after successful database commit, update in-memory session state!
       activeSession.state = nextState;
+
+      // Record last resolved penalty for idempotency tracking
+      if (
+        (action.type === 'ACCEPT_WILD_DRAW_FOUR' ||
+          action.type === 'ACCEPT_WILD_DRAW_TWO' ||
+          action.type === 'ACCEPT_WILD_DRAW_COLOR' ||
+          action.type === 'ACCEPT_STACK_PENALTY') &&
+        'playerId' in action
+      ) {
+        const resolvedEvent = events.find((e) =>
+          e.type === 'WILD_DRAW_FOUR_ACCEPTED' ||
+          e.type === 'WILD_DRAW_TWO_ACCEPTED' ||
+          e.type === 'WILD_DRAW_COLOR_ACCEPTED' ||
+          e.type === 'STACK_PENALTY_RESOLVED' ||
+          e.type === 'game:wdf-accepted'
+        );
+        const cardsDrawn =
+          (resolvedEvent?.payload?.cardsDrawn as number) ??
+          (resolvedEvent?.payload?.drawnCount as number) ??
+          (action.type === 'ACCEPT_WILD_DRAW_FOUR' ? 4 : action.type === 'ACCEPT_WILD_DRAW_TWO' ? 2 : 0);
+
+        activeSession.lastResolvedPenalty = {
+          actionType: action.type,
+          victimPlayerId: action.playerId,
+          sequenceNumber: nextState.sequenceNumber,
+          cardsDrawn,
+          resolvedAt: new Date().toISOString(),
+        };
+      } else {
+        activeSession.lastResolvedPenalty = undefined;
+      }
 
       return processResult;
     });

@@ -1,12 +1,25 @@
 import { GameState } from '@uno-ultimate/game-engine';
 import { logger } from '../../utils/logger';
 
-interface ActiveGameSession {
+export interface LastResolvedPenalty {
+  readonly actionType:
+    | 'ACCEPT_WILD_DRAW_FOUR'
+    | 'ACCEPT_WILD_DRAW_TWO'
+    | 'ACCEPT_WILD_DRAW_COLOR'
+    | 'ACCEPT_STACK_PENALTY';
+  readonly victimPlayerId: string;
+  readonly sequenceNumber: number;
+  readonly cardsDrawn: number;
+  readonly resolvedAt: string;
+}
+
+export interface ActiveGameSession {
   matchId: string;
   roomCode: string;
   roomId: string;
   state: GameState;
   lockPromise: Promise<void>;
+  lastResolvedPenalty?: LastResolvedPenalty;
 }
 
 export class GameSessionManager {
@@ -116,10 +129,10 @@ export class GameSessionManager {
     });
 
     const previousLock = session.lockPromise;
-    session.lockPromise = previousLock.then(() => nextLock);
+    session.lockPromise = previousLock.catch(() => {}).then(() => nextLock);
 
     try {
-      await previousLock;
+      await previousLock.catch(() => {});
       return await fn(session);
     } finally {
       releaseLock();

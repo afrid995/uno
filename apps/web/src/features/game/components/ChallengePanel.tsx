@@ -25,6 +25,16 @@ export const ChallengePanel: React.FC = () => {
   const isTargetedByColor = !!self?.isTargetedByWildDrawColor;
   const isTargeted = isTargetedByFour || isTargetedByTwo || isTargetedByColor;
 
+  const hasInspectedHand = inspectedChallengedHand && inspectedChallengedHand.length > 0;
+  const isChallengeResolution =
+    pType === 'AWAITING_WILD_DRAW_FOUR_RESOLUTION' ||
+    pType === 'AWAITING_WILD_DRAW_TWO_RESOLUTION' ||
+    pType === 'AWAITING_WILD_DRAW_COLOR_RESOLUTION';
+
+  if (!isChallengeResolution && !hasInspectedHand) {
+    return <div className="w-full max-w-xl mx-auto my-2" />;
+  }
+
   // Find offender name
   const offender =
     pendingActionState && 'playedByPlayerId' in pendingActionState
@@ -152,9 +162,16 @@ export const ChallengePanel: React.FC = () => {
               data-testid="accept-wild-draw-btn"
               onClick={handleAccept}
               disabled={isActionLoading}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-white bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all text-sm shadow-md disabled:opacity-50"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-white bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all text-sm shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {getAcceptLabel()}
+              {isActionLoading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Accepting...</span>
+                </>
+              ) : (
+                getAcceptLabel()
+              )}
             </button>
             <button
               data-testid="challenge-wild-draw-btn"
@@ -169,7 +186,7 @@ export const ChallengePanel: React.FC = () => {
       )}
 
       {/* Waiting Indicator for Other Players */}
-      {!isTargeted && pendingActionState && (
+      {!isTargeted && isChallengeResolution && (
         <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-950/30 text-center text-xs text-amber-200 animate-pulse">
           Waiting for victim to accept or challenge {offenderName}&apos;s action...
         </div>

@@ -11,7 +11,7 @@ import { env } from '../config/env';
 import { isOriginAllowed } from '../utils/cors';
 import { logger } from '../utils/logger';
 import { guestService } from '../modules/guest/guest.service';
-import { registerRoomHandlers, guestSockets } from './roomSocketHandler';
+import { registerRoomHandlers, registerAuthenticatedGuestSocket, guestSockets } from './roomSocketHandler';
 import { registerGameHandlers } from '../modules/game/game.socket.handler';
 
 function parseCookieHeader(cookieHeader: string): Record<string, string> {
@@ -113,6 +113,8 @@ export function initializeSocketServer(httpServer: HttpServer): Server {
         socket.data.guestId = guest.id;
         socket.data.username = guest.username;
         socket.data.isAuthenticated = true;
+
+        await registerAuthenticatedGuestSocket(io, socket, guest.id);
 
         socket.emit(SOCKET_EVENTS.AUTH_SUCCESS, {
           guestId: guest.id,

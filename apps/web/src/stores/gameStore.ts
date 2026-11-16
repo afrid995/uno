@@ -191,13 +191,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   acceptWildDrawFour: async () => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while accepting Wild Draw Four. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_FOUR, {}, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to accept Wild Draw Four' });
@@ -225,13 +246,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   acceptWildDrawTwo: async () => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while accepting Wild Draw Two. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_TWO, {}, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to accept Wild Draw Two' });
@@ -259,13 +301,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   acceptWildDrawColor: async () => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while accepting Wild Draw Color. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_COLOR, {}, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to accept Wild Draw Color' });
@@ -327,13 +390,34 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 
   acceptStackPenalty: async () => {
+    if (get().isActionLoading) {
+      return false;
+    }
     set({ isActionLoading: true, error: null });
     const socket = socketManager.getSocket();
 
     return new Promise<boolean>((resolve) => {
+      let isSettled = false;
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          set({
+            isActionLoading: false,
+            error: 'Request timed out while accepting stack penalty. Please try again.',
+          });
+          resolve(false);
+        }
+      }, 5000);
+
       socket.emit(SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY, {}, (res) => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          if (res.data?.state) {
+            set({ gameState: res.data.state as PlayerGameState });
+          }
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to accept stack penalty' });
