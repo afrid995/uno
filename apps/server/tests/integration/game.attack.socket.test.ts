@@ -147,7 +147,7 @@ describe('UNO Attack — Server Socket.IO Multiplayer Integration Tests (Mattel 
     expect(totalCards).toBe(112);
 
     // Identify current player
-    const currentId = p1State!.currentTurnGuestId;
+    const currentId = session.state.players[session.state.currentPlayerIndex].id;
     const currentSocket = currentId === p1Id ? s1 : s2;
 
     // Test hitting the launcher via GAME_DRAW_CARD

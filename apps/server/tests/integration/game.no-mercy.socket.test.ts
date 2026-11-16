@@ -356,34 +356,67 @@ describe('UNO Show \'em No Mercy — Server Socket.IO Multiplayer Integration Te
     );
     session.state = sWithSecondWrd4;
 
-    // P1 attempts to stack Wild Reverse Draw 4 onto active Draw penalty -> MUST BE REJECTED!
+    // P1 stacks Wild Reverse Draw 4 onto active Draw penalty -> MUST BE ACCEPTED (+4 >= 4)!
     const stackWrd4Ack = await new Promise<any>((resolve) => {
       s1.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: wrd4Second.id, chosenColor: 'blue' }, resolve);
     });
-    expect(stackWrd4Ack.success).toBe(false);
-    expect(stackWrd4Ack.error?.message).toMatch(/not an eligible Draw Card/);
+    expect(stackWrd4Ack.success).toBe(true);
 
-    // Now inject an eligible Draw Four (+4) into P1's hand
-    const { nextState: sWithD4, card: d4 } = NoMercyFixtureBuilder.injectPlayableCard(
-      session.state,
-      p1Id,
-      'draw_four'
-    );
-    session.state = sWithD4;
-
-    // P1 stacks Draw Four (+4 >= 4) -> ACCEPTED!
-    const stackD4Ack = await new Promise<any>((resolve) => {
-      s1.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: d4.id }, resolve);
-    });
-    expect(stackD4Ack.success).toBe(true);
-
-    // Penalty is now passed to P2 with 8 cards!
+    // Penalty accumulates to 8 and reverses back to P2!
     expect(session.state.pendingActionState?.type).toBe('AWAITING_STACK_RESOLUTION');
     if (session.state.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION') {
       expect(session.state.pendingActionState.targetPlayerId).toBe(p2Id);
       expect(session.state.pendingActionState.accumulatedPenalty).toBe(8);
+      expect(session.state.pendingActionState.lastStackedValue).toBe(4);
     }
     expect(session.state.currentPlayerIndex).toBe(1);
+
+    // P2 attempts to stack an ineligible non-draw card (e.g. reverse) -> REJECTED!
+    const { nextState: sWithRev, card: revCard } = NoMercyFixtureBuilder.injectPlayableCard(
+      session.state,
+      p2Id,
+      'reverse',
+      'blue'
+    );
+    session.state = sWithRev;
+
+    const stackInvalidAck = await new Promise<any>((resolve) => {
+      s2.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: revCard.id }, resolve);
+    });
+    expect(stackInvalidAck.success).toBe(false);
+    expect(stackInvalidAck.error?.message).toMatch(/not an eligible Draw Card/);
+
+    // Now inject an eligible Draw Four (+4) into P2's hand
+    const { nextState: sWithD4, card: d4 } = NoMercyFixtureBuilder.injectPlayableCard(
+      session.state,
+      p2Id,
+      'draw_four'
+    );
+    session.state = sWithD4;
+
+    // P2 stacks Draw Four (+4 >= 4) -> ACCEPTED!
+    const stackD4Ack = await new Promise<any>((resolve) => {
+      s2.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: d4.id }, resolve);
+    });
+    expect(stackD4Ack.success).toBe(true);
+
+    // Penalty is now passed to P1 with 12 cards!
+    expect(session.state.pendingActionState?.type).toBe('AWAITING_STACK_RESOLUTION');
+    if (session.state.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION') {
+      expect(session.state.pendingActionState.targetPlayerId).toBe(p1Id);
+      expect(session.state.pendingActionState.accumulatedPenalty).toBe(12);
+    }
+    expect(session.state.currentPlayerIndex).toBe(0);
+
+    // P1 accepts the accumulated penalty over Socket.IO
+    const acceptAck = await new Promise<any>((resolve) => {
+      s1.emit(SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY, {}, resolve);
+    });
+    expect(acceptAck.success).toBe(true);
+    expect(session.state.pendingActionState).toBeNull();
+
+    await new Promise<void>((res) => s2.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
+    await new Promise<void>((res) => s1.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
   });
 
   it('rejects /api/test/set-no-mercy-hand-size if targetCount exceeds 24 cards', async () => {

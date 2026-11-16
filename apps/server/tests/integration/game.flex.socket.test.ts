@@ -145,6 +145,9 @@ describe('UNO Flex — Server Socket.IO Multiplayer Integration Tests', () => {
     expect(session).toBeDefined();
     expect(session!.state.variant).toBe('uno_flex');
     expect(() => assertValidFlexGameState(session!.state)).not.toThrow();
+
+    await new Promise<void>((res) => s2.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
+    await new Promise<void>((res) => s1.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
   });
 
   it('handles playing a card in flex mode over Socket.IO and updates Power Card status', async () => {
@@ -156,7 +159,7 @@ describe('UNO Flex — Server Socket.IO Multiplayer Integration Tests', () => {
       new Promise<void>((res) => s2.on('connect', () => res())),
     ]);
 
-    const createRes = await new Promise<{ success: boolean; data?: { roomCode: string } }>((res) => {
+    const createRes = await new Promise<{ success: boolean; data?: { id: string; roomCode: string } }>((res) => {
       s1.emit(
         SOCKET_EVENTS.ROOM_CREATE,
         { maxPlayers: 2, settings: { variant: 'uno_flex' } },
@@ -164,6 +167,7 @@ describe('UNO Flex — Server Socket.IO Multiplayer Integration Tests', () => {
       );
     });
     const roomCode = createRes.data!.roomCode;
+    const roomId = createRes.data!.id;
 
     await new Promise<{ success: boolean }>((res) => {
       s2.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, (response: any) => res(response));
@@ -174,7 +178,9 @@ describe('UNO Flex — Server Socket.IO Multiplayer Integration Tests', () => {
 
     let activeState: PlayerGameState | null = null;
     s1.on(SOCKET_EVENTS.GAME_STATE, (payload: { state: PlayerGameState }) => {
-      activeState = payload.state;
+      if (payload.state.roomId === roomId) {
+        activeState = payload.state;
+      }
     });
 
     await new Promise<{ success: boolean }>((res) => {
@@ -225,6 +231,9 @@ describe('UNO Flex — Server Socket.IO Multiplayer Integration Tests', () => {
 
     // Verify continuing color is regular color (red)
     expect(session.state.activeColor).toBe('red');
+
+    await new Promise<void>((res) => s2.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
+    await new Promise<void>((res) => s1.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
   });
 
   it('handles Targeted Draw Four over Socket.IO in UNO Flex', async () => {

@@ -28,6 +28,7 @@ export function getNoMercyDrawPenalty(cardValue: string): number | null {
     case 'draw_two':
       return 2;
     case 'draw_four':
+    case 'wild_draw_four':
     case 'wild_reverse_draw_four':
       return 4;
     case 'wild_draw_six':
@@ -40,21 +41,22 @@ export function getNoMercyDrawPenalty(cardValue: string): number | null {
 }
 
 /**
- * Returns the penalty value for eligible Stacking Draw Cards (+2, +4, +6, +10).
+ * Returns the penalty value for eligible Stacking Draw Cards (+2, +4, +6, +10, Wild Reverse Draw 4).
  *
  * Per official Mattel HWV18 "Stacking" rule:
- * "If someone plays a Draw Card on you (+2, +4, +6, +10), you can 'Stack' the penalty
- * by playing a Draw Card of equal or higher value from your hand."
+ * "If someone plays a Draw Card against you (+2, +4, Wild Reverse Draw 4, +6, +10), you can
+ * 'Stack' the penalty by playing another Draw Card from your hand of equal or higher value."
  *
- * Wild Reverse Draw 4 is an Action card with its own reverse + draw 4 instruction
- * (and 2-player rebound rule); it is NOT a generally eligible Stacking Draw Card
- * and cannot be stacked onto an active Draw penalty.
+ * Wild Reverse Draw 4 is a +4 Draw card that reverses the direction of play and passes
+ * the accumulated penalty to the next player in the reversed direction.
  */
 export function getNoMercyStackCardValue(cardValue: string): number | null {
   switch (cardValue) {
     case 'draw_two':
       return 2;
     case 'draw_four':
+    case 'wild_draw_four':
+    case 'wild_reverse_draw_four':
       return 4;
     case 'wild_draw_six':
       return 6;

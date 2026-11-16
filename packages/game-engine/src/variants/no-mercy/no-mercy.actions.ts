@@ -771,7 +771,12 @@ export class NoMercyActionProcessor {
       );
     }
 
-    const turnDirection = state.turnDirection;
+    let turnDirection = state.turnDirection;
+    if (card.value === 'wild_reverse_draw_four') {
+      turnDirection = reverseDirection(turnDirection);
+      ctx.addEvent('DIRECTION_REVERSED', player.id, { turnDirection });
+    }
+
     const nextTargetIndex = this.getNextActivePlayerIndex(playerIndex, state.players, turnDirection, 1);
     const nextTargetPlayer = state.players[nextTargetIndex];
 

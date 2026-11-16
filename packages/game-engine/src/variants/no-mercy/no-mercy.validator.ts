@@ -108,7 +108,7 @@ export class NoMercyMoveValidator {
           return {
             valid: false,
             code: 'INVALID_CARD_MATCH',
-            message: `Card ${card.value} is not an eligible Draw Card (+2, +4, +6, +10) and cannot be stacked onto an active Draw penalty.`,
+            message: `Card ${card.value} is not an eligible Draw Card (+2, +4, +6, +10, Wild Reverse Draw 4) and cannot be stacked onto an active Draw penalty.`,
           };
         }
 
