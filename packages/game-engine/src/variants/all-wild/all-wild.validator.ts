@@ -178,11 +178,20 @@ export class AllWildMoveValidator {
     }
 
     const player = state.players.find((p) => p.id === playerId);
-    if (!player) {
+    if (!player || player.isEliminated) {
       return {
         valid: false,
         code: 'INVALID_PLAYER',
-        message: `Player '${playerId}' is not in this game.`,
+        message: `Player '${playerId}' is not in this game or is eliminated.`,
+      };
+    }
+
+    const isCurrentTurn = state.players[state.currentPlayerIndex]?.id === playerId;
+    if (!isCurrentTurn) {
+      return {
+        valid: false,
+        code: 'NOT_YOUR_TURN',
+        message: 'You can only declare UNO on your turn.',
       };
     }
 
@@ -190,7 +199,23 @@ export class AllWildMoveValidator {
       return {
         valid: false,
         code: 'INVALID_UNO_CALL',
-        message: 'You can only declare UNO when you have 1 or 2 cards remaining.',
+        message: 'You can only declare UNO when you have 2 cards remaining.',
+      };
+    }
+
+    if (player.hand.length < 2) {
+      return {
+        valid: false,
+        code: 'INVALID_UNO_CALL',
+        message: 'You cannot declare UNO after playing your card.',
+      };
+    }
+
+    if (player.hasDeclaredUno) {
+      return {
+        valid: false,
+        code: 'INVALID_UNO_CALL',
+        message: 'You have already declared UNO.',
       };
     }
 
@@ -218,6 +243,15 @@ export class AllWildMoveValidator {
       };
     }
 
+    const targetPlayer = state.players.find((p) => p.id === targetPlayerId);
+    if (!targetPlayer || targetPlayer.isEliminated) {
+      return {
+        valid: false,
+        code: 'INVALID_PLAYER',
+        message: 'Target player not found or eliminated.',
+      };
+    }
+
     if (state.unoVulnerablePlayerId !== targetPlayerId) {
       return {
         valid: false,
@@ -226,12 +260,19 @@ export class AllWildMoveValidator {
       };
     }
 
-    const targetPlayer = state.players.find((p) => p.id === targetPlayerId);
-    if (!targetPlayer || targetPlayer.hand.length !== 1) {
+    if (targetPlayer.hand.length !== 1) {
       return {
         valid: false,
         code: 'TARGET_NOT_VULNERABLE',
         message: 'Target player does not have exactly one card.',
+      };
+    }
+
+    if (targetPlayer.hasDeclaredUno) {
+      return {
+        valid: false,
+        code: 'TARGET_NOT_VULNERABLE',
+        message: 'Target player has already declared UNO.',
       };
     }
 

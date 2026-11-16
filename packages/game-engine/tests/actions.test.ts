@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ActionProcessor } from '../src/actions/action.processor';
+import { MoveValidator } from '../src/validation/move.validator';
 import { CardFactory } from '../src/cards/card.factory';
 import { GameState } from '../src/game/game.types';
 
@@ -288,14 +289,14 @@ describe('Card Action Effects and State Transitions', () => {
     expect(nextState.players[0].hasDeclaredUno).toBe(false);
     expect(nextState.unoVulnerablePlayerId).toBe('p1');
 
-    // P2 catches P1's failure -> P1 draws 4 penalty cards (Mattel 42001)
+    // P2 catches P1's failure -> P1 draws 2 penalty cards (Mattel standard)
     const { nextState: caughtState, events } = ActionProcessor.process(nextState, {
       type: 'CHALLENGE_UNO_FAILURE',
       challengerPlayerId: 'p2',
       targetPlayerId: 'p1',
     });
 
-    expect(caughtState.players[0].hand).toHaveLength(1 + 4);
+    expect(caughtState.players[0].hand).toHaveLength(1 + 2);
     expect(caughtState.unoVulnerablePlayerId).toBeNull();
     expect(events.some((e) => e.type === 'UNO_CHALLENGE_SUCCESS')).toBe(true);
   });
@@ -355,7 +356,7 @@ describe('Card Action Effects and State Transitions', () => {
     expect(events.some((e) => e.type === 'PLAYER_SKIPPED' || e.type === 'DIRECTION_REVERSED')).toBe(true);
   });
 
-  it('self-rescue: player vulnerable to UNO can call UNO before being caught to clear vulnerability', () => {
+  it('retroactive declaration: player vulnerable to UNO with 1 card is rejected from calling UNO', () => {
     // P1 down to 1 card without UNO call
     const state = createInitialState([cRed5, cBlue5]);
     const { nextState: vulnerableState } = ActionProcessor.process(state, {
@@ -365,15 +366,12 @@ describe('Card Action Effects and State Transitions', () => {
     });
     expect(vulnerableState.unoVulnerablePlayerId).toBe('p1');
 
-    // P1 calls UNO before P2 catches them -> self rescue!
-    const { nextState: rescuedState, events } = ActionProcessor.process(vulnerableState, {
+    // P1 cannot retroactively call UNO with 1 card!
+    const validation = MoveValidator.validate(vulnerableState, {
       type: 'CALL_UNO',
       playerId: 'p1',
     });
-
-    expect(rescuedState.unoVulnerablePlayerId).toBeNull();
-    expect(rescuedState.players[0].hasDeclaredUno).toBe(true);
-    expect(events.some((e) => e.type === 'UNO_CALLED')).toBe(true);
+    expect(validation.valid).toBe(false);
   });
 
   it('UNO immunity window: once next player acts, missed UNO can no longer be challenged', () => {

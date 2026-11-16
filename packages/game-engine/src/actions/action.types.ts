@@ -37,6 +37,8 @@ export interface PlayCardAction {
   readonly playMode?: PlayCardMode;
   /** Optional target player ID for targeted flex effects (e.g. Flex Wild Target Draw Two or Flex Wild Draw Four) */
   readonly targetPlayerId?: string;
+  /** Optional atomic flag indicating the player declares UNO with this card play */
+  readonly declareUno?: boolean;
 }
 
 export interface DrawCardAction {

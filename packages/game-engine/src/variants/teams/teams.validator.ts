@@ -447,24 +447,28 @@ export class TeamsMoveValidator {
   }
 
   private static validateCallUno(state: GameState, action: CallUnoAction): ValidationResult {
+    if (state.status !== 'IN_PROGRESS') {
+      return { valid: false, code: 'MATCH_NOT_ACTIVE', message: 'Cannot declare UNO: match is not in progress.' };
+    }
+
     const { playerId, targetPlayerId } = action;
     const player = state.players.find((p) => p.id === playerId);
-    if (!player) {
+    if (!player || player.isEliminated) {
       return {
         valid: false,
         code: 'INVALID_PLAYER',
-        message: 'Player not found.',
+        message: 'Player not found or eliminated.',
       };
     }
 
     // In UNO Teams, you can call UNO for yourself or for your partner
     const targetId = targetPlayerId ?? playerId;
     const targetPlayer = state.players.find((p) => p.id === targetId);
-    if (!targetPlayer) {
+    if (!targetPlayer || targetPlayer.isEliminated) {
       return {
         valid: false,
         code: 'INVALID_PLAYER',
-        message: 'Target player not found.',
+        message: 'Target player not found or eliminated.',
       };
     }
 
@@ -477,15 +481,38 @@ export class TeamsMoveValidator {
           message: 'You can only call UNO for yourself or your teammate.',
         };
       }
-    }
-
-    // Target must hold 1 or 2 cards and not have declared UNO
-    if (targetPlayer.hand.length > 2) {
-      return {
-        valid: false,
-        code: 'INVALID_UNO_CALL',
-        message: 'Player can only declare UNO with 1 or 2 cards in hand.',
-      };
+      // In UNO Teams: A player may shout UNO on behalf of their teammate holding 1 or 2 cards
+      // to protect them before the opposing team catches them!
+      if (targetPlayer.hand.length > 2 || targetPlayer.hand.length === 0) {
+        return {
+          valid: false,
+          code: 'INVALID_UNO_CALL',
+          message: 'Teammate can only declare UNO with 1 or 2 cards in hand.',
+        };
+      }
+    } else {
+      const isCurrentTurn = state.players[state.currentPlayerIndex]?.id === playerId;
+      if (!isCurrentTurn) {
+        return {
+          valid: false,
+          code: 'NOT_YOUR_TURN',
+          message: 'You can only declare UNO on your turn.',
+        };
+      }
+      if (targetPlayer.hand.length > 2) {
+        return {
+          valid: false,
+          code: 'INVALID_UNO_CALL',
+          message: 'Player can only declare UNO with 2 cards in hand before playing down to 1.',
+        };
+      }
+      if (targetPlayer.hand.length < 2) {
+        return {
+          valid: false,
+          code: 'INVALID_UNO_CALL',
+          message: 'Player cannot declare UNO after playing their card.',
+        };
+      }
     }
 
     if (targetPlayer.hasDeclaredUno) {
@@ -503,6 +530,10 @@ export class TeamsMoveValidator {
     state: GameState,
     action: ChallengeUnoFailureAction
   ): ValidationResult {
+    if (state.status !== 'IN_PROGRESS') {
+      return { valid: false, code: 'MATCH_NOT_ACTIVE', message: 'Cannot challenge UNO: match is not in progress.' };
+    }
+
     const { challengerPlayerId, targetPlayerId } = action;
 
     if (challengerPlayerId === targetPlayerId) {
@@ -516,11 +547,11 @@ export class TeamsMoveValidator {
     const challenger = state.players.find((p) => p.id === challengerPlayerId);
     const target = state.players.find((p) => p.id === targetPlayerId);
 
-    if (!challenger || !target) {
+    if (!challenger || !target || challenger.isEliminated || target.isEliminated) {
       return {
         valid: false,
         code: 'INVALID_PLAYER',
-        message: 'Participant not found.',
+        message: 'Participant not found or eliminated.',
       };
     }
 
@@ -538,6 +569,22 @@ export class TeamsMoveValidator {
         valid: false,
         code: 'TARGET_NOT_VULNERABLE',
         message: `Player ${targetPlayerId} is not vulnerable to a missed-UNO challenge.`,
+      };
+    }
+
+    if (target.hand.length !== 1) {
+      return {
+        valid: false,
+        code: 'TARGET_NOT_VULNERABLE',
+        message: 'Target player does not have exactly 1 card.',
+      };
+    }
+
+    if (target.hasDeclaredUno) {
+      return {
+        valid: false,
+        code: 'TARGET_NOT_VULNERABLE',
+        message: 'Target player has already declared UNO.',
       };
     }
 

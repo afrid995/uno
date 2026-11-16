@@ -458,7 +458,7 @@ export class NoMercyActionProcessor {
 
   private static processPlayCard(
     state: GameState,
-    action: { playerId: string; cardId: string; chosenColor?: CardColor },
+    action: { playerId: string; cardId: string; chosenColor?: CardColor; declareUno?: boolean },
     rng: RandomNumberGenerator,
     ctx: ActionContext
   ): ActionProcessResult {
@@ -507,10 +507,14 @@ export class NoMercyActionProcessor {
 
     // UNO vulnerability & declarations check
     let unoVulnerablePlayerId: string | null = null;
-    let hasDeclaredUno = player.hasDeclaredUno;
+    let hasDeclaredUno = false;
 
     if (remainingHand.length === 1) {
-      if (hasDeclaredUno) {
+      if (player.hasDeclaredUno || action.declareUno) {
+        hasDeclaredUno = true;
+        if (!player.hasDeclaredUno && action.declareUno) {
+          ctx.addEvent('UNO_CALLED', player.id, { playerId: player.id, declaredWithPlay: true });
+        }
         unoVulnerablePlayerId = null;
       } else {
         unoVulnerablePlayerId = player.id;
@@ -1226,7 +1230,7 @@ export class NoMercyActionProcessor {
     const nextState: GameState = {
       ...state,
       players: updatedPlayers,
-      unoVulnerablePlayerId: null,
+      unoVulnerablePlayerId: state.unoVulnerablePlayerId,
       sequenceNumber: ctx.getSeq(),
       updatedAt: ctx.timestamp,
     };

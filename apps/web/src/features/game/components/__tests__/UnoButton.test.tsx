@@ -35,4 +35,34 @@ describe('UnoButton Component', () => {
     expect(screen.getByText('UNO CALLED!')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /shout uno/i })).not.toBeInTheDocument();
   });
+
+  it('displays VULNERABLE badge when player has 1 card without declaring UNO', () => {
+    render(
+      <UnoButton
+        canCallUno={false}
+        hasDeclaredUno={false}
+        isVulnerable={true}
+        onCallUno={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('VULNERABLE!')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /shout uno/i })).not.toBeInTheDocument();
+  });
+
+  it('displays UNO ARMED button when isArmed is true and toggles on click', () => {
+    const onCallUno = vi.fn();
+    render(
+      <UnoButton
+        canCallUno={true}
+        isArmed={true}
+        onCallUno={onCallUno}
+      />
+    );
+
+    const button = screen.getByRole('button', { name: /uno armed/i });
+    expect(button).not.toBeDisabled();
+    fireEvent.click(button);
+    expect(onCallUno).toHaveBeenCalledTimes(1);
+  });
 });

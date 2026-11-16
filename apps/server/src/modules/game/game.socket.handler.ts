@@ -96,7 +96,8 @@ export function registerGameHandlers(
         validated.cardId,
         validated.chosenColor,
         validated.playMode,
-        validated.targetPlayerId
+        validated.targetPlayerId,
+        validated.declareUno
       );
 
       // Publish personalized projections and handle round/match completion
@@ -255,7 +256,7 @@ export function registerGameHandlers(
       const roomCode = getActiveRoomCode();
       const validated = await challengeUnoInputSchema.parseAsync(payload);
 
-      const { nextState } = await gameService.challengeUno(
+      const { nextState, events } = await gameService.challengeUno(
         guestId,
         roomCode,
         validated.targetPlayerId
@@ -263,7 +264,10 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      const penaltyCards = nextState.variant === 'uno_flip' ? 2 : 4;
+      const successEvent = events.find((e) => e.type === 'UNO_CHALLENGE_SUCCESS' || e.type === 'UNO_CHALLENGED');
+      const penaltyCards = (successEvent?.payload?.penaltyCards as number) ??
+        (successEvent?.payload?.penaltyCardsDrawn as number) ??
+        2;
 
       io.to(roomCode).emit(SOCKET_EVENTS.GAME_CARD_ANIMATION, {
         id: `${nextState.id}-${nextState.sequenceNumber}-DRAW-${validated.targetPlayerId}`,

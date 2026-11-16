@@ -28,8 +28,10 @@ interface GameStateStore {
   roundScores: Record<string, number> | null;
   disconnectedPlayers: Record<string, { disconnectTimestamp: number; gracePeriodSeconds: number }>;
   turnRecoveryNotification: string | null;
+  isUnoDeclaredForNextPlay: boolean;
 
   // Actions
+  toggleDeclareUno: () => void;
   dismissTurnRecoveryNotification: () => void;
   playCard: (
     cardId: string,
@@ -82,6 +84,7 @@ const initialGameState = {
   roundScores: null,
   disconnectedPlayers: {} as Record<string, { disconnectTimestamp: number; gracePeriodSeconds: number }>,
   turnRecoveryNotification: null as string | null,
+  isUnoDeclaredForNextPlay: false,
 };
 
 export const useGameStore = create<GameStateStore>((set, get) => ({
@@ -92,12 +95,15 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   closeWildColorPicker: () => set({ selectedCardForWild: null }),
   dismissRoundModal: () => set({ showRoundResultModal: false }),
   dismissTurnRecoveryNotification: () => set({ turnRecoveryNotification: null }),
+  toggleDeclareUno: () =>
+    set((state) => ({ isUnoDeclaredForNextPlay: !state.isUnoDeclaredForNextPlay })),
   clearError: () => set({ error: null }),
 
   playCard: async (cardId, chosenColor, playMode, targetPlayerId) => {
     if (get().isActionLoading) {
       return false;
     }
+    const declareUno = get().isUnoDeclaredForNextPlay;
     set({ isActionLoading: true, error: null, selectedCardForWild: null });
     const socket = socketManager.getSocket();
 
@@ -116,12 +122,12 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
 
       socket.emit(
         SOCKET_EVENTS.GAME_PLAY_CARD,
-        { cardId, chosenColor, playMode, targetPlayerId },
+        { cardId, chosenColor, playMode, targetPlayerId, declareUno: declareUno ? true : undefined },
         (res) => {
           if (isSettled) return;
           isSettled = true;
           clearTimeout(timer);
-          set({ isActionLoading: false });
+          set({ isActionLoading: false, isUnoDeclaredForNextPlay: false });
           if (res.success) {
             if (res.data?.state) {
               set({ gameState: res.data.state as PlayerGameState });
@@ -236,14 +242,18 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
         if (isSettled) return;
         isSettled = true;
         clearTimeout(timer);
-        set({ isActionLoading: false });
         if (res.success) {
+          set({ isActionLoading: false, isUnoDeclaredForNextPlay: true });
           if (res.data?.state) {
             set({ gameState: res.data.state as PlayerGameState });
           }
           resolve(true);
         } else {
-          set({ error: res.error?.message || 'Failed to declare UNO' });
+          set({
+            isActionLoading: false,
+            isUnoDeclaredForNextPlay: false,
+            error: res.error?.message || 'Failed to declare UNO',
+          });
           resolve(false);
         }
       });

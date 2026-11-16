@@ -8,6 +8,7 @@ export interface PublicPlayer {
   readonly username: string;
   readonly cardCount: number;
   readonly hasDeclaredUno: boolean;
+  readonly isVulnerableToUno?: boolean;
   readonly score: number;
   readonly isEliminated?: boolean;
   readonly powerCardStatus?: PowerCardStatus;
@@ -281,6 +282,7 @@ export function getPublicGameState(state: GameState): PublicGameState {
       username: p.username,
       cardCount: p.hand.length,
       hasDeclaredUno: p.hasDeclaredUno,
+      isVulnerableToUno: p.id === state.unoVulnerablePlayerId,
       score: p.score,
       isEliminated: p.isEliminated,
       powerCardStatus: p.powerCardStatus,

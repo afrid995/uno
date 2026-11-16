@@ -253,16 +253,45 @@ export class FlipMoveValidator {
   }
 
   private static validateCallUno(state: GameState, playerId: string): ValidationResult {
+    if (state.status !== 'IN_PROGRESS') {
+      return { valid: false, code: 'MATCH_NOT_ACTIVE', message: 'Cannot declare UNO: match is not in progress.' };
+    }
+
     const player = state.players.find((p) => p.id === playerId);
-    if (!player) {
-      return { valid: false, code: 'INVALID_PLAYER', message: 'Player not found.' };
+    if (!player || player.isEliminated) {
+      return { valid: false, code: 'INVALID_PLAYER', message: 'Player not found or eliminated.' };
+    }
+
+    const isCurrentTurn = state.players[state.currentPlayerIndex]?.id === playerId;
+    if (!isCurrentTurn) {
+      return {
+        valid: false,
+        code: 'NOT_YOUR_TURN',
+        message: 'You can only declare UNO on your turn.',
+      };
     }
 
     if (player.hand.length > 2) {
       return {
         valid: false,
         code: 'INVALID_UNO_CALL',
-        message: 'You can only call UNO when you hold 2 cards or 1 card.',
+        message: 'You can only call UNO when you have 2 cards remaining.',
+      };
+    }
+
+    if (player.hand.length < 2) {
+      return {
+        valid: false,
+        code: 'INVALID_UNO_CALL',
+        message: 'You cannot declare UNO after playing your card.',
+      };
+    }
+
+    if (player.hasDeclaredUno) {
+      return {
+        valid: false,
+        code: 'INVALID_UNO_CALL',
+        message: 'You have already declared UNO.',
       };
     }
 
@@ -274,6 +303,10 @@ export class FlipMoveValidator {
     challengerPlayerId: string,
     targetPlayerId: string
   ): ValidationResult {
+    if (state.status !== 'IN_PROGRESS') {
+      return { valid: false, code: 'MATCH_NOT_ACTIVE', message: 'Cannot challenge UNO: match is not in progress.' };
+    }
+
     if (challengerPlayerId === targetPlayerId) {
       return {
         valid: false,
@@ -282,11 +315,32 @@ export class FlipMoveValidator {
       };
     }
 
+    const target = state.players.find((p) => p.id === targetPlayerId);
+    if (!target || target.isEliminated) {
+      return { valid: false, code: 'INVALID_PLAYER', message: 'Target player not found or eliminated.' };
+    }
+
     if (state.unoVulnerablePlayerId !== targetPlayerId) {
       return {
         valid: false,
         code: 'TARGET_NOT_VULNERABLE',
         message: `Player ${targetPlayerId} is not vulnerable to a missed-UNO challenge.`,
+      };
+    }
+
+    if (target.hand.length !== 1) {
+      return {
+        valid: false,
+        code: 'TARGET_NOT_VULNERABLE',
+        message: 'Target player does not have exactly 1 card.',
+      };
+    }
+
+    if (target.hasDeclaredUno) {
+      return {
+        valid: false,
+        code: 'TARGET_NOT_VULNERABLE',
+        message: 'Target player has already declared UNO.',
       };
     }
 

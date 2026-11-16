@@ -46,6 +46,8 @@ export const GameBoard: React.FC = () => {
     clearError,
     disconnectedPlayers,
     turnRecoveryNotification,
+    isUnoDeclaredForNextPlay,
+    toggleDeclareUno,
   } = useGameStore();
 
   const [selectedCardForFlexChoice, setSelectedCardForFlexChoice] = React.useState<Card | null>(null);
@@ -289,6 +291,35 @@ export const GameBoard: React.FC = () => {
         </div>
       )}
 
+      {/* Catch Missed UNO Alert Banner for Opponents */}
+      {self.canCatchUno && gameState.unoVulnerablePlayerId && gameState.unoVulnerablePlayerId !== self.id && (
+        <motion.div
+          data-testid="catch-uno-alert-banner"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="mx-auto my-1 max-w-xl w-full p-2.5 rounded-2xl bg-rose-950/95 border-2 border-rose-500 text-white font-bold text-xs flex items-center justify-between shadow-glow-red animate-pulse px-4"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-base">🚨</span>
+            <span>
+              <strong>
+                {gameState.players.find((p) => p.id === gameState.unoVulnerablePlayerId)?.username ?? 'Opponent'}
+              </strong>{' '}
+              forgot to declare UNO!
+            </span>
+          </div>
+          <button
+            data-testid="catch-uno-banner-btn"
+            disabled={isActionLoading}
+            onClick={() => challengeUno(gameState.unoVulnerablePlayerId!)}
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-rose-300 cursor-pointer transition-all active:scale-95 flex items-center gap-1.5"
+          >
+            <span>CATCH UNO!</span>
+          </button>
+        </motion.div>
+      )}
+
       {/* Bottom Area: Controls & Player Hand */}
       <div className="w-full flex flex-col items-center space-y-2 mt-auto">
         {/* Action Controls Row */}
@@ -297,8 +328,15 @@ export const GameBoard: React.FC = () => {
           <UnoButton
             canCallUno={self.canCallUno}
             hasDeclaredUno={selfPublic?.hasDeclaredUno}
+            isVulnerable={gameState.unoVulnerablePlayerId === self.id}
+            isArmed={isUnoDeclaredForNextPlay}
             isLoading={isActionLoading}
-            onCallUno={callUno}
+            onCallUno={() => {
+              if (self.canCallUno) {
+                toggleDeclareUno();
+                callUno();
+              }
+            }}
           />
 
           {/* Drawn Card Action Controls (Case A) */}

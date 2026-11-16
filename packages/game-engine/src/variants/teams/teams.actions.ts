@@ -318,12 +318,17 @@ export class TeamsActionProcessor {
     const remainingHand = player.hand.filter((c) => c.id !== cardId);
 
     // Track missed UNO vulnerability
-    let unoVulnerablePlayerId = state.unoVulnerablePlayerId;
-    if (unoVulnerablePlayerId === playerId) {
-      unoVulnerablePlayerId = null;
-    }
-    if (remainingHand.length === 1 && !player.hasDeclaredUno) {
-      unoVulnerablePlayerId = playerId;
+    let unoVulnerablePlayerId: string | null = null;
+    let hasDeclared = false;
+    if (remainingHand.length === 1) {
+      if (player.hasDeclaredUno || action.declareUno) {
+        hasDeclared = true;
+        if (!player.hasDeclaredUno && action.declareUno) {
+          addEvent('UNO_CALLED', playerId, { playerId, targetPlayerId: playerId, declaredWithPlay: true });
+        }
+      } else {
+        unoVulnerablePlayerId = playerId;
+      }
     }
 
     const updatedCurrentPlayer: Player = {
@@ -331,7 +336,7 @@ export class TeamsActionProcessor {
       hand: remainingHand,
       hasDrawnThisTurn: false,
       drawnCardId: null,
-      hasDeclaredUno: remainingHand.length === 1 ? player.hasDeclaredUno : false,
+      hasDeclaredUno: hasDeclared,
     };
 
     let updatedPlayers = state.players.map((p, idx) =>
@@ -854,7 +859,7 @@ export class TeamsActionProcessor {
     addEvent('UNO_CALLED', playerId, { targetPlayerId: targetId });
 
     let unoVulnerablePlayerId = state.unoVulnerablePlayerId;
-    if (unoVulnerablePlayerId === targetId) {
+    if (targetId !== playerId && unoVulnerablePlayerId === targetId) {
       unoVulnerablePlayerId = null;
     }
 

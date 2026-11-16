@@ -116,6 +116,7 @@ export const playCardInputSchema = z.object({
   ]).optional(),
   playMode: z.enum(['regular', 'flex']).optional(),
   targetPlayerId: z.string().optional(),
+  declareUno: z.boolean().optional(),
 });
 export type PlayCardInput = z.infer<typeof playCardInputSchema>;
 

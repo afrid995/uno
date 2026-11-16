@@ -132,14 +132,21 @@ export class AttackActionProcessor {
     }
 
     // UNO vulnerability check:
-    // If player now has exactly 1 card left and did NOT declare UNO: vulnerable!
-    if (remainingHand.length === 1 && !player.hasDeclaredUno) {
-      unoVulnerablePlayerId = playerId;
-      addEvent('PLAYER_VULNERABLE_UNO', playerId, {});
-    } else {
-      if (unoVulnerablePlayerId === playerId) {
+    // If player now has exactly 1 card left:
+    let hasDeclared = false;
+    if (remainingHand.length === 1) {
+      if (player.hasDeclaredUno || action.declareUno) {
+        hasDeclared = true;
+        if (!player.hasDeclaredUno && action.declareUno) {
+          addEvent('UNO_CALLED', playerId, { playerId, declaredWithPlay: true });
+        }
         unoVulnerablePlayerId = null;
+      } else {
+        unoVulnerablePlayerId = playerId;
+        addEvent('PLAYER_VULNERABLE_UNO', playerId, {});
       }
+    } else {
+      unoVulnerablePlayerId = null;
     }
 
     let updatedPlayers: Player[] = state.players.map((p) => {
@@ -147,7 +154,7 @@ export class AttackActionProcessor {
         return {
           ...p,
           hand: remainingHand,
-          hasDeclaredUno: remainingHand.length === 1 ? p.hasDeclaredUno : false,
+          hasDeclaredUno: hasDeclared,
           hasDrawnThisTurn: false,
           drawnCardId: null,
         };
@@ -531,7 +538,7 @@ export class AttackActionProcessor {
       ...state,
       players: updatedPlayers,
       sequenceNumber,
-      unoVulnerablePlayerId: state.unoVulnerablePlayerId === playerId ? null : state.unoVulnerablePlayerId,
+      unoVulnerablePlayerId: state.unoVulnerablePlayerId,
       updatedAt: new Date().toISOString(),
     };
 

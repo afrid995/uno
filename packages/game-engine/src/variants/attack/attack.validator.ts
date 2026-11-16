@@ -215,17 +215,46 @@ export class AttackMoveValidator {
   }
 
   static validateCallUno(state: GameState, action: CallUnoAction): ValidationResult {
-    const player = state.players.find((p) => p.id === action.playerId);
-    if (!player) {
-      return { valid: false, code: 'INVALID_PLAYER', message: 'Player not found.' };
+    if (state.status !== 'IN_PROGRESS') {
+      return { valid: false, code: 'MATCH_NOT_ACTIVE', message: 'Cannot declare UNO: match is not in progress.' };
     }
 
-    // Player can call UNO if they hold 1 or 2 cards and haven't declared it yet
-    if (player.hand.length > 2 || player.hasDeclaredUno) {
+    const player = state.players.find((p) => p.id === action.playerId);
+    if (!player || player.isEliminated) {
+      return { valid: false, code: 'INVALID_PLAYER', message: 'Player not found or eliminated.' };
+    }
+
+    const isCurrentTurn = state.players[state.currentPlayerIndex]?.id === action.playerId;
+    if (!isCurrentTurn) {
+      return {
+        valid: false,
+        code: 'NOT_YOUR_TURN',
+        message: 'You can only declare UNO on your turn.',
+      };
+    }
+
+    // Player can call UNO ONLY if they hold exactly 2 cards and haven't declared it yet
+    if (player.hand.length > 2) {
       return {
         valid: false,
         code: 'INVALID_UNO_CALL',
-        message: 'You can only declare UNO when you hold 1 or 2 cards and have not already declared.',
+        message: 'You can only declare UNO when you hold 2 cards before playing down to 1.',
+      };
+    }
+
+    if (player.hand.length < 2) {
+      return {
+        valid: false,
+        code: 'INVALID_UNO_CALL',
+        message: 'You cannot declare UNO after playing your card.',
+      };
+    }
+
+    if (player.hasDeclaredUno) {
+      return {
+        valid: false,
+        code: 'INVALID_UNO_CALL',
+        message: 'You have already declared UNO.',
       };
     }
 
@@ -233,6 +262,10 @@ export class AttackMoveValidator {
   }
 
   static validateChallengeUnoFailure(state: GameState, action: ChallengeUnoFailureAction): ValidationResult {
+    if (state.status !== 'IN_PROGRESS') {
+      return { valid: false, code: 'MATCH_NOT_ACTIVE', message: 'Cannot challenge UNO: match is not in progress.' };
+    }
+
     if (action.challengerPlayerId === action.targetPlayerId) {
       return {
         valid: false,
@@ -241,11 +274,32 @@ export class AttackMoveValidator {
       };
     }
 
+    const target = state.players.find((p) => p.id === action.targetPlayerId);
+    if (!target || target.isEliminated) {
+      return { valid: false, code: 'INVALID_PLAYER', message: 'Target player not found or eliminated.' };
+    }
+
     if (state.unoVulnerablePlayerId !== action.targetPlayerId) {
       return {
         valid: false,
         code: 'TARGET_NOT_VULNERABLE',
         message: 'Target player is not vulnerable to a missed-UNO challenge.',
+      };
+    }
+
+    if (target.hand.length !== 1) {
+      return {
+        valid: false,
+        code: 'TARGET_NOT_VULNERABLE',
+        message: 'Target player does not have exactly 1 card.',
+      };
+    }
+
+    if (target.hasDeclaredUno) {
+      return {
+        valid: false,
+        code: 'TARGET_NOT_VULNERABLE',
+        message: 'Target player has already declared UNO.',
       };
     }
 

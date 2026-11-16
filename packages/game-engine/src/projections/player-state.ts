@@ -196,10 +196,10 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
   const partner = state.variant === 'uno_teams' && player.teamId
     ? state.players.find((p) => p.teamId === player.teamId && p.id !== player.id)
     : undefined;
-  const partnerCanCallUno = partner && !partner.isEliminated && partner.hand.length <= 2 && !partner.hasDeclaredUno;
+  const partnerCanCallUno = partner && !partner.isEliminated && partner.hand.length === 2 && !partner.hasDeclaredUno;
 
-  // Player can call UNO if they hold 1 or 2 cards and haven't declared it yet, or if partner holds 1 or 2 cards in UNO Teams
-  const canCallUno = (!player.isEliminated && player.hand.length <= 2 && !player.hasDeclaredUno) || !!partnerCanCallUno;
+  // Player can call UNO if they hold 2 cards on their turn and haven't declared it yet, or if partner holds 2 cards in UNO Teams
+  const canCallUno = (!player.isEliminated && player.hand.length === 2 && isCurrentTurn && !player.hasDeclaredUno) || !!partnerCanCallUno;
 
   // Catching UNO is valid if someone else is currently vulnerable (in UNO Teams, partner cannot catch partner)
   const isPartnerVulnerable = partner && state.unoVulnerablePlayerId === partner.id;

@@ -164,8 +164,21 @@ export class FlipActionProcessor {
 
         // Check missed UNO vulnerability
         let newUnoVulnerablePlayerId: string | null = null;
-        if (updatedHand.length === 1 && !player.hasDeclaredUno) {
-          newUnoVulnerablePlayerId = player.id;
+        let hasDeclared = false;
+        if (updatedHand.length === 1) {
+          if (player.hasDeclaredUno || action.declareUno) {
+            hasDeclared = true;
+            if (!player.hasDeclaredUno && action.declareUno) {
+              generatedEvents.push({
+                type: 'UNO_DECLARED',
+                playerId: player.id,
+                payload: { declared: true, declaredWithPlay: true },
+                timestamp,
+              });
+            }
+          } else {
+            newUnoVulnerablePlayerId = player.id;
+          }
         }
 
         generatedEvents.push({
@@ -188,7 +201,7 @@ export class FlipActionProcessor {
             ? {
                 ...p,
                 hand: updatedHand,
-                hasDeclaredUno: updatedHand.length > 1 ? false : p.hasDeclaredUno,
+                hasDeclaredUno: hasDeclared,
                 hasDrawnThisTurn: false,
                 drawnCardId: null,
               }
@@ -634,8 +647,7 @@ export class FlipActionProcessor {
         intermediateState = {
           ...state,
           players: updatedPlayers,
-          unoVulnerablePlayerId:
-            state.unoVulnerablePlayerId === action.playerId ? null : state.unoVulnerablePlayerId,
+          unoVulnerablePlayerId: state.unoVulnerablePlayerId,
           updatedAt: timestamp,
         };
         break;

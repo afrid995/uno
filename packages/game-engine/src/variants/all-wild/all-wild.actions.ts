@@ -61,7 +61,7 @@ export class AllWildActionProcessor {
 
     switch (action.type) {
       case 'PLAY_CARD':
-        return this.processPlayCard(state, action.playerId, action.cardId, ctx, rng);
+        return this.processPlayCard(state, action.playerId, action.cardId, action.declareUno, ctx, rng);
 
       case 'DRAW_CARD':
         return this.processDrawCard(state, action.playerId, ctx, rng);
@@ -93,6 +93,7 @@ export class AllWildActionProcessor {
     state: GameState,
     playerId: string,
     cardId: string,
+    declareUno: boolean | undefined,
     ctx: ActionContext,
     rng: RandomNumberGenerator
   ): ActionProcessResult {
@@ -102,12 +103,16 @@ export class AllWildActionProcessor {
 
     // Remove card from player's hand
     const nextHand = player.hand.filter((c) => c.id !== cardId);
+    const hasDeclared = nextHand.length === 1 ? (player.hasDeclaredUno || !!declareUno) : false;
+    if (nextHand.length === 1 && declareUno && !player.hasDeclaredUno) {
+      ctx.addEvent('UNO_CALLED', player.id, { playerId: player.id, declaredWithPlay: true });
+    }
     const updatedPlayer: Player = {
       ...player,
       hand: nextHand,
       hasDrawnThisTurn: false,
       drawnCardId: null,
-      hasDeclaredUno: nextHand.length === 1 ? player.hasDeclaredUno : false,
+      hasDeclaredUno: hasDeclared,
     };
 
     // Update discard pile: played card becomes the top discard card
@@ -405,17 +410,12 @@ export class AllWildActionProcessor {
       p.id === playerId ? { ...p, hasDeclaredUno: true } : p
     );
 
-    let nextUnoVulnerable = state.unoVulnerablePlayerId;
-    if (nextUnoVulnerable === playerId) {
-      nextUnoVulnerable = null;
-    }
-
     ctx.addEvent('UNO_CALLED', player.id, { playerId });
 
     const nextState: GameState = {
       ...state,
       players: nextPlayers,
-      unoVulnerablePlayerId: nextUnoVulnerable,
+      unoVulnerablePlayerId: state.unoVulnerablePlayerId,
       sequenceNumber: ctx.nextSeq(),
       updatedAt: ctx.timestamp,
     };

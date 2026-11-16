@@ -135,19 +135,19 @@ export class FlexActionProcessor {
     const remainingHand = player.hand.filter((c) => c.id !== cardId);
 
     // Track UNO declaration status
-    let hasDeclaredUno = player.hasDeclaredUno;
+    let hasDeclaredUno = false;
     let unoVulnerablePlayerId: string | null = null;
 
     if (remainingHand.length === 1) {
-      if (hasDeclaredUno) {
-        // Player declared UNO ahead of time
-        hasDeclaredUno = false;
+      if (player.hasDeclaredUno || action.declareUno) {
+        hasDeclaredUno = true;
+        if (!player.hasDeclaredUno && action.declareUno) {
+          ctx.addEvent('game:uno-called', player.id, { playerId: player.id, declaredWithPlay: true });
+        }
       } else {
         // Vulnerable to challenge until next player acts
         unoVulnerablePlayerId = player.id;
       }
-    } else {
-      hasDeclaredUno = false;
     }
 
     const updatedPlayer: Player = {
@@ -762,7 +762,7 @@ export class FlexActionProcessor {
     const nextState: GameState = {
       ...state,
       players: nextPlayers,
-      unoVulnerablePlayerId: null, // Successfully declared
+      unoVulnerablePlayerId: state.unoVulnerablePlayerId,
       sequenceNumber: ctx.nextSeq(),
       updatedAt: ctx.timestamp,
     };

@@ -67,7 +67,16 @@ export class ActionProcessor {
 
     switch (action.type) {
       case 'PLAY_CARD':
-        nextState = this.processPlayCard(state, action.playerId, action.cardId, action.chosenColor, addEvent, currentSeq, rng);
+        nextState = this.processPlayCard(
+          state,
+          action.playerId,
+          action.cardId,
+          action.chosenColor,
+          action.declareUno,
+          addEvent,
+          currentSeq,
+          rng
+        );
         break;
 
       case 'DRAW_CARD':
@@ -121,6 +130,7 @@ export class ActionProcessor {
     playerId: string,
     cardId: string,
     chosenColor: CardColor | undefined,
+    declareUno: boolean | undefined,
     addEvent: (t: string, p: string | undefined, pl: Record<string, unknown>) => void,
     seq: number,
     rng: RandomNumberGenerator
@@ -144,15 +154,18 @@ export class ActionProcessor {
     const newDiscardPile = DeckManager.discardCard(state.discardPile, removedCard);
 
     // Mattel 42001 UNO shout declaration rule:
-    // When playing down to 1 card, player must have declared UNO before playing.
+    // When playing down to 1 card, player must declare UNO (either beforehand or atomically with the play).
     // If they have not declared UNO, they become vulnerable to a missed-UNO challenge
     // until the next player starts their turn.
     let isVulnerableToUnoChallenge = false;
     let declaredUno = false;
 
     if (updatedHand.length === 1) {
-      if (player.hasDeclaredUno) {
+      if (player.hasDeclaredUno || declareUno) {
         declaredUno = true;
+        if (!player.hasDeclaredUno && declareUno) {
+          addEvent('UNO_CALLED', playerId, { playerId, declaredWithPlay: true });
+        }
       } else {
         isVulnerableToUnoChallenge = true;
       }
@@ -505,15 +518,12 @@ export class ActionProcessor {
     const newPlayers = [...state.players];
     newPlayers[playerIndex] = updatedPlayer;
 
-    // If player was vulnerable and caught themselves before an opponent challenged, vulnerability is cleared!
-    const isVulnerable = state.unoVulnerablePlayerId === playerId;
-
-    addEvent('UNO_CALLED', playerId, { playerId, caughtThemselves: isVulnerable });
+    addEvent('UNO_CALLED', playerId, { playerId });
 
     return {
       ...state,
       players: newPlayers,
-      unoVulnerablePlayerId: isVulnerable ? null : state.unoVulnerablePlayerId,
+      unoVulnerablePlayerId: state.unoVulnerablePlayerId,
       sequenceNumber: seq + 1,
       updatedAt: new Date().toISOString(),
     };
@@ -530,8 +540,8 @@ export class ActionProcessor {
     const targetIndex = state.players.findIndex((p) => p.id === targetPlayerId);
     const target = state.players[targetIndex];
 
-    // Under Mattel 42001 instructions: Failure to shout UNO incurs a 4-CARD PENALTY!
-    const drawResult = DeckManager.drawCards(state.drawPile, state.discardPile, 4, rng);
+    // Under Mattel 42001 instructions: Failure to shout UNO incurs a 2-CARD PENALTY!
+    const drawResult = DeckManager.drawCards(state.drawPile, state.discardPile, 2, rng);
 
     const updatedTarget = {
       ...target,
@@ -545,7 +555,7 @@ export class ActionProcessor {
     addEvent('UNO_CHALLENGE_SUCCESS', challengerId, {
       challengerId,
       targetPlayerId,
-      penaltyCards: 4,
+      penaltyCards: 2,
     });
 
     return {

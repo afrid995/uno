@@ -378,7 +378,8 @@ export class GameService {
     cardId: string,
     chosenColor?: CardColor,
     playMode?: 'regular' | 'flex',
-    targetPlayerId?: string
+    targetPlayerId?: string,
+    declareUno?: boolean
   ): Promise<ActionProcessResult> {
     return this.executeAction(roomCode, {
       type: 'PLAY_CARD',
@@ -387,6 +388,7 @@ export class GameService {
       chosenColor,
       playMode,
       targetPlayerId,
+      declareUno,
     });
   }
 
