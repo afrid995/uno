@@ -187,6 +187,54 @@ export class GameService {
         }
       }
 
+      // Safe idempotent duplicate challenge check: if challenger already resolved challenge and state advanced
+      if (
+        (action.type === 'CHALLENGE_WILD_DRAW_FOUR' ||
+          action.type === 'CHALLENGE_WILD_DRAW_TWO' ||
+          action.type === 'CHALLENGE_WILD_DRAW_COLOR') &&
+        'challengerPlayerId' in action
+      ) {
+        if (
+          !activeSession.state.pendingActionState &&
+          activeSession.lastResolvedPenalty &&
+          (activeSession.lastResolvedPenalty.challengerPlayerId === action.challengerPlayerId ||
+            activeSession.lastResolvedPenalty.victimPlayerId === action.challengerPlayerId) &&
+          activeSession.lastResolvedPenalty.actionType === action.type
+        ) {
+          logger.info(`Safely absorbed duplicate ${action.type} request from challenger`, {
+            matchId: activeSession.matchId,
+            roomCode,
+            challengerPlayerId: action.challengerPlayerId,
+            sequenceNumber: activeSession.state.sequenceNumber,
+          });
+          return {
+            nextState: activeSession.state,
+            events: [],
+          };
+        }
+      }
+
+      // Safe idempotent duplicate UNO challenge check: if vulnerability already cleared by a recently resolved challenge
+      if (action.type === 'CHALLENGE_UNO_FAILURE') {
+        if (
+          !activeSession.state.unoVulnerablePlayerId &&
+          activeSession.lastResolvedPenalty &&
+          activeSession.lastResolvedPenalty.actionType === 'CHALLENGE_UNO_FAILURE' &&
+          activeSession.lastResolvedPenalty.victimPlayerId === action.targetPlayerId
+        ) {
+          logger.info('Safely absorbed duplicate or late CHALLENGE_UNO_FAILURE request', {
+            matchId: activeSession.matchId,
+            roomCode,
+            challengerPlayerId: action.challengerPlayerId,
+            sequenceNumber: activeSession.state.sequenceNumber,
+          });
+          return {
+            nextState: activeSession.state,
+            events: [],
+          };
+        }
+      }
+
       // Safe idempotent duplicate modal / targeted action check
       const isTargetModalAction =
         action.type === 'CHOOSE_7S_SWAP_TARGET' ||
@@ -234,7 +282,7 @@ export class GameService {
       // 3. ONLY after successful database commit, update in-memory session state!
       activeSession.state = nextState;
 
-      // Record last resolved penalty for idempotency tracking
+      // Record last resolved penalty or challenge for idempotency tracking
       if (
         (action.type === 'ACCEPT_WILD_DRAW_FOUR' ||
           action.type === 'ACCEPT_WILD_DRAW_TWO' ||
@@ -261,7 +309,49 @@ export class GameService {
           cardsDrawn,
           resolvedAt: new Date().toISOString(),
         };
-      } else {
+      } else if (
+        (action.type === 'CHALLENGE_WILD_DRAW_FOUR' ||
+          action.type === 'CHALLENGE_WILD_DRAW_TWO' ||
+          action.type === 'CHALLENGE_WILD_DRAW_COLOR') &&
+        'challengerPlayerId' in action
+      ) {
+        const wonEvent = events.find(
+          (e) =>
+            e.type === 'WILD_DRAW_FOUR_CHALLENGE_WON' ||
+            e.type === 'WILD_DRAW_TWO_CHALLENGE_WON' ||
+            e.type === 'WILD_DRAW_COLOR_CHALLENGE_WON' ||
+            (e.type === 'game:wdf-challenge-result' && (e.payload as Record<string, unknown>)?.challengeWon === true)
+        );
+        const lostEvent = events.find(
+          (e) =>
+            e.type === 'WILD_DRAW_FOUR_CHALLENGE_LOST' ||
+            e.type === 'WILD_DRAW_TWO_CHALLENGE_LOST' ||
+            e.type === 'WILD_DRAW_COLOR_CHALLENGE_LOST' ||
+            (e.type === 'game:wdf-challenge-result' && (e.payload as Record<string, unknown>)?.challengeWon === false)
+        );
+        const challengeWon = !!wonEvent;
+        const resolvedEvent = wonEvent || lostEvent;
+        const defaultPenalty =
+          action.type === 'CHALLENGE_WILD_DRAW_FOUR'
+            ? (challengeWon ? 4 : 6)
+            : action.type === 'CHALLENGE_WILD_DRAW_TWO'
+            ? (challengeWon ? 2 : 4)
+            : (challengeWon ? 0 : 2);
+        const cardsDrawn =
+          (resolvedEvent?.payload?.penaltyCards as number) ??
+          (resolvedEvent?.payload?.penaltyCardsDrawn as number) ??
+          defaultPenalty;
+
+        activeSession.lastResolvedPenalty = {
+          actionType: action.type,
+          victimPlayerId: (resolvedEvent?.payload?.offenderId as string) || action.challengerPlayerId,
+          challengerPlayerId: action.challengerPlayerId,
+          sequenceNumber: nextState.sequenceNumber,
+          cardsDrawn,
+          challengeWon,
+          resolvedAt: new Date().toISOString(),
+        };
+      } else if (action.type !== 'CALL_UNO' && action.type !== 'CHALLENGE_UNO_FAILURE') {
         activeSession.lastResolvedPenalty = undefined;
       }
 
@@ -918,6 +1008,121 @@ export class GameService {
       }
 
       gameStatePublisher.publishToAllParticipants(recoveredState, guestSockets || new Map(), io);
+    });
+  }
+
+  /**
+   * Safe server-authoritative stuck-state detection & recovery safeguard.
+   * Can be triggered on room:resume or when a turn is stalled.
+   * Examines active match session for stuck pending states, invalid turn indices, or orphaned actors,
+   * cleanly auto-resolving them so games never remain permanently frozen.
+   */
+  async checkAndRecoverStuckSession(
+    roomCode: string,
+    io?: UnoServer,
+    guestSockets?: Map<string, UnoSocket>
+  ): Promise<GameState | null> {
+    const session = gameSessionManager.getSessionByRoomCode(roomCode);
+    if (!session || session.state.status !== 'IN_PROGRESS') {
+      return session?.state ?? null;
+    }
+
+    return gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      const state = activeSession.state;
+      let needsRecovery = false;
+      let curIdx = state.currentPlayerIndex;
+
+      // 1. Check if currentPlayerIndex points to an invalid or eliminated player
+      if (
+        curIdx < 0 ||
+        curIdx >= state.players.length ||
+        state.players[curIdx]?.isEliminated ||
+        state.players[curIdx]?.isOut
+      ) {
+        const step = state.turnDirection === 'counter_clockwise' ? -1 : 1;
+        const total = state.players.length;
+        let safeIdx = (((curIdx + step) % total) + total) % total;
+        let iterations = 0;
+        while (iterations < total && (state.players[safeIdx]?.isEliminated || state.players[safeIdx]?.isOut)) {
+          safeIdx = (((safeIdx + step) % total) + total) % total;
+          iterations++;
+        }
+        if (iterations < total) {
+          curIdx = safeIdx;
+          needsRecovery = true;
+          logger.warn('Recovered invalid currentPlayerIndex in stuck session', { roomCode, safeIdx });
+        }
+      }
+
+      // 2. Check orphaned or invalid pendingActionState
+      const pending = state.pendingActionState;
+      if (pending) {
+        let isActorMissing = false;
+        if ('victimPlayerId' in pending && pending.victimPlayerId) {
+          const victim = state.players.find((p) => p.id === pending.victimPlayerId);
+          if (!victim || victim.isEliminated || victim.isOut) isActorMissing = true;
+        } else if ('targetPlayerId' in pending && pending.targetPlayerId) {
+          const target = state.players.find((p) => p.id === pending.targetPlayerId);
+          if (!target || target.isEliminated || target.isOut) isActorMissing = true;
+        } else if ('sourcePlayerId' in pending && pending.sourcePlayerId) {
+          const source = state.players.find((p) => p.id === pending.sourcePlayerId);
+          if (!source || source.isEliminated || source.isOut) isActorMissing = true;
+        } else if ('designatedPlayerId' in pending && pending.designatedPlayerId) {
+          const designated = state.players.find((p) => p.id === pending.designatedPlayerId);
+          if (!designated || designated.isEliminated || designated.isOut) isActorMissing = true;
+        }
+
+        if (isActorMissing) {
+          needsRecovery = true;
+          logger.warn('Clearing orphaned pendingActionState whose actor is missing or eliminated', {
+            roomCode,
+            pendingType: pending.type,
+          });
+        }
+      }
+
+      if (!needsRecovery) {
+        return state;
+      }
+
+      const currentSeq = state.sequenceNumber + 1;
+      const healedState: GameState = {
+        ...state,
+        currentPlayerIndex: curIdx,
+        pendingActionState: null,
+        inspectionHand: null,
+        sequenceNumber: currentSeq,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const events: GameEventRecord[] = [
+        {
+          sequenceNumber: currentSeq,
+          type: 'TURN_RECOVERED',
+          playerId: healedState.players[curIdx]?.id,
+          payload: {
+            reason: 'STUCK_STATE_AUTO_RECOVERY',
+            newCurrentTurnGuestId: healedState.players[curIdx]?.id,
+          },
+          timestamp: new Date().toISOString(),
+        },
+      ];
+
+      await gamePersistenceService.persistActionBatch(activeSession.matchId, healedState, events);
+      activeSession.state = healedState;
+
+      if (io) {
+        io.to(roomCode).emit(SOCKET_EVENTS.GAME_TURN_RECOVERED, {
+          departedGuestId: '',
+          departedUsername: 'System',
+          newCurrentTurnGuestId: healedState.players[curIdx]?.id ?? '',
+          reason: 'STUCK_STATE_AUTO_RECOVERY',
+          message: `Turn recovered to ${healedState.players[curIdx]?.username ?? 'next player'}.`,
+        });
+        gameStatePublisher.publishToAllParticipants(healedState, guestSockets || new Map(), io);
+      }
+
+      return healedState;
     });
   }
 }

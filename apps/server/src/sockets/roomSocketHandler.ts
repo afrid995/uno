@@ -237,6 +237,7 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
 
       // If room is IN_GAME, restore player state (with durable crash/restart recovery)
       if (room.status === 'IN_GAME') {
+        await gameService.checkAndRecoverStuckSession(room.roomCode, io, guestSockets);
         const playerState = await gameService.getOrRecoverPlayerState(guestId, room.id, room.roomCode);
         if (playerState) {
           socket.emit(SOCKET_EVENTS.GAME_STATE, { state: playerState });
@@ -467,7 +468,7 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
           io.to(currentRoom.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: updatedRoom });
 
           // Publish personalized states to all participants
-          gameStatePublisher.publishToAllParticipants(gameState, guestSockets);
+          gameStatePublisher.publishToAllParticipants(gameState, guestSockets, io);
         } catch (err: unknown) {
           logger.error('Failed to initialize match after countdown', { error: String(err), roomCode: room.roomCode });
         }

@@ -15,6 +15,15 @@ export const ChallengePanel: React.FC = () => {
     challengeWildDrawColor,
   } = useGameStore();
 
+  const [actionType, setActionType] = React.useState<'accept' | 'challenge' | null>(null);
+  const [isDismissed, setIsDismissed] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isActionLoading) {
+      setActionType(null);
+    }
+  }, [isActionLoading]);
+
   if (!gameState) return null;
 
   const { self, pendingActionState, inspectedChallengedHand } = gameState;
@@ -25,7 +34,7 @@ export const ChallengePanel: React.FC = () => {
   const isTargetedByColor = !!self?.isTargetedByWildDrawColor;
   const isTargeted = isTargetedByFour || isTargetedByTwo || isTargetedByColor;
 
-  const hasInspectedHand = inspectedChallengedHand && inspectedChallengedHand.length > 0;
+  const hasInspectedHand = inspectedChallengedHand && inspectedChallengedHand.length > 0 && !isDismissed;
   const isChallengeResolution =
     pType === 'AWAITING_WILD_DRAW_FOUR_RESOLUTION' ||
     pType === 'AWAITING_WILD_DRAW_TWO_RESOLUTION' ||
@@ -79,6 +88,7 @@ export const ChallengePanel: React.FC = () => {
   };
 
   const handleAccept = () => {
+    setActionType('accept');
     if (pType === 'AWAITING_WILD_DRAW_TWO_RESOLUTION') {
       acceptWildDrawTwo();
     } else if (pType === 'AWAITING_WILD_DRAW_COLOR_RESOLUTION') {
@@ -89,6 +99,7 @@ export const ChallengePanel: React.FC = () => {
   };
 
   const handleChallenge = () => {
+    setActionType('challenge');
     if (pType === 'AWAITING_WILD_DRAW_TWO_RESOLUTION') {
       challengeWildDrawTwo();
     } else if (pType === 'AWAITING_WILD_DRAW_COLOR_RESOLUTION') {
@@ -113,7 +124,7 @@ export const ChallengePanel: React.FC = () => {
   return (
     <div className="w-full max-w-xl mx-auto my-2">
       {/* Inspected Hand View (Visible only to challenger after challenge) */}
-      {inspectedChallengedHand && inspectedChallengedHand.length > 0 && (
+      {hasInspectedHand && inspectedChallengedHand && inspectedChallengedHand.length > 0 && (
         <motion.div
           data-testid="inspected-hand"
           initial={{ opacity: 0, scale: 0.95 }}
@@ -125,9 +136,18 @@ export const ChallengePanel: React.FC = () => {
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
               Hand Inspection (Visible Only To You)
             </h4>
-            <span className="text-xs text-slate-400">
-              {inspectedChallengedHand.length} cards held
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400">
+                {inspectedChallengedHand.length} cards held
+              </span>
+              <button
+                data-testid="dismiss-inspected-hand-btn"
+                onClick={() => setIsDismissed(true)}
+                className="px-2 py-0.5 rounded text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold cursor-pointer"
+              >
+                ✕ Close
+              </button>
+            </div>
           </div>
           <p className="text-xs text-slate-300 mb-3">
             Authoritative verification: Inspected hand of {offenderName}.
@@ -164,7 +184,7 @@ export const ChallengePanel: React.FC = () => {
               disabled={isActionLoading}
               className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-white bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all text-sm shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {isActionLoading ? (
+              {isActionLoading && actionType === 'accept' ? (
                 <>
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   <span>Accepting...</span>
@@ -177,9 +197,16 @@ export const ChallengePanel: React.FC = () => {
               data-testid="challenge-wild-draw-btn"
               onClick={handleChallenge}
               disabled={isActionLoading}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl font-black text-white bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 active:scale-95 transition-all text-sm shadow-lg shadow-rose-900/40 ring-2 ring-rose-400 disabled:opacity-50"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl font-black text-white bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 active:scale-95 transition-all text-sm shadow-lg shadow-rose-900/40 ring-2 ring-rose-400 disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              ⚔️ Challenge Legality
+              {isActionLoading && actionType === 'challenge' ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Challenging...</span>
+                </>
+              ) : (
+                '⚔️ Challenge Legality'
+              )}
             </button>
           </div>
         </motion.div>

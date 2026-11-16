@@ -695,7 +695,15 @@ export class FlipActionProcessor {
           newDiscardPile = drawResult.newDiscardPile;
 
           updatedPlayers = updatedPlayers.map((p) =>
-            p.id === offender.id ? { ...p, hand: [...p.hand, ...drawResult.drawnCards] } : p
+            p.id === offender.id
+              ? {
+                  ...p,
+                  hand: [...p.hand, ...drawResult.drawnCards],
+                  hasDeclaredUno: false,
+                  hasDrawnThisTurn: false,
+                  drawnCardId: null,
+                }
+              : p
           );
 
           generatedEvents.push({
@@ -717,7 +725,15 @@ export class FlipActionProcessor {
           newDiscardPile = drawResult.newDiscardPile;
 
           updatedPlayers = updatedPlayers.map((p) =>
-            p.id === challenger.id ? { ...p, hand: [...p.hand, ...drawResult.drawnCards] } : p
+            p.id === challenger.id
+              ? {
+                  ...p,
+                  hand: [...p.hand, ...drawResult.drawnCards],
+                  hasDeclaredUno: false,
+                  hasDrawnThisTurn: false,
+                  drawnCardId: null,
+                }
+              : p
           );
 
           generatedEvents.push({
@@ -785,6 +801,7 @@ export class FlipActionProcessor {
           turnNumber: state.turnNumber + 1,
           pendingActionState: null,
           inspectionHand,
+          unoVulnerablePlayerId: null,
           status: newStatus,
           roundWinner,
           winner: matchWinner,
@@ -807,7 +824,15 @@ export class FlipActionProcessor {
         const drawResult = this.drawCards(state.drawPile, state.discardPile, 2, activeSide, rng);
 
         let updatedPlayers = state.players.map((p) =>
-          p.id === victim.id ? { ...p, hand: [...p.hand, ...drawResult.drawnCards] } : p
+          p.id === victim.id
+            ? {
+                ...p,
+                hand: [...p.hand, ...drawResult.drawnCards],
+                hasDeclaredUno: false,
+                hasDrawnThisTurn: false,
+                drawnCardId: null,
+              }
+            : p
         );
 
         generatedEvents.push({
@@ -865,6 +890,7 @@ export class FlipActionProcessor {
           turnNumber: state.turnNumber + 1,
           pendingActionState: null,
           inspectionHand: null,
+          unoVulnerablePlayerId: null,
           status: newStatus,
           roundWinner,
           winner: matchWinner,
@@ -903,7 +929,15 @@ export class FlipActionProcessor {
           newDiscardPile = drawResult.newDiscardPile;
 
           updatedPlayers = updatedPlayers.map((p) =>
-            p.id === offender.id ? { ...p, hand: [...p.hand, ...drawResult.drawnCards] } : p
+            p.id === offender.id
+              ? {
+                  ...p,
+                  hand: [...p.hand, ...drawResult.drawnCards],
+                  hasDeclaredUno: false,
+                  hasDrawnThisTurn: false,
+                  drawnCardId: null,
+                }
+              : p
           );
 
           generatedEvents.push({
@@ -932,7 +966,15 @@ export class FlipActionProcessor {
           newDiscardPile = drawResult.newDiscardPile;
 
           updatedPlayers = updatedPlayers.map((p) =>
-            p.id === challenger.id ? { ...p, hand: [...p.hand, ...drawResult.drawnCards] } : p
+            p.id === challenger.id
+              ? {
+                  ...p,
+                  hand: [...p.hand, ...drawResult.drawnCards],
+                  hasDeclaredUno: false,
+                  hasDrawnThisTurn: false,
+                  drawnCardId: null,
+                }
+              : p
           );
 
           generatedEvents.push({
@@ -999,6 +1041,7 @@ export class FlipActionProcessor {
           turnNumber: state.turnNumber + 1,
           pendingActionState: null,
           inspectionHand,
+          unoVulnerablePlayerId: null,
           status: newStatus,
           roundWinner,
           winner: matchWinner,
@@ -1028,7 +1071,15 @@ export class FlipActionProcessor {
         );
 
         let updatedPlayers = state.players.map((p) =>
-          p.id === victim.id ? { ...p, hand: [...p.hand, ...drawResult.drawnCards] } : p
+          p.id === victim.id
+            ? {
+                ...p,
+                hand: [...p.hand, ...drawResult.drawnCards],
+                hasDeclaredUno: false,
+                hasDrawnThisTurn: false,
+                drawnCardId: null,
+              }
+            : p
         );
 
         generatedEvents.push({
@@ -1085,6 +1136,7 @@ export class FlipActionProcessor {
           turnNumber: state.turnNumber + 1,
           pendingActionState: null,
           inspectionHand: null,
+          unoVulnerablePlayerId: null,
           status: newStatus,
           roundWinner,
           winner: matchWinner,

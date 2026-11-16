@@ -51,6 +51,10 @@ describe('Game Socket.IO Multiplayer Integration Tests', () => {
 
   afterEach(() => {
     cancelAllCountdownTimersForTesting();
+    for (const client of activeClients) {
+      if (client.connected) client.disconnect();
+    }
+    activeClients = [];
   });
 
   const createClient = (token?: string): ClientSocket => {

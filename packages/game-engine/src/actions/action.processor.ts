@@ -579,9 +579,12 @@ export class ActionProcessor {
     newPlayers[playerIndex] = {
       ...player,
       hand: [...player.hand, ...drawResult.drawnCards],
+      hasDeclaredUno: false,
+      hasDrawnThisTurn: false,
+      drawnCardId: null,
     };
 
-    addEvent('WILD_DRAW_FOUR_ACCEPTED', playerId, { playerId, cardsDrawn: 4 });
+    addEvent('WILD_DRAW_FOUR_ACCEPTED', playerId, { playerId, cardsDrawn: drawResult.drawnCards.length });
 
     // Check if the player who played the Wild Draw Four has 0 cards (went out)
     const offender = newPlayers.find((p) => p.id === pending.playedByPlayerId)!;
@@ -615,8 +618,10 @@ export class ActionProcessor {
       drawPile: drawResult.newDrawPile,
       discardPile: drawResult.newDiscardPile,
       currentPlayerIndex: nextPlayerIndex,
+      turnNumber: state.turnNumber + 1,
       pendingActionState: null,
       inspectionHand: null,
+      unoVulnerablePlayerId: null,
       sequenceNumber: seq + 1,
       updatedAt: new Date().toISOString(),
     };
@@ -657,12 +662,15 @@ export class ActionProcessor {
       newPlayers[offenderIndex] = {
         ...newPlayers[offenderIndex],
         hand: [...newPlayers[offenderIndex].hand, ...drawResult.drawnCards],
+        hasDeclaredUno: false,
+        hasDrawnThisTurn: false,
+        drawnCardId: null,
       };
 
       addEvent('WILD_DRAW_FOUR_CHALLENGE_WON', challengerId, {
         challengerId,
         offenderId: pending.playedByPlayerId,
-        penaltyCards: 4,
+        penaltyCards: drawResult.drawnCards.length,
         offenderHadMatchingColor: true,
       });
 
@@ -673,8 +681,10 @@ export class ActionProcessor {
         drawPile: currentDrawPile,
         discardPile: currentDiscardPile,
         currentPlayerIndex: challengerIndex,
+        turnNumber: state.turnNumber + 1,
         pendingActionState: null,
         inspectionHand,
+        unoVulnerablePlayerId: null,
         sequenceNumber: seq + 1,
         updatedAt: new Date().toISOString(),
       };
@@ -688,12 +698,15 @@ export class ActionProcessor {
       newPlayers[challengerIndex] = {
         ...newPlayers[challengerIndex],
         hand: [...newPlayers[challengerIndex].hand, ...drawResult.drawnCards],
+        hasDeclaredUno: false,
+        hasDrawnThisTurn: false,
+        drawnCardId: null,
       };
 
       addEvent('WILD_DRAW_FOUR_CHALLENGE_LOST', challengerId, {
         challengerId,
         offenderId: pending.playedByPlayerId,
-        penaltyCards: 6,
+        penaltyCards: drawResult.drawnCards.length,
         offenderWasInnocent: true,
       });
 
@@ -727,8 +740,10 @@ export class ActionProcessor {
         drawPile: currentDrawPile,
         discardPile: currentDiscardPile,
         currentPlayerIndex: nextPlayerIndex,
+        turnNumber: state.turnNumber + 1,
         pendingActionState: null,
         inspectionHand,
+        unoVulnerablePlayerId: null,
         sequenceNumber: seq + 1,
         updatedAt: new Date().toISOString(),
       };

@@ -16,6 +16,7 @@ export interface SocketAck<T = unknown> {
     code: string;
     message: string;
   };
+  state?: unknown;
 }
 
 export const SOCKET_EVENTS = {
@@ -250,7 +251,7 @@ export interface GameTurnRecoveredPayload {
   departedGuestId: string;
   departedUsername: string;
   newCurrentTurnGuestId: string;
-  reason: 'DISCONNECT_TIMEOUT' | 'INTENTIONAL_LEAVE';
+  reason: 'DISCONNECT_TIMEOUT' | 'INTENTIONAL_LEAVE' | 'STUCK_STATE_AUTO_RECOVERY';
   message: string;
 }
 
@@ -339,7 +340,7 @@ export interface ClientToServerEvents {
   ) => void;
   [SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_FOUR]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number; state?: unknown }>) => void
+    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number; cardsDrawn?: number; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_FOUR]: (
     payload: Record<string, never> | undefined,
@@ -347,7 +348,7 @@ export interface ClientToServerEvents {
   ) => void;
   [SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_TWO]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number; state?: unknown }>) => void
+    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number; cardsDrawn?: number; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_TWO]: (
     payload: Record<string, never> | undefined,
@@ -355,7 +356,7 @@ export interface ClientToServerEvents {
   ) => void;
   [SOCKET_EVENTS.GAME_CHALLENGE_WILD_DRAW_COLOR]: (
     payload: Record<string, never> | undefined,
-    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number; state?: unknown }>) => void
+    callback: (response: SocketAck<{ challengeWon: boolean; penaltyCards: number; cardsDrawn?: number; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_ACCEPT_WILD_DRAW_COLOR]: (
     payload: Record<string, never> | undefined,

@@ -856,6 +856,8 @@ export class FlexActionProcessor {
         ...challenger,
         hand: [...challenger.hand, ...drawRes.drawnCards],
         hasDeclaredUno: false,
+        hasDrawnThisTurn: false,
+        drawnCardId: null,
       };
 
       nextPlayers = nextPlayers.map((p, idx) => (idx === challengerIndex ? updatedChallenger : p));
@@ -900,6 +902,8 @@ export class FlexActionProcessor {
         ...offender,
         hand: [...offender.hand, ...drawRes.drawnCards],
         hasDeclaredUno: false,
+        hasDrawnThisTurn: false,
+        drawnCardId: null,
       };
 
       nextPlayers = nextPlayers.map((p, idx) => (idx === offenderIndex ? updatedOffender : p));
@@ -923,6 +927,7 @@ export class FlexActionProcessor {
       currentPlayerIndex: nextPlayerIndex,
       pendingActionState: null,
       inspectionHand,
+      unoVulnerablePlayerId: null,
       turnNumber: state.turnNumber + 1,
       sequenceNumber: ctx.nextSeq(),
       updatedAt: ctx.timestamp,
@@ -953,6 +958,8 @@ export class FlexActionProcessor {
       ...victim,
       hand: [...victim.hand, ...drawRes.drawnCards],
       hasDeclaredUno: false,
+      hasDrawnThisTurn: false,
+      drawnCardId: null,
     };
 
     const nextPlayers = state.players.map((p, idx) => (idx === victimIndex ? updatedVictim : p));
@@ -995,6 +1002,7 @@ export class FlexActionProcessor {
       currentPlayerIndex: nextPlayerIndex,
       pendingActionState: null,
       inspectionHand: null,
+      unoVulnerablePlayerId: null,
       turnNumber: state.turnNumber + 1,
       sequenceNumber: ctx.nextSeq(),
       updatedAt: ctx.timestamp,

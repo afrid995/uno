@@ -116,4 +116,128 @@ describe('ChallengePanel Component', () => {
     fireEvent.click(screen.getByRole('button', { name: /challenge legality/i }));
     expect(challengeMock).toHaveBeenCalledTimes(1);
   });
+
+  it('shows loading state on Challenge button when clicked without affecting Accept button', () => {
+    const challengeMock = vi.fn().mockImplementation(() => {
+      useGameStore.setState({ isActionLoading: true });
+    });
+
+    useGameStore.setState({
+      isActionLoading: false,
+      challengeWildDrawFour: challengeMock,
+      acceptWildDrawFour: vi.fn(),
+      gameState: {
+        id: 'g1',
+        roomId: 'r1',
+        variant: 'classic',
+        status: 'IN_PROGRESS',
+        roundNumber: 1,
+        players: [
+          { id: 'p1', username: 'Alice', cardCount: 6, score: 0, hasDeclaredUno: false },
+          { id: 'p2', username: 'Bob', cardCount: 6, score: 0, hasDeclaredUno: false },
+        ],
+        playerOrder: ['p1', 'p2'],
+        currentPlayerIndex: 0,
+        currentTurnGuestId: 'p1',
+        turnDirection: 'clockwise',
+        topDiscardCard: { id: 'c1', color: null, type: 'wild', value: 'wild_draw_four', scoreValue: 50 },
+        activeColor: 'red',
+        drawPileCount: 90,
+        discardPileCount: 4,
+        turnNumber: 1,
+        sequenceNumber: 1,
+        unoVulnerablePlayerId: null,
+        pendingActionState: {
+          type: 'AWAITING_WILD_DRAW_FOUR_RESOLUTION',
+          playedByPlayerId: 'p2',
+          victimPlayerId: 'p1',
+          chosenColor: 'red',
+        },
+        self: {
+          id: 'p1',
+          username: 'Alice',
+          hand: [],
+          isCurrentTurn: true,
+          playableCardIds: [],
+          canDraw: false,
+          canPass: false,
+          canCallUno: false,
+          canCatchUno: false,
+          canResolveWildDrawFour: true,
+          isTargetedByWildDrawFour: true,
+        },
+      } as unknown as PlayerGameState,
+    });
+
+    render(<ChallengePanel />);
+
+    const challengeBtn = screen.getByTestId('challenge-wild-draw-btn');
+    const acceptBtn = screen.getByTestId('accept-wild-draw-btn');
+
+    expect(challengeBtn).toHaveTextContent(/Challenge Legality/i);
+    expect(acceptBtn).toHaveTextContent(/Accept/i);
+
+    fireEvent.click(challengeBtn);
+
+    expect(challengeMock).toHaveBeenCalledTimes(1);
+    expect(challengeBtn).toHaveTextContent(/Challenging.../i);
+    expect(acceptBtn).toHaveTextContent(/Accept/i);
+  });
+
+  it('renders inspected hand and dismisses it when close button is clicked', () => {
+    useGameStore.setState({
+      isActionLoading: false,
+      gameState: {
+        id: 'g1',
+        roomId: 'r1',
+        variant: 'classic',
+        status: 'IN_PROGRESS',
+        roundNumber: 1,
+        players: [
+          { id: 'p1', username: 'Alice', cardCount: 6, score: 0, hasDeclaredUno: false },
+          { id: 'p2', username: 'Bob', cardCount: 6, score: 0, hasDeclaredUno: false },
+        ],
+        playerOrder: ['p1', 'p2'],
+        currentPlayerIndex: 0,
+        currentTurnGuestId: 'p1',
+        turnDirection: 'clockwise',
+        topDiscardCard: { id: 'c1', color: 'red', type: 'number', value: '5', scoreValue: 5 },
+        activeColor: 'red',
+        drawPileCount: 90,
+        discardPileCount: 4,
+        turnNumber: 2,
+        sequenceNumber: 2,
+        unoVulnerablePlayerId: null,
+        pendingActionState: null,
+        inspectedChallengedHand: [
+          { id: 'card-1', color: 'blue', type: 'number', value: '7', scoreValue: 7 },
+          { id: 'card-2', color: 'green', type: 'skip', value: 'skip', scoreValue: 20 },
+        ],
+        self: {
+          id: 'p1',
+          username: 'Alice',
+          hand: [],
+          isCurrentTurn: true,
+          playableCardIds: [],
+          canDraw: true,
+          canPass: false,
+          canCallUno: false,
+          canCatchUno: false,
+          canResolveWildDrawFour: false,
+          isTargetedByWildDrawFour: false,
+        },
+      } as unknown as PlayerGameState,
+    });
+
+    render(<ChallengePanel />);
+
+    expect(screen.getByTestId('inspected-hand')).toBeInTheDocument();
+    expect(screen.getByText(/Hand Inspection \(Visible Only To You\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 cards held/i)).toBeInTheDocument();
+
+    const dismissBtn = screen.getByTestId('dismiss-inspected-hand-btn');
+    fireEvent.click(dismissBtn);
+
+    expect(screen.queryByTestId('inspected-hand')).not.toBeInTheDocument();
+  });
 });

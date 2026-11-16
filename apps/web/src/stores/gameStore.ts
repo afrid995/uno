@@ -15,6 +15,7 @@ import { socketManager } from '../services/socketClient';
 import { useCardAnimationStore } from './cardAnimationStore';
 
 interface GameStateStore {
+  roomCode: string | null;
   gameState: PlayerGameState | null;
   isConnected: boolean;
   isActionLoading: boolean;
@@ -68,6 +69,7 @@ interface GameStateStore {
 }
 
 const initialGameState = {
+  roomCode: null as string | null,
   gameState: null,
   isConnected: true,
   isActionLoading: false,
@@ -260,6 +262,10 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
       const timer = setTimeout(() => {
         if (!isSettled) {
           isSettled = true;
+          const currentRoomCode = get().roomCode;
+          if (currentRoomCode) {
+            socket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode: currentRoomCode }, () => {});
+          }
           set({
             isActionLoading: false,
             error: 'Request timed out while challenging UNO. Please try again.',
@@ -282,6 +288,11 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
             }
             resolve(true);
           } else {
+            const resPayload = res as { state?: unknown; data?: { state?: unknown } };
+            const recoveredState = resPayload.data?.state || resPayload.state;
+            if (recoveredState) {
+              set({ gameState: recoveredState as PlayerGameState });
+            }
             set({ error: res.error?.message || 'UNO challenge failed' });
             resolve(false);
           }
@@ -302,6 +313,10 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
       const timer = setTimeout(() => {
         if (!isSettled) {
           isSettled = true;
+          const currentRoomCode = get().roomCode;
+          if (currentRoomCode) {
+            socket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode: currentRoomCode }, () => {});
+          }
           set({
             isActionLoading: false,
             error: 'Request timed out while challenging Wild Draw Four. Please try again.',
@@ -321,6 +336,11 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
           }
           resolve(true);
         } else {
+          const resPayload = res as { state?: unknown; data?: { state?: unknown } };
+          const recoveredState = resPayload.data?.state || resPayload.state;
+          if (recoveredState) {
+            set({ gameState: recoveredState as PlayerGameState });
+          }
           set({ error: res.error?.message || 'Failed to challenge Wild Draw Four' });
           resolve(false);
         }
@@ -340,6 +360,10 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
       const timer = setTimeout(() => {
         if (!isSettled) {
           isSettled = true;
+          const currentRoomCode = get().roomCode;
+          if (currentRoomCode) {
+            socket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode: currentRoomCode }, () => {});
+          }
           set({
             isActionLoading: false,
             error: 'Request timed out while accepting Wild Draw Four. Please try again.',
@@ -359,6 +383,11 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
           }
           resolve(true);
         } else {
+          const resPayload = res as { state?: unknown; data?: { state?: unknown } };
+          const recoveredState = resPayload.data?.state || resPayload.state;
+          if (recoveredState) {
+            set({ gameState: recoveredState as PlayerGameState });
+          }
           set({ error: res.error?.message || 'Failed to accept Wild Draw Four' });
           resolve(false);
         }
@@ -378,6 +407,10 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
       const timer = setTimeout(() => {
         if (!isSettled) {
           isSettled = true;
+          const currentRoomCode = get().roomCode;
+          if (currentRoomCode) {
+            socket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode: currentRoomCode }, () => {});
+          }
           set({
             isActionLoading: false,
             error: 'Request timed out while challenging Wild Draw Two. Please try again.',
@@ -397,6 +430,11 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
           }
           resolve(true);
         } else {
+          const resPayload = res as { state?: unknown; data?: { state?: unknown } };
+          const recoveredState = resPayload.data?.state || resPayload.state;
+          if (recoveredState) {
+            set({ gameState: recoveredState as PlayerGameState });
+          }
           set({ error: res.error?.message || 'Failed to challenge Wild Draw Two' });
           resolve(false);
         }
@@ -416,6 +454,10 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
       const timer = setTimeout(() => {
         if (!isSettled) {
           isSettled = true;
+          const currentRoomCode = get().roomCode;
+          if (currentRoomCode) {
+            socket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode: currentRoomCode }, () => {});
+          }
           set({
             isActionLoading: false,
             error: 'Request timed out while accepting Wild Draw Two. Please try again.',
@@ -435,6 +477,11 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
           }
           resolve(true);
         } else {
+          const resPayload = res as { state?: unknown; data?: { state?: unknown } };
+          const recoveredState = resPayload.data?.state || resPayload.state;
+          if (recoveredState) {
+            set({ gameState: recoveredState as PlayerGameState });
+          }
           set({ error: res.error?.message || 'Failed to accept Wild Draw Two' });
           resolve(false);
         }
@@ -454,6 +501,10 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
       const timer = setTimeout(() => {
         if (!isSettled) {
           isSettled = true;
+          const currentRoomCode = get().roomCode;
+          if (currentRoomCode) {
+            socket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode: currentRoomCode }, () => {});
+          }
           set({
             isActionLoading: false,
             error: 'Request timed out while challenging Wild Draw Color. Please try again.',
@@ -473,6 +524,11 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
           }
           resolve(true);
         } else {
+          const resPayload = res as { state?: unknown; data?: { state?: unknown } };
+          const recoveredState = resPayload.data?.state || resPayload.state;
+          if (recoveredState) {
+            set({ gameState: recoveredState as PlayerGameState });
+          }
           set({ error: res.error?.message || 'Failed to challenge Wild Draw Color' });
           resolve(false);
         }
@@ -492,6 +548,10 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
       const timer = setTimeout(() => {
         if (!isSettled) {
           isSettled = true;
+          const currentRoomCode = get().roomCode;
+          if (currentRoomCode) {
+            socket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode: currentRoomCode }, () => {});
+          }
           set({
             isActionLoading: false,
             error: 'Request timed out while accepting Wild Draw Color. Please try again.',
@@ -511,6 +571,11 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
           }
           resolve(true);
         } else {
+          const resPayload = res as { state?: unknown; data?: { state?: unknown } };
+          const recoveredState = resPayload.data?.state || resPayload.state;
+          if (recoveredState) {
+            set({ gameState: recoveredState as PlayerGameState });
+          }
           set({ error: res.error?.message || 'Failed to accept Wild Draw Color' });
           resolve(false);
         }
@@ -644,6 +709,10 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
       const timer = setTimeout(() => {
         if (!isSettled) {
           isSettled = true;
+          const currentRoomCode = get().roomCode;
+          if (currentRoomCode) {
+            socket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode: currentRoomCode }, () => {});
+          }
           set({
             isActionLoading: false,
             error: 'Request timed out while accepting stack penalty. Please try again.',
@@ -663,6 +732,11 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
           }
           resolve(true);
         } else {
+          const resPayload = res as { state?: unknown; data?: { state?: unknown } };
+          const recoveredState = resPayload.data?.state || resPayload.state;
+          if (recoveredState) {
+            set({ gameState: recoveredState as PlayerGameState });
+          }
           set({ error: res.error?.message || 'Failed to accept stack penalty' });
           resolve(false);
         }
@@ -976,7 +1050,7 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
 
   initGameListeners: (roomCode: string) => {
     // Reset state before binding new room listeners
-    set(initialGameState);
+    set({ ...initialGameState, roomCode });
 
     const socket = socketManager.getSocket();
 

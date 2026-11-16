@@ -6,10 +6,17 @@ export interface LastResolvedPenalty {
     | 'ACCEPT_WILD_DRAW_FOUR'
     | 'ACCEPT_WILD_DRAW_TWO'
     | 'ACCEPT_WILD_DRAW_COLOR'
-    | 'ACCEPT_STACK_PENALTY';
+    | 'ACCEPT_STACK_PENALTY'
+    | 'CHALLENGE_WILD_DRAW_FOUR'
+    | 'CHALLENGE_WILD_DRAW_TWO'
+    | 'CHALLENGE_WILD_DRAW_COLOR'
+    | 'CHALLENGE_UNO_FAILURE';
   readonly victimPlayerId: string;
+  readonly challengerPlayerId?: string;
   readonly sequenceNumber: number;
   readonly cardsDrawn: number;
+  readonly challengeWon?: boolean;
+  readonly targetPlayerId?: string;
   readonly resolvedAt: string;
 }
 

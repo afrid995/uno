@@ -22,7 +22,7 @@ import {
 import { ERROR_CODES } from '@uno-ultimate/shared';
 import { AppError } from '../../middleware/errorHandler';
 import { HTTP_STATUS } from '@uno-ultimate/shared';
-import { GameState, getPlayerGameState } from '@uno-ultimate/game-engine';
+import { GameState, getPlayerGameState, PlayerGameState } from '@uno-ultimate/game-engine';
 import { gameService } from './game.service';
 import { gameStatePublisher } from './game.state.publisher';
 import { roomService } from '../room/room.service';
@@ -264,6 +264,16 @@ export function registerGameHandlers(
       await handleGameStateBroadcasts(nextState, roomCode);
 
       const penaltyCards = nextState.variant === 'uno_flip' ? 2 : 4;
+
+      io.to(roomCode).emit(SOCKET_EVENTS.GAME_CARD_ANIMATION, {
+        id: `${nextState.id}-${nextState.sequenceNumber}-DRAW-${validated.targetPlayerId}`,
+        type: 'DRAW',
+        playerId: validated.targetPlayerId,
+        playerUsername: nextState.players.find((p) => p.id === validated.targetPlayerId)?.username,
+        cardCount: penaltyCards,
+        sequenceNumber: nextState.sequenceNumber,
+      });
+
       const playerState = getPlayerGameState(nextState, guestId);
 
       if (typeof callback === 'function') {
@@ -275,8 +285,15 @@ export function registerGameHandlers(
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to challenge missed UNO';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      let playerState: PlayerGameState | undefined;
+      try {
+        const roomCode = getActiveRoomCode();
+        playerState = gameService.getActivePlayerState(getAuthenticatedGuestId(), roomCode) ?? undefined;
+      } catch {
+        playerState = undefined;
+      }
       if (typeof callback === 'function') {
-        callback({ success: false, error: { code, message } });
+        callback({ success: false, error: { code, message }, state: playerState });
       }
     }
   });
@@ -291,15 +308,53 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
-      const won = events.some((e) => e.type === 'WILD_DRAW_FOUR_CHALLENGE_WON');
+      const session = gameSessionManager.getSessionByRoomCode(roomCode);
+      const wonEvent = events.find(
+        (e) =>
+          e.type === 'WILD_DRAW_FOUR_CHALLENGE_WON' ||
+          (e.type === 'game:wdf-challenge-result' && (e.payload as Record<string, unknown>)?.challengeWon === true)
+      );
+      const challengeWon =
+        events.length === 0 && session?.lastResolvedPenalty
+          ? (session.lastResolvedPenalty.challengeWon ?? false)
+          : !!wonEvent;
+
+      const penaltyCards = challengeWon ? 4 : 6;
+
+      // Determine who drew cards and broadcast animation to table
+      const challengeEvent = events.find(
+        (e) =>
+          e.type === 'WILD_DRAW_FOUR_CHALLENGE_WON' ||
+          e.type === 'WILD_DRAW_FOUR_CHALLENGE_LOST' ||
+          e.type === 'game:wdf-challenge-result'
+      );
+      const payload = challengeEvent?.payload as Record<string, unknown> | undefined;
+      const offenderId =
+        (payload?.offenderId as string) ||
+        (payload?.offenderPlayerId as string) ||
+        session?.lastResolvedPenalty?.victimPlayerId;
+      const penalizedPlayerId = challengeWon ? offenderId : guestId;
+
+      if (penalizedPlayerId) {
+        io.to(roomCode).emit(SOCKET_EVENTS.GAME_CARD_ANIMATION, {
+          id: `${nextState.id}-${nextState.sequenceNumber}-DRAW-${penalizedPlayerId}`,
+          type: 'DRAW',
+          playerId: penalizedPlayerId,
+          playerUsername: nextState.players.find((p) => p.id === penalizedPlayerId)?.username,
+          cardCount: penaltyCards,
+          sequenceNumber: nextState.sequenceNumber,
+        });
+      }
+
       const playerState = getPlayerGameState(nextState, guestId);
 
       if (typeof callback === 'function') {
         callback({
           success: true,
           data: {
-            challengeWon: won,
-            penaltyCards: won ? 4 : 6,
+            challengeWon,
+            penaltyCards,
+            cardsDrawn: penaltyCards,
             state: playerState,
           },
         });
@@ -307,8 +362,15 @@ export function registerGameHandlers(
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to challenge Wild Draw Four';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      let playerState: PlayerGameState | undefined;
+      try {
+        const roomCode = getActiveRoomCode();
+        playerState = gameService.getActivePlayerState(getAuthenticatedGuestId(), roomCode) ?? undefined;
+      } catch {
+        playerState = undefined;
+      }
       if (typeof callback === 'function') {
-        callback({ success: false, error: { code, message } });
+        callback({ success: false, error: { code, message }, state: playerState });
       }
     }
   });
@@ -381,15 +443,41 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
+      const session = gameSessionManager.getSessionByRoomCode(roomCode);
       const won = events.some((e) => e.type === 'WILD_DRAW_TWO_CHALLENGE_WON');
+      const challengeWon =
+        events.length === 0 && session?.lastResolvedPenalty
+          ? (session.lastResolvedPenalty.challengeWon ?? won)
+          : won;
+      const penaltyCards = challengeWon ? 2 : 4;
+
+      const challengeEvent = events.find(
+        (e) => e.type === 'WILD_DRAW_TWO_CHALLENGE_WON' || e.type === 'WILD_DRAW_TWO_CHALLENGE_LOST'
+      );
+      const payload = challengeEvent?.payload as Record<string, unknown> | undefined;
+      const offenderId = (payload?.offenderId as string) || session?.lastResolvedPenalty?.victimPlayerId;
+      const penalizedPlayerId = challengeWon ? offenderId : guestId;
+
+      if (penalizedPlayerId) {
+        io.to(roomCode).emit(SOCKET_EVENTS.GAME_CARD_ANIMATION, {
+          id: `${nextState.id}-${nextState.sequenceNumber}-DRAW-${penalizedPlayerId}`,
+          type: 'DRAW',
+          playerId: penalizedPlayerId,
+          playerUsername: nextState.players.find((p) => p.id === penalizedPlayerId)?.username,
+          cardCount: penaltyCards,
+          sequenceNumber: nextState.sequenceNumber,
+        });
+      }
+
       const playerState = getPlayerGameState(nextState, guestId);
 
       if (typeof callback === 'function') {
         callback({
           success: true,
           data: {
-            challengeWon: won,
-            penaltyCards: won ? 2 : 4,
+            challengeWon,
+            penaltyCards,
+            cardsDrawn: penaltyCards,
             state: playerState,
           },
         });
@@ -397,8 +485,15 @@ export function registerGameHandlers(
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to challenge Wild Draw Two';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      let playerState: PlayerGameState | undefined;
+      try {
+        const roomCode = getActiveRoomCode();
+        playerState = gameService.getActivePlayerState(getAuthenticatedGuestId(), roomCode) ?? undefined;
+      } catch {
+        playerState = undefined;
+      }
       if (typeof callback === 'function') {
-        callback({ success: false, error: { code, message } });
+        callback({ success: false, error: { code, message }, state: playerState });
       }
     }
   });
@@ -471,7 +566,13 @@ export function registerGameHandlers(
 
       await handleGameStateBroadcasts(nextState, roomCode);
 
+      const session = gameSessionManager.getSessionByRoomCode(roomCode);
       const won = events.some((e) => e.type === 'WILD_DRAW_COLOR_CHALLENGE_WON');
+      const challengeWon =
+        events.length === 0 && session?.lastResolvedPenalty
+          ? (session.lastResolvedPenalty.challengeWon ?? won)
+          : won;
+
       const challengeEvent = events.find(
         (e) => e.type === 'WILD_DRAW_COLOR_CHALLENGE_WON' || e.type === 'WILD_DRAW_COLOR_CHALLENGE_LOST'
       );
@@ -479,9 +580,21 @@ export function registerGameHandlers(
       const penaltyCards =
         typeof payload?.penaltyCardsDrawn === 'number'
           ? payload.penaltyCardsDrawn
-          : won
-          ? 0
-          : 2;
+          : session?.lastResolvedPenalty?.cardsDrawn ?? (challengeWon ? 0 : 2);
+
+      const offenderId = (payload?.offenderId as string) || session?.lastResolvedPenalty?.victimPlayerId;
+      const penalizedPlayerId = challengeWon ? offenderId : guestId;
+
+      if (penalizedPlayerId && penaltyCards > 0) {
+        io.to(roomCode).emit(SOCKET_EVENTS.GAME_CARD_ANIMATION, {
+          id: `${nextState.id}-${nextState.sequenceNumber}-DRAW-${penalizedPlayerId}`,
+          type: 'DRAW',
+          playerId: penalizedPlayerId,
+          playerUsername: nextState.players.find((p) => p.id === penalizedPlayerId)?.username,
+          cardCount: penaltyCards,
+          sequenceNumber: nextState.sequenceNumber,
+        });
+      }
 
       const playerState = getPlayerGameState(nextState, guestId);
 
@@ -489,8 +602,9 @@ export function registerGameHandlers(
         callback({
           success: true,
           data: {
-            challengeWon: won,
+            challengeWon,
             penaltyCards,
+            cardsDrawn: penaltyCards,
             state: playerState,
           },
         });
@@ -498,8 +612,15 @@ export function registerGameHandlers(
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to challenge Wild Draw Color';
       const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
+      let playerState: PlayerGameState | undefined;
+      try {
+        const roomCode = getActiveRoomCode();
+        playerState = gameService.getActivePlayerState(getAuthenticatedGuestId(), roomCode) ?? undefined;
+      } catch {
+        playerState = undefined;
+      }
       if (typeof callback === 'function') {
-        callback({ success: false, error: { code, message } });
+        callback({ success: false, error: { code, message }, state: playerState });
       }
     }
   });
