@@ -62,11 +62,7 @@ export class NoMercyMoveValidator {
       case 'DRAW_CARD':
         return this.validateDrawCard(state, action.playerId);
       case 'PASS_TURN':
-        return {
-          valid: false,
-          code: 'INVALID_PASS',
-          message: "Under UNO Show 'em No Mercy rules, drawn cards must be played immediately if playable.",
-        };
+        return this.validatePassTurn(state, action.playerId);
       case 'CALL_UNO':
         return this.validateCallUno(state, action.playerId);
       case 'CHALLENGE_UNO_FAILURE':
@@ -331,6 +327,27 @@ export class NoMercyMoveValidator {
         valid: false,
         code: 'ALREADY_DRAWN',
         message: 'You have already drawn a card this turn.',
+      };
+    }
+
+    return { valid: true };
+  }
+
+  private static validatePassTurn(state: GameState, playerId: string): ValidationResult {
+    const currentPlayer = state.players[state.currentPlayerIndex];
+    if (currentPlayer.id !== playerId) {
+      return {
+        valid: false,
+        code: 'NOT_YOUR_TURN',
+        message: 'You can only pass on your turn.',
+      };
+    }
+
+    if (!currentPlayer.hasDrawnThisTurn) {
+      return {
+        valid: false,
+        code: 'INVALID_PASS',
+        message: 'You must draw a card before passing your turn.',
       };
     }
 

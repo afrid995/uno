@@ -191,8 +191,7 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     isCurrentTurn &&
     player.hasDrawnThisTurn &&
     state.status === 'IN_PROGRESS' &&
-    !isPendingAction &&
-    state.variant !== 'uno_show_em_no_mercy';
+    !isPendingAction;
 
   const partner = state.variant === 'uno_teams' && player.teamId
     ? state.players.find((p) => p.teamId === player.teamId && p.id !== player.id)

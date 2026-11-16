@@ -561,14 +561,18 @@ describe('UNO All Wild — Official Rules & Mechanics (Mattel HHL33)', () => {
         players: [{ id: 'p1', username: 'P1' }, { id: 'p2', username: 'P2' }],
         dealerIndex: 1, // p1 starts
       });
-      // P1 has 1 card left
+      // P1 has 1 card left (inject standard wild for deterministic round end)
       const s1 = AllWildFixtureBuilder.setHandSize(base, 'p1', 1);
-      const lastCard = s1.players[0].hand[0];
+      const { nextState: sWithWild, card } = AllWildFixtureBuilder.injectPlayableCard(
+        s1,
+        'p1',
+        'wild'
+      );
 
-      const { nextState: next } = adapter.processAction(s1, {
+      const { nextState: next } = adapter.processAction(sWithWild, {
         type: 'PLAY_CARD',
         playerId: 'p1',
-        cardId: lastCard.id,
+        cardId: card.id,
       });
 
       expect(['ROUND_OVER', 'COMPLETED']).toContain(next.status);

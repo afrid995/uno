@@ -366,6 +366,8 @@ export class NoMercyActionProcessor {
         return this.processPlayCard(state, action, rng, ctx);
       case 'DRAW_CARD':
         return this.processDrawCard(state, action, rng, ctx);
+      case 'PASS_TURN':
+        return this.processPassTurn(state, action.playerId, ctx);
       case 'CALL_UNO':
         return this.processCallUno(state, action, ctx);
       case 'CHALLENGE_UNO_FAILURE':
@@ -1047,23 +1049,17 @@ export class NoMercyActionProcessor {
     const playerIndex = state.currentPlayerIndex;
     const player = state.players[playerIndex];
 
-    // Under Mattel HWV18 rules: draw until a playable card is revealed, then play it!
-    const { drawnCards, playableCard, newDrawPile, newDiscardPile, newSetAsideCards } = this.drawUntilPlayable(
+    // Custom Rule for UNO No Mercy: Normal draw draws exactly ONE card
+    const { drawnCards, newDrawPile, newDiscardPile, newSetAsideCards } = this.drawCards(
       state.drawPile,
       state.discardPile,
-      state.topDiscardCard,
-      state.activeColor,
+      1,
       state.setAsideCards || [],
       rng
     );
 
-    const newHand = [...player.hand, ...drawnCards];
-
-    ctx.addEvent('CARD_DRAWN', player.id, {
-      count: drawnCards.length,
-      drawnCards,
-      playableCardFound: !!playableCard,
-    });
+    const drawnCard = drawnCards[0];
+    const newHand: Card[] = drawnCard ? [...player.hand, drawnCard] : [...player.hand];
 
     // Check Mercy Rule during drawing
     if (newHand.length >= UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
@@ -1079,15 +1075,25 @@ export class NoMercyActionProcessor {
       );
     }
 
-    // If a playable card was drawn, keep turn with player so they can explicitly play it
-    if (playableCard) {
+    const isPlayable = drawnCard
+      ? NoMercyMoveValidator.isCardMatch(drawnCard, state.activeColor, state.topDiscardCard)
+      : false;
+
+    ctx.addEvent('CARD_DRAWN', player.id, {
+      count: drawnCards.length,
+      drawnCards,
+      isPlayable,
+    });
+
+    // If a playable card was drawn, keep turn with player so they can explicitly play it or keep it (pass)
+    if (isPlayable && drawnCard) {
       const updatedPlayers = state.players.map((p, idx) =>
         idx === playerIndex
           ? {
               ...p,
               hand: newHand,
               hasDrawnThisTurn: true,
-              drawnCardId: playableCard.id,
+              drawnCardId: drawnCard.id,
               hasDeclaredUno: false,
             }
           : p
@@ -1108,7 +1114,7 @@ export class NoMercyActionProcessor {
       return { nextState, events: ctx.events };
     }
 
-    // Deck exhausted without playable card (rare edge case)
+    // Unplayable card drawn: automatically advance turn to next active player
     const updatedPlayers = state.players.map((p, idx) =>
       idx === playerIndex
         ? {
@@ -1137,6 +1143,46 @@ export class NoMercyActionProcessor {
       setAsideCards: newSetAsideCards,
       turnNumber: state.turnNumber + 1,
       sequenceNumber: ctx.getSeq(),
+      updatedAt: ctx.timestamp,
+    };
+
+    assertValidNoMercyGameState(nextState);
+    return { nextState, events: ctx.events };
+  }
+
+  private static processPassTurn(
+    state: GameState,
+    playerId: string,
+    ctx: ActionContext
+  ): ActionProcessResult {
+    const playerIndex = state.currentPlayerIndex;
+
+    const updatedPlayers = state.players.map((p, idx) =>
+      idx === playerIndex
+        ? {
+            ...p,
+            hasDrawnThisTurn: false,
+            drawnCardId: null,
+          }
+        : p
+    );
+
+    const nextPlayerIndex = this.getNextActivePlayerIndex(
+      playerIndex,
+      updatedPlayers,
+      state.turnDirection,
+      1
+    );
+
+    ctx.addEvent('TURN_PASSED', playerId, { nextPlayerIndex });
+
+    const nextState: GameState = {
+      ...state,
+      players: updatedPlayers,
+      currentPlayerIndex: nextPlayerIndex,
+      unoVulnerablePlayerId: null,
+      sequenceNumber: ctx.getSeq(),
+      turnNumber: state.turnNumber + 1,
       updatedAt: ctx.timestamp,
     };
 

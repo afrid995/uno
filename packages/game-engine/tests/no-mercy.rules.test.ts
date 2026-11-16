@@ -1417,8 +1417,8 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
       }
 
       // Configure a 2-card draw pile with non-green cards (cRedDraw and cWildDraw)
-      const cRedDraw = dp.find((c) => c.color === 'red' && c.type === 'number')!;
-      const cWildDraw = dp.find((c) => c.value === 'wild_draw_ten')!;
+      const cRedDraw = dp.find((c) => c.color !== 'green' && c.type !== 'wild')!;
+      const cWildDraw = dp.find((c) => c.type === 'wild')!;
       const remainingDrawCards = dp.filter((c) => c.id !== cRedDraw.id && c.id !== cWildDraw.id);
 
       // Low draw pile: pop order: cRedDraw, then cWildDraw, then exhausted!
