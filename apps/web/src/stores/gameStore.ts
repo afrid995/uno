@@ -6,6 +6,10 @@ import {
   GameWinner,
   SOCKET_EVENTS,
   CardAnimationEvent,
+  GamePlayerDisconnectedPayload,
+  GamePlayerReconnectedPayload,
+  GamePlayerDepartedPayload,
+  GameTurnRecoveredPayload,
 } from '@uno-ultimate/game-protocol';
 import { socketManager } from '../services/socketClient';
 import { useCardAnimationStore } from './cardAnimationStore';
@@ -21,8 +25,11 @@ interface GameStateStore {
   roundWinnerData: GameWinner | null;
   matchWinnerData: GameWinner | null;
   roundScores: Record<string, number> | null;
+  disconnectedPlayers: Record<string, { disconnectTimestamp: number; gracePeriodSeconds: number }>;
+  turnRecoveryNotification: string | null;
 
   // Actions
+  dismissTurnRecoveryNotification: () => void;
   playCard: (
     cardId: string,
     chosenColor?: CardColor,
@@ -71,6 +78,8 @@ const initialGameState = {
   roundWinnerData: null,
   matchWinnerData: null,
   roundScores: null,
+  disconnectedPlayers: {} as Record<string, { disconnectTimestamp: number; gracePeriodSeconds: number }>,
+  turnRecoveryNotification: null as string | null,
 };
 
 export const useGameStore = create<GameStateStore>((set, get) => ({
@@ -80,6 +89,7 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   openWildColorPicker: (card) => set({ selectedCardForWild: card }),
   closeWildColorPicker: () => set({ selectedCardForWild: null }),
   dismissRoundModal: () => set({ showRoundResultModal: false }),
+  dismissTurnRecoveryNotification: () => set({ turnRecoveryNotification: null }),
   clearError: () => set({ error: null }),
 
   playCard: async (cardId, chosenColor, playMode, targetPlayerId) => {
@@ -1035,11 +1045,52 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
       useCardAnimationStore.getState().triggerAnimation(payload, selfId);
     };
 
+    const handlePlayerDisconnected = (payload: GamePlayerDisconnectedPayload) => {
+      set((state) => ({
+        disconnectedPlayers: {
+          ...state.disconnectedPlayers,
+          [payload.guestId]: {
+            disconnectTimestamp: payload.disconnectTimestamp,
+            gracePeriodSeconds: payload.gracePeriodSeconds,
+          },
+        },
+      }));
+    };
+
+    const handlePlayerReconnected = (payload: GamePlayerReconnectedPayload) => {
+      set((state) => {
+        const copy = { ...state.disconnectedPlayers };
+        delete copy[payload.guestId];
+        return { disconnectedPlayers: copy };
+      });
+    };
+
+    const handlePlayerDeparted = (payload: GamePlayerDepartedPayload) => {
+      set((state) => {
+        const copy = { ...state.disconnectedPlayers };
+        delete copy[payload.guestId];
+        return { disconnectedPlayers: copy };
+      });
+    };
+
+    const handleTurnRecovered = (payload: GameTurnRecoveredPayload) => {
+      set({
+        turnRecoveryNotification: payload.message || `Turn automatically recovered from ${payload.departedUsername}.`,
+      });
+      setTimeout(() => {
+        set({ turnRecoveryNotification: null });
+      }, 5000);
+    };
+
     socket.on(SOCKET_EVENTS.GAME_STATE, handleGameState);
     socket.on(SOCKET_EVENTS.GAME_ROUND_FINISHED, handleRoundFinished);
     socket.on(SOCKET_EVENTS.GAME_FINISHED, handleGameFinished);
     socket.on(SOCKET_EVENTS.GAME_CARD_ANIMATION, handleCardAnimation);
     socket.on(SOCKET_EVENTS.GAME_ERROR, handleGameError);
+    socket.on(SOCKET_EVENTS.GAME_PLAYER_DISCONNECTED, handlePlayerDisconnected);
+    socket.on(SOCKET_EVENTS.GAME_PLAYER_RECONNECTED, handlePlayerReconnected);
+    socket.on(SOCKET_EVENTS.GAME_PLAYER_DEPARTED, handlePlayerDeparted);
+    socket.on(SOCKET_EVENTS.GAME_TURN_RECOVERED, handleTurnRecovered);
 
     // Request initial state or resume
     socket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode }, () => {});
@@ -1050,6 +1101,10 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
       socket.off(SOCKET_EVENTS.GAME_FINISHED, handleGameFinished);
       socket.off(SOCKET_EVENTS.GAME_CARD_ANIMATION, handleCardAnimation);
       socket.off(SOCKET_EVENTS.GAME_ERROR, handleGameError);
+      socket.off(SOCKET_EVENTS.GAME_PLAYER_DISCONNECTED, handlePlayerDisconnected);
+      socket.off(SOCKET_EVENTS.GAME_PLAYER_RECONNECTED, handlePlayerReconnected);
+      socket.off(SOCKET_EVENTS.GAME_PLAYER_DEPARTED, handlePlayerDeparted);
+      socket.off(SOCKET_EVENTS.GAME_TURN_RECOVERED, handleTurnRecovered);
       useCardAnimationStore.getState().clearAnimations();
       set(initialGameState);
     };

@@ -88,8 +88,12 @@ export async function registerAuthenticatedGuestSocket(
         roomCode: activeRoom.roomCode,
       });
 
-      // If room is IN_GAME, also deliver active player game state
+      // If room is IN_GAME, also deliver active player game state and broadcast reconnected event
       if (activeRoom.status === 'IN_GAME') {
+        io.to(activeRoom.roomCode).emit(SOCKET_EVENTS.GAME_PLAYER_RECONNECTED, {
+          guestId,
+          username: socket.data.username || 'Player',
+        });
         const playerState = gameService.getActivePlayerState(guestId, activeRoom.roomCode);
         if (playerState) {
           socket.emit(SOCKET_EVENTS.GAME_STATE, { state: playerState });
@@ -252,7 +256,7 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
   socket.on(SOCKET_EVENTS.ROOM_LEAVE, async (_payload, callback) => {
     try {
       const guestId = getAuthenticatedGuestId();
-      const roomCode = socket.data.currentRoomCode;
+      const roomCode = socket.data.currentRoomCode || gameSessionManager.getRoomCodeForGuest(guestId);
 
       if (!roomCode) {
         callback({ success: true, data: { left: true } });
@@ -261,7 +265,18 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
 
       cancelCountdownIfActive(roomCode, 'Player left room');
 
-      const result = await roomService.leaveRoom(guestId);
+      // 1. Process game departure immediately if game is active
+      try {
+        await gameService.handlePlayerDeparture(io, guestId, roomCode, 'INTENTIONAL_LEAVE', guestSockets);
+      } catch (gameErr) {
+        logger.warn('Error handling game player departure on leave room', {
+          guestId,
+          roomCode,
+          error: String(gameErr),
+        });
+      }
+
+      const result = await roomService.leaveRoom(guestId, roomCode);
 
       socket.leave(roomCode);
       socket.data.currentRoomCode = undefined;
@@ -477,39 +492,58 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
           guestSockets.delete(guestId);
         }
 
-        if (socket.data.currentRoomCode) {
-          cancelCountdownIfActive(socket.data.currentRoomCode, 'Player disconnected during countdown');
+        const roomCode = socket.data.currentRoomCode || gameSessionManager.getRoomCodeForGuest(guestId);
+
+        if (roomCode) {
+          cancelCountdownIfActive(roomCode, 'Player disconnected during countdown');
+
+          io.to(roomCode).emit(SOCKET_EVENTS.GAME_PLAYER_DISCONNECTED, {
+            guestId,
+            username: socket.data.username || 'Player',
+            disconnectTimestamp: Date.now(),
+            gracePeriodSeconds: Math.round(roomService.getReconnectGracePeriodMs() / 1000),
+          });
         }
 
         await roomService.markDisconnected(guestId, {
-          onGracePeriodExpired: (expiredGuestId, roomCode, result) => {
+          onGracePeriodExpired: async (expiredGuestId, expiredRoomCode, result) => {
+            try {
+              await gameService.handlePlayerDeparture(io, expiredGuestId, expiredRoomCode, 'DISCONNECT_TIMEOUT', guestSockets);
+            } catch (err) {
+              logger.error('Error handling game player departure on disconnect timeout', {
+                guestId: expiredGuestId,
+                roomCode: expiredRoomCode,
+                error: String(err),
+              });
+            }
+
             if (result.roomDeleted) {
-              gameSessionManager.removeSessionByRoomCode(roomCode);
-              io.to(roomCode).emit(SOCKET_EVENTS.ROOM_CLOSED, {
+              gameSessionManager.removeSessionByRoomCode(expiredRoomCode);
+              io.to(expiredRoomCode).emit(SOCKET_EVENTS.ROOM_CLOSED, {
                 reason: 'Room closed after disconnected members departed.',
               });
             } else if (result.room) {
               if (result.newHostGuestId) {
-                io.to(roomCode).emit(SOCKET_EVENTS.ROOM_HOST_CHANGED, {
+                io.to(expiredRoomCode).emit(SOCKET_EVENTS.ROOM_HOST_CHANGED, {
                   newHostGuestId: result.newHostGuestId,
                   version: result.room.version,
                 });
               }
-              io.to(roomCode).emit(SOCKET_EVENTS.ROOM_PLAYER_LEFT, {
+              io.to(expiredRoomCode).emit(SOCKET_EVENTS.ROOM_PLAYER_LEFT, {
                 guestId: expiredGuestId,
                 newHostGuestId: result.newHostGuestId,
                 version: result.room.version,
               });
-              io.to(roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: result.room });
+              io.to(expiredRoomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: result.room });
             }
           },
         });
 
         // Broadcast disconnected status to room immediately
-        if (socket.data.currentRoomCode) {
-          const room = await roomService.getRoomByCode(socket.data.currentRoomCode);
+        if (roomCode) {
+          const room = await roomService.getRoomByCode(roomCode);
           if (room) {
-            io.to(socket.data.currentRoomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room });
+            io.to(roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room });
           }
         }
       }

@@ -44,6 +44,8 @@ export const GameBoard: React.FC = () => {
     teamCardPass,
     teamSplitHandPass,
     clearError,
+    disconnectedPlayers,
+    turnRecoveryNotification,
   } = useGameStore();
 
   const [selectedCardForFlexChoice, setSelectedCardForFlexChoice] = React.useState<Card | null>(null);
@@ -272,6 +274,8 @@ export const GameBoard: React.FC = () => {
         onDrawCard={drawCard}
         onChallengeUno={challengeUno}
         onAcceptStackPenalty={acceptStackPenalty}
+        disconnectedPlayers={disconnectedPlayers}
+        turnRecoveryNotification={turnRecoveryNotification}
       />
 
       {/* Eliminated Player Spectator Banner */}

@@ -91,6 +91,10 @@ export const SOCKET_EVENTS = {
   GAME_FINISHED: 'game:finished',
   GAME_PLAYER_ELIMINATED: 'game:player-eliminated',
   GAME_CARD_ANIMATION: 'game:card-animation',
+  GAME_PLAYER_DISCONNECTED: 'game:player-disconnected',
+  GAME_PLAYER_RECONNECTED: 'game:player-reconnected',
+  GAME_PLAYER_DEPARTED: 'game:player-departed',
+  GAME_TURN_RECOVERED: 'game:turn-recovered',
   GAME_ERROR: 'game:error',
 } as const;
 
@@ -222,6 +226,32 @@ export interface CardAnimationEvent {
   card?: Card;
   cardCount?: number;
   sequenceNumber: number;
+}
+
+export interface GamePlayerDisconnectedPayload {
+  guestId: string;
+  username: string;
+  disconnectTimestamp: number;
+  gracePeriodSeconds: number;
+}
+
+export interface GamePlayerReconnectedPayload {
+  guestId: string;
+  username: string;
+}
+
+export interface GamePlayerDepartedPayload {
+  guestId: string;
+  username: string;
+  reason: 'DISCONNECT_TIMEOUT' | 'INTENTIONAL_LEAVE';
+}
+
+export interface GameTurnRecoveredPayload {
+  departedGuestId: string;
+  departedUsername: string;
+  newCurrentTurnGuestId: string;
+  reason: 'DISCONNECT_TIMEOUT' | 'INTENTIONAL_LEAVE';
+  message: string;
 }
 
 /**
@@ -406,6 +436,10 @@ export interface ServerToClientEvents {
   [SOCKET_EVENTS.GAME_FINISHED]: (payload: { matchId?: string; winner: GameWinner; finalScores: Record<string, number> }) => void;
   [SOCKET_EVENTS.GAME_PLAYER_ELIMINATED]: (payload: { guestId: string; username: string; cardCount: number; remainingPlayerCount: number }) => void;
   [SOCKET_EVENTS.GAME_CARD_ANIMATION]: (payload: CardAnimationEvent) => void;
+  [SOCKET_EVENTS.GAME_PLAYER_DISCONNECTED]: (payload: GamePlayerDisconnectedPayload) => void;
+  [SOCKET_EVENTS.GAME_PLAYER_RECONNECTED]: (payload: GamePlayerReconnectedPayload) => void;
+  [SOCKET_EVENTS.GAME_PLAYER_DEPARTED]: (payload: GamePlayerDepartedPayload) => void;
+  [SOCKET_EVENTS.GAME_TURN_RECOVERED]: (payload: GameTurnRecoveredPayload) => void;
   [SOCKET_EVENTS.GAME_ERROR]: (payload: { code: string; message: string }) => void;
 }
 

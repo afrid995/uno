@@ -88,6 +88,10 @@ export class GameSessionManager {
     return this.guestToRoomCode.get(guestId) || null;
   }
 
+  removeGuest(guestId: string): void {
+    this.guestToRoomCode.delete(guestId);
+  }
+
   getStateByRoomCode(roomCode: string): GameState | null {
     const session = this.getSessionByRoomCode(roomCode);
     return session ? session.state : null;

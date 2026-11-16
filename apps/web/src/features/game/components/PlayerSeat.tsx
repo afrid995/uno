@@ -1,6 +1,6 @@
 import React from 'react';
 import { PublicPlayer } from '@uno-ultimate/game-protocol';
-import { User, ShieldAlert, Award } from 'lucide-react';
+import { User, ShieldAlert, Award, WifiOff } from 'lucide-react';
 
 export interface PlayerSeatProps {
   player: PublicPlayer;
@@ -8,6 +8,7 @@ export interface PlayerSeatProps {
   isVulnerableToUno?: boolean;
   onCatchUno?: () => void;
   className?: string;
+  disconnectInfo?: { disconnectTimestamp: number; gracePeriodSeconds: number };
 }
 
 export const PlayerSeat: React.FC<PlayerSeatProps> = ({
@@ -16,8 +17,27 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
   isVulnerableToUno = false,
   onCatchUno,
   className = '',
+  disconnectInfo,
 }) => {
   const isEliminated = !!player.isEliminated;
+
+  const [secondsRemaining, setSecondsRemaining] = React.useState<number>(() => {
+    if (!disconnectInfo) return 0;
+    const elapsed = Math.floor((Date.now() - disconnectInfo.disconnectTimestamp) / 1000);
+    return Math.max(0, disconnectInfo.gracePeriodSeconds - elapsed);
+  });
+
+  React.useEffect(() => {
+    if (!disconnectInfo) return;
+    const updateCountdown = () => {
+      const elapsed = Math.floor((Date.now() - disconnectInfo.disconnectTimestamp) / 1000);
+      const rem = Math.max(0, disconnectInfo.gracePeriodSeconds - elapsed);
+      setSecondsRemaining(rem);
+    };
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [disconnectInfo]);
 
   return (
     <div
@@ -70,6 +90,15 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
             className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-display font-black text-[9px] uppercase tracking-wider shadow-md animate-pulse"
           >
             PLAYING
+          </div>
+        )}
+        {disconnectInfo && (
+          <div
+            data-testid="disconnected-badge"
+            className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/60 text-rose-300 font-bold text-[9px] uppercase tracking-wider animate-pulse"
+          >
+            <WifiOff className="w-2.5 h-2.5" />
+            <span>DISCONNECTED ({secondsRemaining}s)</span>
           </div>
         )}
       </div>

@@ -14,7 +14,7 @@ import { logger } from '../../utils/logger';
 import { generateRoomCode } from './room.utils';
 
 export interface DisconnectTimerCallback {
-  onGracePeriodExpired: (guestId: string, roomCode: string, result: LeaveRoomResult) => void;
+  onGracePeriodExpired: (guestId: string, roomCode: string, result: LeaveRoomResult) => void | Promise<void>;
 }
 
 export interface LeaveRoomResult {
@@ -27,6 +27,22 @@ export interface LeaveRoomResult {
 export class RoomService {
   // In-memory grace period timers for disconnected members (single instance)
   private disconnectTimers = new Map<string, NodeJS.Timeout>();
+  private reconnectGracePeriodMs: number = ROOM_RULES.RECONNECT_GRACE_PERIOD_MS;
+
+  getReconnectGracePeriodMs(): number {
+    return this.reconnectGracePeriodMs;
+  }
+
+  setReconnectGracePeriodForTesting(ms: number): void {
+    if (process.env.NODE_ENV !== 'test') {
+      throw new Error('Grace period can only be modified in test environment');
+    }
+    this.reconnectGracePeriodMs = ms;
+  }
+
+  resetReconnectGracePeriodForTesting(): void {
+    this.reconnectGracePeriodMs = ROOM_RULES.RECONNECT_GRACE_PERIOD_MS;
+  }
 
   /**
    * Helper to format a Room database record with members into RoomPublicDto.
@@ -666,12 +682,12 @@ export class RoomService {
         try {
           const result = await this.leaveRoom(guestId, roomCode);
           if (callback) {
-            callback.onGracePeriodExpired(guestId, roomCode, result);
+            await callback.onGracePeriodExpired(guestId, roomCode, result);
           }
         } catch (err) {
           logger.error('Error handling expired disconnect timer', { error: String(err) });
         }
-      }, ROOM_RULES.RECONNECT_GRACE_PERIOD_MS);
+      }, this.reconnectGracePeriodMs);
 
       this.disconnectTimers.set(guestId, timer);
 
@@ -742,6 +758,7 @@ export class RoomService {
       clearTimeout(timer);
     }
     this.disconnectTimers.clear();
+    this.resetReconnectGracePeriodForTesting();
   }
 }
 

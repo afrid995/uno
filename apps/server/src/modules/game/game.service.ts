@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { Server, Socket } from 'socket.io';
 import {
   GameState,
   GameFactory,
@@ -8,13 +9,28 @@ import {
   CardColor,
   PlayerGameState,
   getPlayerGameState,
+  GameWinner,
+  GameEventRecord,
+  DeckManager,
 } from '@uno-ultimate/game-engine';
+import {
+  SOCKET_EVENTS,
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData,
+} from '@uno-ultimate/game-protocol';
 import { ERROR_CODES } from '@uno-ultimate/shared';
 import { AppError } from '../../middleware/errorHandler';
 import { HTTP_STATUS } from '@uno-ultimate/shared';
 import { gameSessionManager } from './game.session.manager';
 import { gamePersistenceService } from './game.persistence.service';
+import { gameStatePublisher } from './game.state.publisher';
+import { roomService } from '../room/room.service';
 import { logger } from '../../utils/logger';
+
+type UnoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+type UnoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
 export class GameService {
   /**
@@ -589,6 +605,320 @@ export class GameService {
     gameSessionManager.setSession(activeMatch.id, roomCode, roomId, snapshot);
     logger.info('Recovered active match from database snapshot', { matchId: activeMatch.id, roomCode });
     return snapshot;
+  }
+
+  /**
+   * Handles player departure (disconnect grace timeout or intentional leave/logout).
+   * Server-authoritative turn progression and state recovery across all 7 variants.
+   */
+  async handlePlayerDeparture(
+    io: UnoServer,
+    guestId: string,
+    roomCode: string,
+    reason: 'DISCONNECT_TIMEOUT' | 'INTENTIONAL_LEAVE',
+    guestSockets?: Map<string, UnoSocket>
+  ): Promise<void> {
+    const session = gameSessionManager.getSessionByRoomCode(roomCode);
+    if (!session || session.state.status === 'COMPLETED') {
+      return;
+    }
+
+    await gameSessionManager.runWithLock(session.matchId, async (activeSession) => {
+      const state = activeSession.state;
+      if (state.status === 'COMPLETED') return;
+
+      const departedPlayer = state.players.find((p) => p.id === guestId);
+      if (!departedPlayer) return;
+
+      const departedUsername = departedPlayer.username;
+      const remainingPlayers = state.players.filter((p) => p.id !== guestId);
+      const remainingActivePlayers = remainingPlayers.filter((p) => !p.isEliminated && !p.isOut);
+
+      const isTeams = state.variant === 'uno_teams';
+      const activeTeams = new Set(remainingActivePlayers.map((p) => p.teamId).filter(Boolean));
+      const insufficientTeams = isTeams && (activeTeams.size <= 1 || remainingPlayers.length < 4 || remainingPlayers.length % 2 !== 0);
+      const insufficientStandardPlayers = !isTeams && remainingActivePlayers.length < 2;
+
+      // Case 1: Insufficient players/teams remain -> Declare match winner by forfeit/departure
+      if (insufficientStandardPlayers || insufficientTeams) {
+        let winner: GameWinner;
+        if (isTeams) {
+          const winningTeamId = Array.from(activeTeams)[0] || remainingPlayers[0]?.teamId || 'team_1';
+          const winningPlayers = remainingPlayers.filter((p) => p.teamId === winningTeamId);
+          winner = {
+            id: winningPlayers[0]?.id || 'unknown',
+            username: winningPlayers.length > 1
+              ? `${winningPlayers[0].username} & ${winningPlayers[1].username} (${winningTeamId})`
+              : `${winningPlayers[0]?.username ?? 'Unknown'} (${winningTeamId})`,
+            score: Math.max(winningPlayers[0]?.score ?? 0, state.targetScore),
+            roundScore: 0,
+          };
+        } else {
+          const soleWinner = remainingActivePlayers[0] || remainingPlayers[0] || departedPlayer;
+          winner = {
+            id: soleWinner.id,
+            username: soleWinner.username,
+            score: Math.max(soleWinner.score, state.targetScore),
+            roundScore: 0,
+          };
+        }
+
+        const currentSeq = state.sequenceNumber + 1;
+        const events: GameEventRecord[] = [
+          {
+            sequenceNumber: currentSeq,
+            type: 'PLAYER_DEPARTED',
+            playerId: guestId,
+            payload: { guestId, username: departedUsername, reason },
+            timestamp: new Date().toISOString(),
+          },
+          {
+            sequenceNumber: currentSeq + 1,
+            type: 'MATCH_FINISHED_BY_DEPARTURE',
+            playerId: winner.id,
+            payload: { winner, reason },
+            timestamp: new Date().toISOString(),
+          },
+        ];
+
+        const finishedState: GameState = {
+          ...state,
+          status: 'COMPLETED',
+          winner,
+          roundWinner: winner,
+          sequenceNumber: currentSeq + 1,
+          updatedAt: new Date().toISOString(),
+        };
+
+        await gamePersistenceService.persistActionBatch(activeSession.matchId, finishedState, events);
+        activeSession.state = finishedState;
+
+        io.to(roomCode).emit(SOCKET_EVENTS.GAME_PLAYER_DEPARTED, {
+          guestId,
+          username: departedUsername,
+          reason,
+        });
+
+        gameStatePublisher.broadcastMatchFinished(io, roomCode, finishedState);
+
+        try {
+          const updatedRoom = await roomService.updateRoomStatus(finishedState.roomId, 'FINISHED');
+          io.to(roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: updatedRoom });
+        } catch (statusErr) {
+          logger.warn('Failed to update room status to FINISHED on departure', { roomCode, error: String(statusErr) });
+        }
+
+        gameSessionManager.removeGuest(guestId);
+        gameSessionManager.removeSessionByRoomCode(roomCode);
+        return;
+      }
+
+      // Case 2: Multi-player match continues with 2+ active players
+      // A. Card conservation
+      let newDrawPile = [...state.drawPile];
+      let newDiscardPile = [...state.discardPile];
+      let newSetAsideCards = [...(state.setAsideCards || [])];
+
+      if (state.variant === 'uno_show_em_no_mercy') {
+        // No Mercy: Add departing player's hand to setAsideCards to uphold 168-card law
+        newSetAsideCards = [...newSetAsideCards, ...departedPlayer.hand];
+      } else {
+        // Other variants: Place under top discard card to preserve deck count
+        if (departedPlayer.hand.length > 0) {
+          if (newDiscardPile.length > 1) {
+            const top = newDiscardPile[newDiscardPile.length - 1];
+            const rest = newDiscardPile.slice(0, -1);
+            newDiscardPile = [...rest, ...departedPlayer.hand, top];
+          } else {
+            newDiscardPile = [...departedPlayer.hand, ...newDiscardPile];
+          }
+        }
+      }
+
+      // B. Resolve pending action states involving departing player
+      let newPendingActionState = state.pendingActionState;
+      let newActiveColor = state.activeColor;
+
+      if (!newActiveColor) {
+        newActiveColor = state.topDiscardCard.color || 'red';
+      }
+
+      if (newPendingActionState) {
+        const p = newPendingActionState;
+        if (p.type === 'AWAITING_STACK_RESOLUTION') {
+          if (p.targetPlayerId === guestId) {
+            const penalty = p.accumulatedPenalty;
+            if (state.variant === 'uno_show_em_no_mercy') {
+              const drawResult = DeckManager.drawCards(newDrawPile, newDiscardPile, penalty);
+              newDrawPile = [...drawResult.newDrawPile];
+              newDiscardPile = [...drawResult.newDiscardPile];
+              newSetAsideCards = [...newSetAsideCards, ...drawResult.drawnCards];
+            }
+            newPendingActionState = null;
+          }
+        } else if (
+          p.type === 'AWAITING_WILD_DRAW_FOUR_RESOLUTION' ||
+          p.type === 'AWAITING_WILD_DRAW_TWO_RESOLUTION' ||
+          p.type === 'AWAITING_WILD_DRAW_COLOR_RESOLUTION'
+        ) {
+          if (p.victimPlayerId === guestId || p.playedByPlayerId === guestId) {
+            newPendingActionState = null;
+          }
+        } else if (p.type === 'AWAITING_STARTING_WILD_COLOR_SELECTION') {
+          if (p.designatedPlayerId === guestId) {
+            newPendingActionState = null;
+          }
+        } else if (
+          (p.type === 'AWAITING_7S_SWAP_SELECTION' && p.sourcePlayerId === guestId) ||
+          (p.type === 'AWAITING_COLOR_ROULETTE_SELECTION' && p.victimPlayerId === guestId) ||
+          (p.type === 'AWAITING_TARGETED_DRAW_TWO_SELECTION' && p.sourcePlayerId === guestId) ||
+          (p.type === 'AWAITING_TARGETED_DRAW_FOUR_SELECTION' && p.sourcePlayerId === guestId) ||
+          (p.type === 'AWAITING_FORCED_SWAP_SELECTION' && p.sourcePlayerId === guestId) ||
+          (p.type === 'AWAITING_ATTACK_TARGET_SELECTION' && p.playedByPlayerId === guestId) ||
+          (p.type === 'AWAITING_STARTING_ATTACK_SELECTION' && p.designatedPlayerId === guestId) ||
+          p.type === 'AWAITING_TEAM_INITIAL_PASS' ||
+          p.type === 'AWAITING_TEAM_CARD_PASS' ||
+          p.type === 'AWAITING_TEAM_HAND_SPLIT' ||
+          p.type === 'AWAITING_WILD_TEAM_PLAY'
+        ) {
+          newPendingActionState = null;
+        }
+      }
+
+      // C. Clear inspection hand & uno vulnerable if departing player involved
+      let newInspectionHand = state.inspectionHand;
+      if (
+        newInspectionHand &&
+        (newInspectionHand.challengerPlayerId === guestId || newInspectionHand.offenderPlayerId === guestId)
+      ) {
+        newInspectionHand = null;
+      }
+      const newUnoVulnerablePlayerId =
+        state.unoVulnerablePlayerId === guestId ? null : state.unoVulnerablePlayerId;
+
+      // D. Turn progression
+      const oldPlayerOrder = [...state.playerOrder];
+      const depIdx = oldPlayerOrder.indexOf(guestId);
+      const newPlayerOrder = oldPlayerOrder.filter((id) => id !== guestId);
+      const wasActiveTurn = state.playerOrder[state.currentPlayerIndex] === guestId;
+
+      let nextActiveGuestId: string;
+
+      if (wasActiveTurn) {
+        const step = state.turnDirection === 'clockwise' ? 1 : -1;
+        let candidateIdx = (((depIdx + step) % oldPlayerOrder.length) + oldPlayerOrder.length) % oldPlayerOrder.length;
+        const remainingActiveIds = new Set(remainingActivePlayers.map((p) => p.id));
+
+        while (candidateIdx !== depIdx) {
+          const candidateId = oldPlayerOrder[candidateIdx];
+          if (remainingActiveIds.has(candidateId)) {
+            nextActiveGuestId = candidateId;
+            break;
+          }
+          candidateIdx = (((candidateIdx + step) % oldPlayerOrder.length) + oldPlayerOrder.length) % oldPlayerOrder.length;
+        }
+        if (!nextActiveGuestId!) {
+          nextActiveGuestId = remainingActivePlayers[0].id;
+        }
+      } else {
+        nextActiveGuestId = state.playerOrder[state.currentPlayerIndex];
+      }
+
+      const newCurrentPlayerIndex = newPlayerOrder.indexOf(nextActiveGuestId);
+
+      // Reset turn flags on new active player
+      const newPlayers = remainingPlayers.map((p) => {
+        if (p.id === nextActiveGuestId) {
+          return {
+            ...p,
+            hasDrawnThisTurn: false,
+            drawnCardId: null,
+          };
+        }
+        return p;
+      });
+
+      // Update dealer index if needed
+      const oldDealerId = oldPlayerOrder[state.dealerIndex];
+      const candidateDealerIdx = newPlayerOrder.indexOf(oldDealerId);
+      const finalDealerIndex = candidateDealerIdx >= 0 ? candidateDealerIdx : 0;
+
+      let currentSeq = state.sequenceNumber + 1;
+      const events: GameEventRecord[] = [
+        {
+          sequenceNumber: currentSeq,
+          type: 'PLAYER_DEPARTED',
+          playerId: guestId,
+          payload: { guestId, username: departedUsername, reason },
+          timestamp: new Date().toISOString(),
+        },
+      ];
+
+      if (wasActiveTurn) {
+        currentSeq += 1;
+        events.push({
+          sequenceNumber: currentSeq,
+          type: 'TURN_RECOVERED',
+          playerId: nextActiveGuestId,
+          payload: {
+            departedGuestId: guestId,
+            departedUsername,
+            newCurrentTurnGuestId: nextActiveGuestId,
+            reason,
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const recoveredState: GameState = {
+        ...state,
+        players: newPlayers,
+        playerOrder: newPlayerOrder,
+        currentPlayerIndex: newCurrentPlayerIndex,
+        dealerIndex: finalDealerIndex,
+        drawPile: newDrawPile,
+        discardPile: newDiscardPile,
+        setAsideCards: newSetAsideCards,
+        activeColor: newActiveColor,
+        pendingActionState: newPendingActionState,
+        inspectionHand: newInspectionHand,
+        unoVulnerablePlayerId: newUnoVulnerablePlayerId,
+        turnNumber: state.turnNumber + (wasActiveTurn ? 1 : 0),
+        sequenceNumber: currentSeq,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await gamePersistenceService.persistActionBatch(activeSession.matchId, recoveredState, events);
+      activeSession.state = recoveredState;
+
+      // Clean up idempotency cache and guest mapping
+      if (activeSession.lastResolvedPenalty?.victimPlayerId === guestId) {
+        activeSession.lastResolvedPenalty = undefined;
+      }
+      if (activeSession.lastResolvedTargetAction?.playerId === guestId) {
+        activeSession.lastResolvedTargetAction = undefined;
+      }
+      gameSessionManager.removeGuest(guestId);
+
+      io.to(roomCode).emit(SOCKET_EVENTS.GAME_PLAYER_DEPARTED, {
+        guestId,
+        username: departedUsername,
+        reason,
+      });
+
+      if (wasActiveTurn) {
+        const nextPlayer = newPlayers.find((p) => p.id === nextActiveGuestId);
+        io.to(roomCode).emit(SOCKET_EVENTS.GAME_TURN_RECOVERED, {
+          departedGuestId: guestId,
+          departedUsername,
+          newCurrentTurnGuestId: nextActiveGuestId,
+          reason,
+          message: `Turn recovered to ${nextPlayer?.username ?? 'next player'}.`,
+        });
+      }
+
+      gameStatePublisher.publishToAllParticipants(recoveredState, guestSockets || new Map(), io);
+    });
   }
 }
 

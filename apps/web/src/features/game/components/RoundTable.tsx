@@ -22,6 +22,8 @@ export interface RoundTableProps {
   onChallengeUno: (targetPlayerId: string) => void;
   onAcceptStackPenalty: () => void;
   className?: string;
+  disconnectedPlayers?: Record<string, { disconnectTimestamp: number; gracePeriodSeconds: number }>;
+  turnRecoveryNotification?: string | null;
 }
 
 /**
@@ -122,6 +124,8 @@ export const RoundTable: React.FC<RoundTableProps> = ({
   onChallengeUno,
   onAcceptStackPenalty,
   className = '',
+  disconnectedPlayers = {},
+  turnRecoveryNotification,
 }) => {
   const {
     players,
@@ -171,6 +175,17 @@ export const RoundTable: React.FC<RoundTableProps> = ({
 
         {/* Center Table Area (Piles & Pending Action Banners) */}
         <div className="absolute top-[48%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center z-10 space-y-2 sm:space-y-3 pointer-events-auto">
+          {/* Turn recovery notification banner */}
+          {turnRecoveryNotification && (
+            <div
+              data-testid="turn-recovery-banner"
+              className="px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/90 to-yellow-400/90 text-slate-950 font-bold text-xs sm:text-sm tracking-wide shadow-glow-amber animate-bounce flex items-center gap-2"
+            >
+              <span>⚡</span>
+              <span>{turnRecoveryNotification}</span>
+            </div>
+          )}
+
           {/* Starting Wild banner if waiting for designated player */}
           {self.isAwaitingStartingColor && !self.canChooseStartingColor && (
             <div
@@ -245,6 +260,7 @@ export const RoundTable: React.FC<RoundTableProps> = ({
                 isCurrentTurn={isOpponentTurn}
                 isVulnerableToUno={unoVulnerablePlayerId === opponent.id}
                 onCatchUno={() => onChallengeUno(opponent.id)}
+                disconnectInfo={disconnectedPlayers[opponent.id]}
                 className="scale-85 sm:scale-95 md:scale-100 shadow-2xl"
               />
             </div>
