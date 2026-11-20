@@ -94,6 +94,7 @@ export class UnoTeamsAdapter implements GameVariantAdapter {
       hasDrawnThisTurn: false,
       drawnCardId: null,
       score: 0,
+      cumulativeScore: p.cumulativeScore ?? (p as any).initialScore ?? 0,
       teamId: getTeamIdForSeat(idx, playerCount),
       isOut: false,
     }));

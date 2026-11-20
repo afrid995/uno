@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { useGuestStore } from '../stores/guestStore';
 import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
@@ -11,11 +11,24 @@ import { GamePage } from '../pages/GamePage';
 
 export const App: React.FC = () => {
   const { resumeSession, guest, isResuming } = useGuestStore();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     // Attempt automatic session resumption on application startup
     resumeSession();
   }, [resumeSession]);
+
+  useEffect(() => {
+    const roomParam = searchParams.get('room') || searchParams.get('code');
+    if (roomParam) {
+      const clean = roomParam.trim().toUpperCase();
+      if (clean && !location.pathname.startsWith(`/join/${clean}`)) {
+        navigate(`/join/${clean}`, { replace: true });
+      }
+    }
+  }, [searchParams, location.pathname, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col justify-between">
@@ -44,6 +57,10 @@ export const App: React.FC = () => {
             <Route
               path="/game/:roomCode"
               element={<GamePage />}
+            />
+            <Route
+              path="/join"
+              element={<JoinInvitePage />}
             />
             <Route
               path="/join/:roomCode"

@@ -38,6 +38,7 @@ export const SOCKET_EVENTS = {
   ROOM_READY: 'room:ready',
   ROOM_UPDATE_SETTINGS: 'room:update-settings',
   ROOM_START: 'room:start',
+  ROOM_REMATCH: 'room:rematch',
   ROOM_RESUME: 'room:resume',
 
   // Phase 2 Room Events: Server to Client Broadcasts
@@ -288,6 +289,10 @@ export interface ClientToServerEvents {
   [SOCKET_EVENTS.ROOM_START]: (
     payload: Record<string, never> | undefined,
     callback: (response: SocketAck<{ starting: boolean }>) => void
+  ) => void;
+  [SOCKET_EVENTS.ROOM_REMATCH]: (
+    payload: { immediate?: boolean } | Record<string, never> | undefined,
+    callback: (response: SocketAck<{ starting: boolean; matchId?: string }>) => void
   ) => void;
   [SOCKET_EVENTS.ROOM_RESUME]: (
     payload: JoinRoomInput,

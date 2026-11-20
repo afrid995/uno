@@ -121,9 +121,16 @@ export const GameScoreboard: React.FC = () => {
                       <span className="text-slate-400 text-[11px]">
                         {player.cardCount} {player.cardCount === 1 ? 'card' : 'cards'}
                       </span>
-                      <span className="font-bold text-amber-400 min-w-8 text-right">
-                        {player.score} pts
-                      </span>
+                      <div className="flex flex-col items-end">
+                        <span className="font-bold text-amber-400 min-w-8 text-right">
+                          {player.score} pts
+                        </span>
+                        {player.cumulativeScore !== undefined && (
+                          <span className="text-[10px] text-slate-400 min-w-8 text-right">
+                            Total: {player.cumulativeScore}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

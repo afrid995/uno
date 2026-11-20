@@ -93,6 +93,7 @@ export class UnoFlexAdapter implements GameVariantAdapter {
       hasDrawnThisTurn: false,
       drawnCardId: null,
       score: 0,
+      cumulativeScore: p.cumulativeScore ?? (p as any).initialScore ?? 0,
       powerCardStatus: 'green_check' as PowerCardStatus,
     }));
 

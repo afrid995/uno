@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { GuestSessionPublic } from '@uno-ultimate/shared';
 import { guestApi } from '../services/guestApi';
+import { socketManager } from '../services/socketClient';
 
 interface GuestState {
   guest: GuestSessionPublic | null;
@@ -28,6 +29,7 @@ export const useGuestStore = create<GuestState>((set, _get) => ({
     try {
       const response = await guestApi.createGuest(username);
       if (response.success && response.data) {
+        socketManager.updateAuthToken(response.data.sessionToken);
         set({
           guest: response.data.guest,
           sessionToken: response.data.sessionToken,
@@ -56,6 +58,7 @@ export const useGuestStore = create<GuestState>((set, _get) => ({
     try {
       const response = await guestApi.resumeGuest();
       if (response.success && response.data) {
+        socketManager.updateAuthToken(response.data.sessionToken);
         set({
           guest: response.data.guest,
           sessionToken: response.data.sessionToken,
@@ -83,6 +86,7 @@ export const useGuestStore = create<GuestState>((set, _get) => ({
 
   logout: () => {
     guestApi.clearSession();
+    socketManager.disconnect();
     set({
       guest: null,
       sessionToken: null,

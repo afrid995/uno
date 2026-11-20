@@ -23,6 +23,7 @@ interface RoomState {
   toggleReady: () => Promise<boolean>;
   updateSettings: (settings: Record<string, unknown>) => Promise<boolean>;
   startGame: () => Promise<boolean>;
+  rematch: () => Promise<boolean>;
   setRoom: (room: RoomPublicDto | null) => void;
   clearError: () => void;
   initSocketListeners: () => () => void;
@@ -40,10 +41,19 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
   createRoom: async (input) => {
     set({ isLoading: true, error: null });
-    const socket = socketManager.getSocket();
+    const socket = await socketManager.ensureConnected();
 
     return new Promise<boolean>((resolve) => {
+      const timeout = setTimeout(() => {
+        set({
+          isLoading: false,
+          error: 'Room creation timed out. Please try again.',
+        });
+        resolve(false);
+      }, 8000);
+
       socket.emit(SOCKET_EVENTS.ROOM_CREATE, input || {}, (res) => {
+        clearTimeout(timeout);
         if (res.success && res.data) {
           set({ room: res.data, isLoading: false, error: null });
           resolve(true);
@@ -60,10 +70,19 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
   joinRoom: async (input) => {
     set({ isLoading: true, error: null });
-    const socket = socketManager.getSocket();
+    const socket = await socketManager.ensureConnected();
 
     return new Promise<boolean>((resolve) => {
+      const timeout = setTimeout(() => {
+        set({
+          isLoading: false,
+          error: 'Joining room timed out. Please try again.',
+        });
+        resolve(false);
+      }, 8000);
+
       socket.emit(SOCKET_EVENTS.ROOM_JOIN, input, (res) => {
+        clearTimeout(timeout);
         if (res.success && res.data) {
           set({ room: res.data, isLoading: false, error: null });
           resolve(true);
@@ -152,6 +171,37 @@ export const useRoomStore = create<RoomState>((set, get) => ({
           set({
             isStarting: false,
             error: res.error?.message || 'Cannot start match yet.',
+          });
+          resolve(false);
+        }
+      });
+    });
+  },
+
+  rematch: async () => {
+    set({ isStarting: true, error: null });
+    const socket = socketManager.getSocket();
+
+    return new Promise<boolean>((resolve) => {
+      const timeout = setTimeout(() => {
+        if (get().isStarting) {
+          set({
+            isStarting: false,
+            error: 'Starting rematch timed out. Please check your connection and try again.',
+          });
+          resolve(false);
+        }
+      }, 10000);
+
+      socket.emit(SOCKET_EVENTS.ROOM_REMATCH, {}, (res) => {
+        clearTimeout(timeout);
+        if (res.success) {
+          set({ isStarting: false, error: null });
+          resolve(true);
+        } else {
+          set({
+            isStarting: false,
+            error: res.error?.message || 'Failed to start rematch.',
           });
           resolve(false);
         }

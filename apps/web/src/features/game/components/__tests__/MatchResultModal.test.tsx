@@ -188,4 +188,94 @@ describe('MatchResultModal Isolation & Navigation Tests', () => {
     expect(state.showMatchResultModal).toBe(false);
     expect(state.matchWinnerData).toBeNull();
   });
+
+  it('renders active "PLAY AGAIN" button for room host and triggers rematch on click', async () => {
+    const mockRematch = vi.fn().mockResolvedValue(true);
+    useRoomStore.setState({
+      room: {
+        id: 'room-1',
+        roomCode: 'ROOM99',
+        hostGuestId: 'p1', // self.id is 'p1' -> isHost = true
+        status: 'FINISHED',
+        maxPlayers: 4,
+        playerCount: 2,
+        version: 1,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        settings: { variant: 'classic' },
+        members: [
+          { id: 'm1', guestId: 'p1', username: 'Alice', role: 'HOST', readyStatus: true, connectionStatus: 'CONNECTED', joinedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString() },
+          { id: 'm2', guestId: 'p2', username: 'Bob', role: 'PLAYER', readyStatus: true, connectionStatus: 'CONNECTED', joinedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString() },
+        ],
+      },
+      rematch: mockRematch,
+      isStarting: false,
+    });
+
+    useGameStore.setState({
+      gameState: {
+        ...mockCompletedGameState,
+        players: [
+          { id: 'p1', username: 'Alice', cardCount: 0, isEliminated: false, score: 520, cumulativeScore: 1040, hasDeclaredUno: true },
+          { id: 'p2', username: 'Bob', cardCount: 4, isEliminated: false, score: 140, cumulativeScore: 450, hasDeclaredUno: false },
+        ],
+      },
+      showMatchResultModal: true,
+      matchWinnerData: { id: 'p1', username: 'Alice', score: 520 },
+    });
+
+    render(
+      <MemoryRouter>
+        <MatchResultModal />
+      </MemoryRouter>
+    );
+
+    const playAgainBtn = screen.getByTestId('match-result-play-again');
+    expect(playAgainBtn).toBeInTheDocument();
+    expect(playAgainBtn).toHaveTextContent(/PLAY AGAIN/i);
+
+    // Verify cumulative scores and match scores are both displayed
+    expect(screen.getByText('1040 pts total')).toBeInTheDocument();
+    expect(screen.getByText('Match: 520 pts')).toBeInTheDocument();
+
+    fireEvent.click(playAgainBtn);
+    expect(mockRematch).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders "Waiting for host to start Play Again..." for non-host player', () => {
+    useRoomStore.setState({
+      room: {
+        id: 'room-1',
+        roomCode: 'ROOM99',
+        hostGuestId: 'p2', // self.id is 'p1', host is 'p2' -> isHost = false
+        status: 'FINISHED',
+        maxPlayers: 4,
+        playerCount: 2,
+        version: 1,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        settings: { variant: 'classic' },
+        members: [
+          { id: 'm1', guestId: 'p1', username: 'Alice', role: 'PLAYER', readyStatus: true, connectionStatus: 'CONNECTED', joinedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString() },
+          { id: 'm2', guestId: 'p2', username: 'Bob', role: 'HOST', readyStatus: true, connectionStatus: 'CONNECTED', joinedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString() },
+        ],
+      },
+      isStarting: false,
+    });
+
+    useGameStore.setState({
+      gameState: mockCompletedGameState,
+      showMatchResultModal: true,
+      matchWinnerData: { id: 'p1', username: 'Alice', score: 520 },
+    });
+
+    render(
+      <MemoryRouter>
+        <MatchResultModal />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId('match-result-play-again')).not.toBeInTheDocument();
+    expect(screen.getByTestId('match-result-waiting-host')).toHaveTextContent(/Waiting for host to start Play Again/i);
+  });
 });

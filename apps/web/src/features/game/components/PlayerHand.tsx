@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card } from '@uno-ultimate/game-protocol';
 import { PlayingCard } from './PlayingCard';
 import { motion } from 'framer-motion';
+import { sortPlayerHand } from '../utils/cardSorting';
 
 export interface PlayerHandProps {
   hand: readonly Card[];
@@ -18,10 +19,12 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
   onCardClick,
   className = '',
 }) => {
+  const sortedHand = useMemo(() => sortPlayerHand(hand), [hand]);
+
   return (
     <div data-testid="player-hand" className={`w-full overflow-x-auto pb-4 pt-2 px-4 no-scrollbar ${className}`}>
       <div className="flex items-center justify-center min-w-max mx-auto -space-x-3 sm:-space-x-5">
-        {hand.map((card, index) => {
+        {sortedHand.map((card, index) => {
           const isPlayable = isCurrentTurn && playableCardIds.includes(card.id);
 
           return (

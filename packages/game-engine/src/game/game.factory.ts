@@ -201,6 +201,7 @@ export class GameFactory {
       hasDrawnThisTurn: false,
       drawnCardId: null,
       score: 0,
+      cumulativeScore: p.cumulativeScore ?? p.initialScore ?? 0,
     }));
 
     // Apply starting card effects per Mattel 42001 instructions
@@ -316,6 +317,7 @@ export class GameFactory {
       hasDrawnThisTurn: false,
       drawnCardId: null,
       score: p.score, // PRESERVE CUMULATIVE SCORE!
+      cumulativeScore: p.cumulativeScore ?? p.score,
     }));
 
     // Apply start card effects

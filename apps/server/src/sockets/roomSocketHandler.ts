@@ -22,6 +22,7 @@ import { roomService } from '../modules/room/room.service';
 import { gameService } from '../modules/game/game.service';
 import { gameSessionManager } from '../modules/game/game.session.manager';
 import { gameStatePublisher } from '../modules/game/game.state.publisher';
+import { prisma } from '@uno-ultimate/database';
 import { logger } from '../utils/logger';
 
 export type UnoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -361,8 +362,9 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
   // Helper to execute match creation, persistence, and state publishing
   const executeMatchStart = async (
     targetRoomCode: string,
-    initiatingGuestId: string,
-    cb?: (response: SocketAck<{ starting: boolean }>) => void
+    initiatingGuestId?: string,
+    cb?: (response: SocketAck<{ starting: boolean; matchId?: string }>) => void,
+    options?: { isRematch?: boolean }
   ) => {
     const startReceivedTime = Date.now();
     if (startingRoomLocks.has(targetRoomCode)) {
@@ -377,7 +379,10 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
 
     try {
       const currentRoom = await roomService.getRoomByCode(targetRoomCode);
-      if (!currentRoom || currentRoom.members.length < 2 || currentRoom.status === 'IN_GAME') {
+      const isRematch = options?.isRematch === true;
+      const activeMembers = (currentRoom?.members || []).filter((m) => m.connectionStatus !== 'DISCONNECTED');
+
+      if (!currentRoom || activeMembers.length < 2 || currentRoom.status === 'IN_GAME') {
         cb?.({
           success: false,
           error: {
@@ -388,16 +393,30 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
         return;
       }
 
-      // Verify non-host members are still all ready
-      const nonHostMembers = currentRoom.members.filter((m) => m.guestId !== currentRoom.hostGuestId);
-      const allReady = nonHostMembers.every((m) => m.readyStatus);
-      if (!allReady) {
-        logger.info('Aborting match start: not all non-host players are ready', { roomCode: targetRoomCode });
-        cb?.({
-          success: false,
-          error: { code: ERROR_CODES.PLAYERS_NOT_READY, message: 'All players must be ready before starting.' },
-        });
-        return;
+      // Verify non-host members are still all ready (only required for initial lobby start, not for rematch)
+      if (!isRematch) {
+        const nonHostMembers = currentRoom.members.filter((m) => m.guestId !== currentRoom.hostGuestId);
+        const allReady = nonHostMembers.every((m) => m.readyStatus);
+        if (!allReady) {
+          logger.info('Aborting match start: not all non-host players are ready', { roomCode: targetRoomCode });
+          cb?.({
+            success: false,
+            error: { code: ERROR_CODES.PLAYERS_NOT_READY, message: 'All players must be ready before starting.' },
+          });
+          return;
+        }
+      }
+
+      // Compute cumulative scores across completed matches in this room
+      const completedMatches = await prisma.match.findMany({
+        where: { roomId: currentRoom.id, status: 'COMPLETED' },
+        include: { players: true },
+      });
+      const cumulativeScores = new Map<string, number>();
+      for (const match of completedMatches) {
+        for (const mp of match.players) {
+          cumulativeScores.set(mp.guestId, (cumulativeScores.get(mp.guestId) || 0) + mp.score);
+        }
       }
 
       // Notify clients that starting is executing
@@ -407,7 +426,13 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       });
 
       const dbUpdateStart = Date.now();
-      // Transition room status to IN_GAME
+      // Transition room status to IN_GAME and extend room expiration for the new match
+      await prisma.room.update({
+        where: { id: currentRoom.id },
+        data: {
+          expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
+        },
+      });
       const updatedRoom = await roomService.updateRoomStatus(currentRoom.id, 'IN_GAME');
       const dbUpdateDurationMs = Date.now() - dbUpdateStart;
 
@@ -420,9 +445,10 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
         currentRoom.id,
         currentRoom.roomCode,
         currentRoom.hostGuestId,
-        currentRoom.members.map((m) => ({ guestId: m.guestId, username: m.username })),
+        activeMembers.map((m) => ({ guestId: m.guestId, username: m.username })),
         variant,
-        roomSettings
+        roomSettings,
+        cumulativeScores
       );
       const engineAndPersistDurationMs = Date.now() - engineStart;
 
@@ -442,14 +468,15 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       const broadcastDurationMs = Date.now() - broadcastStart;
 
       // Acknowledge the start request upon complete successful initialization
-      cb?.({ success: true, data: { starting: true } });
+      cb?.({ success: true, data: { starting: true, matchId: gameState.id } });
 
       const totalServerDurationMs = Date.now() - startReceivedTime;
       logger.info('Match started successfully', {
         roomCode: currentRoom.roomCode,
         matchId: gameState.id,
         variant,
-        playerCount: currentRoom.members.length,
+        isRematch,
+        playerCount: activeMembers.length,
         dbUpdateDurationMs,
         engineAndPersistDurationMs,
         broadcastDurationMs,
@@ -575,6 +602,90 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       const message = (err as Error).message || 'Failed to start game';
       const code = (err as { code?: string }).code || ERROR_CODES.INTERNAL_ERROR;
       callback({ success: false, error: { code, message } });
+    }
+  });
+
+  // Handle room:rematch
+  socket.on(SOCKET_EVENTS.ROOM_REMATCH, async (payload, callback) => {
+    const cb = typeof callback === 'function' ? callback : () => {};
+    try {
+      const guestId = getAuthenticatedGuestId();
+      const roomCode = socket.data.currentRoomCode;
+      if (!roomCode) {
+        cb({ success: false, error: { code: ERROR_CODES.NOT_IN_ROOM, message: 'Not in a room.' } });
+        return;
+      }
+
+      if (startingRoomLocks.has(roomCode)) {
+        logger.warn('Duplicate rematch request rejected', { roomCode, guestId });
+        cb({
+          success: false,
+          error: { code: ERROR_CODES.BAD_REQUEST, message: 'Rematch is already starting.' },
+        });
+        return;
+      }
+
+      const room = await roomService.getRoomByCode(roomCode);
+      if (!room) {
+        cb({ success: false, error: { code: ERROR_CODES.ROOM_NOT_FOUND, message: 'Room not found.' } });
+        return;
+      }
+
+      if (room.status === 'IN_GAME') {
+        cb({
+          success: false,
+          error: { code: ERROR_CODES.BAD_REQUEST, message: 'A match is already in progress for this room.' },
+        });
+        return;
+      }
+
+      if (room.hostGuestId !== guestId) {
+        cb({
+          success: false,
+          error: { code: ERROR_CODES.HOST_ONLY_ACTION, message: 'Only the host can start a rematch.' },
+        });
+        return;
+      }
+
+      const activeMembers = room.members.filter((m) => m.connectionStatus !== 'DISCONNECTED');
+      const variant = ((room.settings as Record<string, unknown>)?.variant as string) || 'classic';
+      if (variant === 'uno_show_em_no_mercy') {
+        if (activeMembers.length < 2 || activeMembers.length > 6) {
+          cb({
+            success: false,
+            error: {
+              code: ERROR_CODES.BAD_REQUEST,
+              message: 'UNO Show \'em No Mercy requires between 2 and 6 players for a rematch.',
+            },
+          });
+          return;
+        }
+      } else if (variant === 'uno_teams') {
+        if (activeMembers.length < 4 || activeMembers.length > 8 || activeMembers.length % 2 !== 0) {
+          cb({
+            success: false,
+            error: {
+              code: ERROR_CODES.BAD_REQUEST,
+              message: 'UNO Teams requires 4, 6, or 8 players (teams of 2) for a rematch.',
+            },
+          });
+          return;
+        }
+      } else {
+        if (activeMembers.length < 2 || activeMembers.length > 10) {
+          cb({
+            success: false,
+            error: { code: ERROR_CODES.NOT_ENOUGH_PLAYERS, message: 'At least 2 players are required for a rematch.' },
+          });
+          return;
+        }
+      }
+
+      await executeMatchStart(room.roomCode, guestId, cb, { isRematch: true });
+    } catch (err: unknown) {
+      const message = (err as Error).message || 'Failed to start rematch';
+      const code = (err as { code?: string }).code || ERROR_CODES.INTERNAL_ERROR;
+      cb({ success: false, error: { code, message } });
     }
   });
 

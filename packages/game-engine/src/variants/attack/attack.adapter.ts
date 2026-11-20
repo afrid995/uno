@@ -100,6 +100,7 @@ export class UnoAttackAdapter implements GameVariantAdapter {
       hasDrawnThisTurn: false,
       drawnCardId: null,
       score: 0,
+      cumulativeScore: p.cumulativeScore ?? (p as any).initialScore ?? 0,
     }));
 
     // Opening card resolution per Mattel GTX66 Rules:

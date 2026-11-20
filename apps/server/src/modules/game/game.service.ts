@@ -42,7 +42,8 @@ export class GameService {
     hostGuestId: string,
     members: { guestId: string; username: string }[],
     variant: string = 'classic',
-    settings: Record<string, unknown> = {}
+    settings: Record<string, unknown> = {},
+    cumulativeScores?: Map<string, number>
   ): Promise<GameState> {
     // 1. Guard against duplicate active matches
     const existingMatch = await gamePersistenceService.findActiveMatchForRoom(roomId);
@@ -113,7 +114,11 @@ export class GameService {
       matchId,
       roomId,
       variant,
-      players: members.map((m) => ({ id: m.guestId, username: m.username })),
+      players: members.map((m) => ({
+        id: m.guestId,
+        username: m.username,
+        cumulativeScore: cumulativeScores?.get(m.guestId) ?? 0,
+      })),
       targetScore,
       attackCustomizableCount,
     });

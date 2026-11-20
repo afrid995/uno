@@ -233,7 +233,12 @@ export interface GameConfig {
   readonly matchId?: string;
   readonly roomId: string;
   readonly variant?: string;
-  readonly players: readonly { readonly id: string; readonly username: string }[];
+  readonly players: readonly {
+    readonly id: string;
+    readonly username: string;
+    readonly initialScore?: number;
+    readonly cumulativeScore?: number;
+  }[];
   readonly cardsPerHand?: number;
   readonly targetScore?: number;
   readonly dealerIndex?: number;

@@ -798,13 +798,19 @@ export class ActionProcessor {
     const loserHands = players.filter((p) => p.id !== winnerPlayerId).map((p) => p.hand);
     const roundScore = loserHands.reduce((acc, h) => acc + HandManager.calculateHandScore(h), 0);
     const newCumulativeScore = winner.score + roundScore;
+    const newTotalSessionScore = (winner.cumulativeScore ?? winner.score) + roundScore;
 
     const updatedWinner = {
       ...winner,
       score: newCumulativeScore,
+      roundScore,
+      cumulativeScore: newTotalSessionScore,
     };
-    const finalPlayers = [...players];
-    finalPlayers[winnerIndex] = updatedWinner;
+    const finalPlayers = players.map((p) =>
+      p.id === winnerPlayerId
+        ? updatedWinner
+        : { ...p, roundScore: 0, cumulativeScore: p.cumulativeScore ?? p.score }
+    );
 
     const roundWinnerRecord: GameWinner = {
       id: winnerPlayerId,

@@ -17,6 +17,10 @@ export interface Player {
   readonly drawnCardId: string | null;
   /** Accumulated match score */
   readonly score: number;
+  /** Points scored in the current round */
+  readonly roundScore?: number;
+  /** Cumulative score across rematches / room session */
+  readonly cumulativeScore?: number;
   /** Whether the player has been eliminated under the Mercy Rule (25+ cards) */
   readonly isEliminated?: boolean;
   /** Elimination sequence order if eliminated */

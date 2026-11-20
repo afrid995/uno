@@ -316,7 +316,12 @@ describe('Game Start Latency, Concurrency & Immediate Response Test Suite', () =
 
       expect(started.matchId).toBeDefined();
       expect(state.state.variant).toBe(v.variant);
-      expect(state.state.self.hand).toHaveLength(v.expectedHandSize);
+      if (v.variant === 'uno_flip') {
+        // In UNO Flip, if the initial top discard is Draw One or Draw Five, starting player draws penalty cards
+        expect([7, 8, 12]).toContain(state.state.self.hand.length);
+      } else {
+        expect(state.state.self.hand).toHaveLength(v.expectedHandSize);
+      }
       expect(state.state.players).toHaveLength(v.playerCount);
 
       // Clean up for next variant

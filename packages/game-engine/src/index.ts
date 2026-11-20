@@ -2,6 +2,7 @@
 export * from './cards/card.types';
 export * from './cards/card.factory';
 export * from './cards/card.validation';
+export * from './cards/card.sort';
 
 // Deck
 export * from './deck/deck.shuffle';

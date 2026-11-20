@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../../stores/gameStore';
 import { useRoomStore } from '../../../stores/roomStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 export const MatchResultModal: React.FC = () => {
   const navigate = useNavigate();
-  const { leaveRoom } = useRoomStore();
+  const { room, leaveRoom, rematch, isStarting, error: roomError } = useRoomStore();
   const { showMatchResultModal, matchWinnerData, gameState, reset } = useGameStore();
 
   const isVisible = Boolean(
@@ -19,8 +20,17 @@ export const MatchResultModal: React.FC = () => {
   const winner = matchWinnerData || gameState.winner;
   const winnerName = winner?.username || 'Champion';
 
+  const isHost = room ? room.hostGuestId === gameState.self.id : false;
+
   // Sort players by cumulative score descending
-  const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
+  const sortedPlayers = [...gameState.players].sort(
+    (a, b) => (b.cumulativeScore ?? b.score) - (a.cumulativeScore ?? a.score)
+  );
+
+  const handlePlayAgain = async () => {
+    if (isStarting) return;
+    await rematch();
+  };
 
   const handleExitToHome = async () => {
     reset();
@@ -60,7 +70,7 @@ export const MatchResultModal: React.FC = () => {
           </h2>
 
           <p className="text-sm text-slate-300 mb-6 max-w-sm mx-auto">
-            Surpassed the official Mattel target of {gameState.targetScore} points across {gameState.roundNumber} rounds of Classic UNO!
+            Surpassed the target of {gameState.targetScore} points across {gameState.roundNumber} rounds!
           </p>
 
           {/* Leaderboard */}
@@ -87,30 +97,72 @@ export const MatchResultModal: React.FC = () => {
                       {p.username} {p.id === gameState.self.id && '(you)'}
                     </span>
                   </div>
-                  <span className="font-mono font-bold text-white">
-                    {p.score} pts
-                  </span>
+                  <div className="flex flex-col items-end">
+                    <span className="font-mono font-bold text-white">
+                      {p.cumulativeScore !== undefined ? `${p.cumulativeScore} pts total` : `${p.score} pts`}
+                    </span>
+                    {p.cumulativeScore !== undefined && (
+                      <span className="text-[11px] text-slate-400 font-mono">
+                        Match: {p.score} pts
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Navigation buttons */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={handleExitToHome}
-              data-testid="match-result-back-home"
-              className="flex-1 py-3 px-6 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 active:scale-95 transition-all text-sm shadow-lg shadow-amber-400/20"
-            >
-              Back to Home
-            </button>
-            <button
-              onClick={handleExitToHome}
-              data-testid="match-result-main-menu"
-              className="py-3 px-6 rounded-xl font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all text-sm"
-            >
-              Main Menu
-            </button>
+          {/* Error Message if Rematch Fails */}
+          {roomError && (
+            <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{roomError}</span>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="space-y-3">
+            {isHost ? (
+              <button
+                onClick={handlePlayAgain}
+                disabled={isStarting}
+                data-testid="match-result-play-again"
+                className="w-full py-3.5 px-6 rounded-xl font-black text-slate-950 bg-gradient-to-r from-emerald-400 via-green-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 active:scale-95 transition-all text-sm shadow-lg shadow-emerald-400/25 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+              >
+                {isStarting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Starting Rematch...</span>
+                  </>
+                ) : (
+                  <span>PLAY AGAIN</span>
+                )}
+              </button>
+            ) : (
+              <div
+                data-testid="match-result-waiting-host"
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-800/50 border border-slate-700/60 text-xs text-slate-400 font-medium"
+              >
+                Waiting for host to start Play Again...
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={handleExitToHome}
+                data-testid="match-result-back-home"
+                className="flex-1 py-3 px-6 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 active:scale-95 transition-all text-sm shadow-lg shadow-amber-400/20"
+              >
+                Back to Home
+              </button>
+              <button
+                onClick={handleExitToHome}
+                data-testid="match-result-main-menu"
+                className="py-3 px-6 rounded-xl font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all text-sm"
+              >
+                Main Menu
+              </button>
+            </div>
           </div>
         </motion.div>
       </div>

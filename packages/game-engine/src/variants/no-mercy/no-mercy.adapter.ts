@@ -90,6 +90,7 @@ export class UnoShowEmNoMercyAdapter implements GameVariantAdapter {
       hasDrawnThisTurn: false,
       drawnCardId: null,
       score: 0,
+      cumulativeScore: p.cumulativeScore ?? (p as any).initialScore ?? 0,
       isEliminated: false,
       eliminationOrder: undefined,
     }));

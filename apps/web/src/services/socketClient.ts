@@ -45,8 +45,43 @@ class SocketClientManager {
       this.socket.auth = { token };
       if (this.socket.connected) {
         this.socket.disconnect().connect();
+      } else {
+        this.socket.connect();
       }
+    } else {
+      this.getSocket();
     }
+  }
+
+  async ensureConnected(timeoutMs = 5000): Promise<UnoClientSocket> {
+    const socket = this.getSocket();
+    if (socket.connected) {
+      return socket;
+    }
+
+    return new Promise<UnoClientSocket>((resolve) => {
+      let settled = false;
+      const onConnect = () => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(socket);
+        }
+      };
+
+      const timer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          socket.off('connect', onConnect);
+          resolve(socket);
+        }
+      }, timeoutMs);
+
+      socket.once('connect', onConnect);
+      if (!socket.connected) {
+        socket.connect();
+      }
+    });
   }
 
   disconnect(): void {
