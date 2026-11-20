@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Sparkles,
   Info,
+  Loader2,
 } from 'lucide-react';
 import { RoomMemberPublicDto } from '@uno-ultimate/shared';
 import { SOCKET_EVENTS } from '@uno-ultimate/game-protocol';
@@ -72,7 +73,19 @@ export const LobbyPage: React.FC = () => {
   // Listen for game:started socket event to navigate to game table
   useEffect(() => {
     const socket = socketManager.getSocket();
-    const handleGameStarted = () => {
+    const handleGameStarted = (payload?: { matchId?: string; roomCode?: string }) => {
+      // Diagnostic timing
+      const clickTimeStr = sessionStorage.getItem('uno_start_game_click_time');
+      if (clickTimeStr) {
+        const elapsedMs = Date.now() - parseInt(clickTimeStr, 10);
+        // eslint-disable-next-line no-console
+        console.info(`[UNO Client] Game started received in ${elapsedMs}ms after host click`, {
+          matchId: payload?.matchId,
+          roomCode,
+          elapsedMs,
+        });
+        sessionStorage.removeItem('uno_start_game_click_time');
+      }
       if (roomCode) {
         navigate(`/game/${roomCode}`);
       }
@@ -110,6 +123,7 @@ export const LobbyPage: React.FC = () => {
   };
 
   const handleStartGame = async () => {
+    sessionStorage.setItem('uno_start_game_click_time', Date.now().toString());
     await startGame();
   };
 
@@ -469,18 +483,29 @@ export const LobbyPage: React.FC = () => {
               <button
                 data-testid="start-game-btn"
                 onClick={handleStartGame}
-                disabled={!canStartMatch}
+                disabled={!canStartMatch || isStarting}
                 className={`py-3.5 px-7 rounded-xl font-display font-bold text-xs tracking-wide transition-all shadow-xl flex items-center justify-center gap-2 w-full sm:w-auto select-none ${
-                  canStartMatch
+                  isStarting
+                    ? 'bg-slate-800 text-amber-400 border border-amber-500/40 cursor-wait'
+                    : canStartMatch
                     ? 'bg-gradient-to-r from-uno-red via-rose-600 to-uno-yellow text-white shadow-glow hover:scale-[1.02] cursor-pointer'
                     : 'bg-slate-800/80 border border-slate-700 text-slate-500 cursor-not-allowed'
                 }`}
               >
-                <Play className="w-4 h-4 fill-current" />
-                <span>Start Game</span>
+                {isStarting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                    <span>Starting Game...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 fill-current" />
+                    <span>Start Game</span>
+                  </>
+                )}
               </button>
 
-              {!canStartMatch && (
+              {!canStartMatch && !isStarting && (
                 <div className="text-[10px] text-center text-slate-500 mt-1">
                   {room.members.length < 2
                     ? 'Requires at least 2 players'

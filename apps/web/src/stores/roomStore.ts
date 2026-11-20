@@ -128,13 +128,31 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
 
   startGame: async () => {
+    if (get().isStarting) return false;
+    set({ isStarting: true, error: null });
     const socket = socketManager.getSocket();
+
     return new Promise<boolean>((resolve) => {
+      const timeout = setTimeout(() => {
+        if (get().isStarting && get().room?.status !== 'IN_GAME') {
+          set({
+            isStarting: false,
+            error: 'Starting game timed out. Please check your connection and try again.',
+          });
+          resolve(false);
+        }
+      }, 10000);
+
       socket.emit(SOCKET_EVENTS.ROOM_START, undefined, (res) => {
         if (res.success) {
+          clearTimeout(timeout);
           resolve(true);
         } else {
-          set({ error: res.error?.message || 'Cannot start match yet.' });
+          clearTimeout(timeout);
+          set({
+            isStarting: false,
+            error: res.error?.message || 'Cannot start match yet.',
+          });
           resolve(false);
         }
       });
@@ -226,7 +244,13 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     };
 
     const handleRoomError = (payload: { code: string; message: string }) => {
-      set({ error: payload.message });
+      set({ error: payload.message, isStarting: false });
+    };
+
+    const handleDisconnect = () => {
+      if (get().isStarting) {
+        set({ isStarting: false, error: 'Connection lost while starting match.' });
+      }
     };
 
     socket.on(SOCKET_EVENTS.ROOM_STATE, handleRoomState);
@@ -237,6 +261,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     socket.on(SOCKET_EVENTS.ROOM_CLOSED, handleRoomClosed);
     socket.on(SOCKET_EVENTS.ROOM_STARTING, handleRoomStarting);
     socket.on(SOCKET_EVENTS.ROOM_ERROR, handleRoomError);
+    socket.on('disconnect', handleDisconnect);
 
     // Return cleanup function
     return () => {
@@ -248,6 +273,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       socket.off(SOCKET_EVENTS.ROOM_CLOSED, handleRoomClosed);
       socket.off(SOCKET_EVENTS.ROOM_STARTING, handleRoomStarting);
       socket.off(SOCKET_EVENTS.ROOM_ERROR, handleRoomError);
+      socket.off('disconnect', handleDisconnect);
     };
   },
 }));

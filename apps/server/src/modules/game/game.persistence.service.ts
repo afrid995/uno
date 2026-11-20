@@ -28,18 +28,16 @@ export class GamePersistenceService {
         },
       });
 
-      // 2. Create MatchPlayer rows
-      for (const p of players) {
-        await tx.matchPlayer.create({
-          data: {
-            matchId,
-            guestId: p.guestId,
-            playerIndex: p.seatIndex,
-            cardCount: 7,
-            score: 0,
-          },
-        });
-      }
+      // 2. Create MatchPlayer rows in a single batch insert
+      await tx.matchPlayer.createMany({
+        data: players.map((p) => ({
+          matchId,
+          guestId: p.guestId,
+          playerIndex: p.seatIndex,
+          cardCount: 7,
+          score: 0,
+        })),
+      });
 
       // 3. Persist initial GameSnapshot at sequenceNumber 0 for crash recovery
       if (initialState) {

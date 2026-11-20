@@ -313,7 +313,7 @@ describe('Game Socket.IO Multiplayer Integration Tests', () => {
     expect(strangerResumeAck.error.code).toBe('NOT_IN_ROOM');
   });
 
-  it('enforces 5-second countdown in production mode when immediate is sent', async () => {
+  it('starts game immediately in production without artificial countdown delay', async () => {
     const prevEnv = process.env.NODE_ENV;
     try {
       // Temporarily switch NODE_ENV to production
@@ -341,20 +341,19 @@ describe('Game Socket.IO Multiplayer Integration Tests', () => {
         playerSocket.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve);
       });
 
-      let gameStartedImmediately = false;
-      hostSocket.once(SOCKET_EVENTS.GAME_STARTED, () => {
-        gameStartedImmediately = true;
+      const gameStartedPromise = new Promise<{ matchId: string }>((resolve) => {
+        hostSocket.once(SOCKET_EVENTS.GAME_STARTED, resolve);
       });
 
-      // Attempt immediate bypass in production
       const startAck = await new Promise<any>((resolve) => {
-        hostSocket.emit(SOCKET_EVENTS.ROOM_START, { immediate: true }, resolve);
+        hostSocket.emit(SOCKET_EVENTS.ROOM_START, {}, resolve);
       });
       expect(startAck.success).toBe(true);
 
-      // Wait 150ms: in production, game must NOT have started immediately (countdown is 5000ms)
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      expect(gameStartedImmediately).toBe(false);
+      // In production, game starts immediately and emits GAME_STARTED without 5-second artificial delay
+      const started = await gameStartedPromise;
+      expect(started.matchId).toBeDefined();
+      expect(gameSessionManager.getSessionByRoomCode(roomCode)).not.toBeNull();
     } finally {
       process.env.NODE_ENV = prevEnv;
     }
@@ -506,7 +505,7 @@ describe('Game Socket.IO Multiplayer Integration Tests', () => {
   });
 
   it('executes full countdown and starts game after configured duration', async () => {
-    expect(PRODUCTION_COUNTDOWN_MS).toBe(5000);
+    expect(PRODUCTION_COUNTDOWN_MS).toBe(0);
 
     // Verify production cannot tamper with countdown duration
     const prevEnv = process.env.NODE_ENV;

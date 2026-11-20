@@ -30,8 +30,8 @@ export type UnoServer = Server<ClientToServerEvents, ServerToClientEvents, Inter
 // Track active sockets per guest to prevent duplicate connections and handle replacement
 export const guestSockets = new Map<string, UnoSocket>();
 
-// Configurable countdown duration (default 5000ms for production)
-export const PRODUCTION_COUNTDOWN_MS = 5000;
+// Configurable countdown duration (default 0ms for instant game start)
+export const PRODUCTION_COUNTDOWN_MS = 0;
 let configuredCountdownMs = PRODUCTION_COUNTDOWN_MS;
 
 export function setCountdownDurationForTesting(ms: number): void {
@@ -48,11 +48,15 @@ export function resetCountdownDurationForTesting(): void {
 // Track active countdown timers per room for cancellation handling
 export const activeCountdownTimers = new Map<string, NodeJS.Timeout>();
 
+// Track active room initialization locks to prevent concurrent match creation
+export const startingRoomLocks = new Set<string>();
+
 export function cancelAllCountdownTimersForTesting(): void {
   for (const timer of activeCountdownTimers.values()) {
     clearTimeout(timer);
   }
   activeCountdownTimers.clear();
+  startingRoomLocks.clear();
   resetCountdownDurationForTesting();
   roomService.shutdown();
 }
@@ -354,6 +358,118 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
     }
   });
 
+  // Helper to execute match creation, persistence, and state publishing
+  const executeMatchStart = async (
+    targetRoomCode: string,
+    initiatingGuestId: string,
+    cb?: (response: SocketAck<{ starting: boolean }>) => void
+  ) => {
+    const startReceivedTime = Date.now();
+    if (startingRoomLocks.has(targetRoomCode)) {
+      logger.warn('Duplicate match start execution rejected', { roomCode: targetRoomCode });
+      cb?.({
+        success: false,
+        error: { code: ERROR_CODES.BAD_REQUEST, message: 'Game start is already in progress.' },
+      });
+      return;
+    }
+    startingRoomLocks.add(targetRoomCode);
+
+    try {
+      const currentRoom = await roomService.getRoomByCode(targetRoomCode);
+      if (!currentRoom || currentRoom.members.length < 2 || currentRoom.status === 'IN_GAME') {
+        cb?.({
+          success: false,
+          error: {
+            code: ERROR_CODES.BAD_REQUEST,
+            message: currentRoom?.status === 'IN_GAME' ? 'A match is already in progress for this room.' : 'Cannot start match yet.',
+          },
+        });
+        return;
+      }
+
+      // Verify non-host members are still all ready
+      const nonHostMembers = currentRoom.members.filter((m) => m.guestId !== currentRoom.hostGuestId);
+      const allReady = nonHostMembers.every((m) => m.readyStatus);
+      if (!allReady) {
+        logger.info('Aborting match start: not all non-host players are ready', { roomCode: targetRoomCode });
+        cb?.({
+          success: false,
+          error: { code: ERROR_CODES.PLAYERS_NOT_READY, message: 'All players must be ready before starting.' },
+        });
+        return;
+      }
+
+      // Notify clients that starting is executing
+      io.to(targetRoomCode).emit(SOCKET_EVENTS.ROOM_STARTING, {
+        countdownSeconds: 0,
+        version: currentRoom.version,
+      });
+
+      const dbUpdateStart = Date.now();
+      // Transition room status to IN_GAME
+      const updatedRoom = await roomService.updateRoomStatus(currentRoom.id, 'IN_GAME');
+      const dbUpdateDurationMs = Date.now() - dbUpdateStart;
+
+      // Initialize Match and GameState
+      const roomSettings = (currentRoom.settings as Record<string, unknown>) || {};
+      const variant = (roomSettings.variant as string) || 'classic';
+
+      const engineStart = Date.now();
+      const gameState = await gameService.startMatch(
+        currentRoom.id,
+        currentRoom.roomCode,
+        currentRoom.hostGuestId,
+        currentRoom.members.map((m) => ({ guestId: m.guestId, username: m.username })),
+        variant,
+        roomSettings
+      );
+      const engineAndPersistDurationMs = Date.now() - engineStart;
+
+      const broadcastStart = Date.now();
+      // Broadcast game:started
+      io.to(currentRoom.roomCode).emit(SOCKET_EVENTS.GAME_STARTED, {
+        matchId: gameState.id,
+        roomCode: currentRoom.roomCode,
+        roundNumber: gameState.roundNumber,
+      });
+
+      // Sync room state with status: IN_GAME
+      io.to(currentRoom.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: updatedRoom });
+
+      // Publish personalized states to all participants
+      gameStatePublisher.publishToAllParticipants(gameState, guestSockets, io);
+      const broadcastDurationMs = Date.now() - broadcastStart;
+
+      // Acknowledge the start request upon complete successful initialization
+      cb?.({ success: true, data: { starting: true } });
+
+      const totalServerDurationMs = Date.now() - startReceivedTime;
+      logger.info('Match started successfully', {
+        roomCode: currentRoom.roomCode,
+        matchId: gameState.id,
+        variant,
+        playerCount: currentRoom.members.length,
+        dbUpdateDurationMs,
+        engineAndPersistDurationMs,
+        broadcastDurationMs,
+        totalServerDurationMs,
+      });
+    } catch (err: unknown) {
+      logger.error('Failed to initialize match', { error: String(err), roomCode: targetRoomCode });
+      cb?.({
+        success: false,
+        error: { code: ERROR_CODES.INTERNAL_ERROR, message: (err as Error).message || 'Failed to start game' },
+      });
+      io.to(targetRoomCode).emit(SOCKET_EVENTS.ROOM_ERROR, {
+        code: ERROR_CODES.INTERNAL_ERROR,
+        message: 'Failed to start game. Please try again.',
+      });
+    } finally {
+      startingRoomLocks.delete(targetRoomCode);
+    }
+  };
+
   // Handle room:start
   socket.on(SOCKET_EVENTS.ROOM_START, async (payload, callback) => {
     try {
@@ -364,9 +480,26 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
         return;
       }
 
+      if (startingRoomLocks.has(roomCode)) {
+        logger.warn('Duplicate game start request rejected', { roomCode, guestId });
+        callback({
+          success: false,
+          error: { code: ERROR_CODES.BAD_REQUEST, message: 'Game start is already in progress.' },
+        });
+        return;
+      }
+
       const room = await roomService.getRoomByCode(roomCode);
       if (!room) {
         callback({ success: false, error: { code: ERROR_CODES.ROOM_NOT_FOUND, message: 'Room not found.' } });
+        return;
+      }
+
+      if (room.status === 'IN_GAME') {
+        callback({
+          success: false,
+          error: { code: ERROR_CODES.BAD_REQUEST, message: 'A match is already in progress for this room.' },
+        });
         return;
       }
 
@@ -411,71 +544,32 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
         return;
       }
 
-      // Cancel any active countdown for this room first
-      cancelCountdownIfActive(room.roomCode, 'New countdown initiated');
-
-      // Broadcast room:starting with 5-second countdown notification
-      io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STARTING, {
-        countdownSeconds: 5,
-        version: room.version,
-      });
-
-      callback({ success: true, data: { starting: true } });
-
-      // Start match after countdown (immediate bypass is strictly restricted to test environment)
-      const isTestEnv = process.env.NODE_ENV === 'test';
-      const allowImmediate = isTestEnv && (payload as { immediate?: boolean })?.immediate === true;
-      const countdownMs = allowImmediate ? 0 : configuredCountdownMs;
-      const timer = setTimeout(async () => {
-        activeCountdownTimers.delete(room.roomCode);
-        try {
-          const currentRoom = await roomService.getRoomByCode(room.roomCode);
-          if (!currentRoom || currentRoom.members.length < 2 || currentRoom.status === 'IN_GAME') {
-            return;
-          }
-
-          // Verify non-host members are still all ready
-          const nonHostMembers = currentRoom.members.filter((m) => m.guestId !== currentRoom.hostGuestId);
-          const allReady = nonHostMembers.every((m) => m.readyStatus);
-          if (!allReady) {
-            logger.info('Aborting match start: not all non-host players are ready', { roomCode: room.roomCode });
-            return;
-          }
-
-          // Transition room status to IN_GAME
-          const updatedRoom = await roomService.updateRoomStatus(currentRoom.id, 'IN_GAME');
-
-          // Initialize Match and GameState
-          const roomSettings = (currentRoom.settings as Record<string, unknown>) || {};
-          const variant = (roomSettings.variant as string) || 'classic';
-          const gameState = await gameService.startMatch(
-            currentRoom.id,
-            currentRoom.roomCode,
-            currentRoom.hostGuestId,
-            currentRoom.members.map((m) => ({ guestId: m.guestId, username: m.username })),
-            variant,
-            roomSettings
-          );
-
-          // Broadcast game:started
-          io.to(currentRoom.roomCode).emit(SOCKET_EVENTS.GAME_STARTED, {
-            matchId: gameState.id,
-            roomCode: currentRoom.roomCode,
-            roundNumber: gameState.roundNumber,
-          });
-
-          // Sync room state with status: IN_GAME
-          io.to(currentRoom.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: updatedRoom });
-
-          // Publish personalized states to all participants
-          gameStatePublisher.publishToAllParticipants(gameState, guestSockets, io);
-        } catch (err: unknown) {
-          logger.error('Failed to initialize match after countdown', { error: String(err), roomCode: room.roomCode });
-        }
-      }, countdownMs);
+      // Determine countdown duration:
+      // Default to 0ms (immediate start) unless explicitly requested via immediate: false
+      const isExplicitCountdown = (payload as { immediate?: boolean })?.immediate === false;
+      const countdownMs = isExplicitCountdown ? (configuredCountdownMs > 0 ? configuredCountdownMs : 5000) : 0;
 
       if (countdownMs > 0) {
+        // Cancel any active countdown for this room first
+        cancelCountdownIfActive(room.roomCode, 'New countdown initiated');
+
+        // Broadcast room:starting with countdown notification
+        io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STARTING, {
+          countdownSeconds: Math.ceil(countdownMs / 1000),
+          version: room.version,
+        });
+
+        callback({ success: true, data: { starting: true } });
+
+        const timer = setTimeout(async () => {
+          activeCountdownTimers.delete(room.roomCode);
+          await executeMatchStart(room.roomCode, guestId);
+        }, countdownMs);
+
         activeCountdownTimers.set(room.roomCode, timer);
+      } else {
+        // Immediate start (no artificial delay)
+        await executeMatchStart(room.roomCode, guestId, callback);
       }
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to start game';

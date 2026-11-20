@@ -202,7 +202,7 @@ describe('Room Socket.IO Integration Tests', () => {
     });
 
     const startAck = await new Promise<any>((resolve) => {
-      hostSocket.emit(SOCKET_EVENTS.ROOM_START, {}, resolve);
+      hostSocket.emit(SOCKET_EVENTS.ROOM_START, { immediate: false }, resolve);
     });
     expect(startAck.success).toBe(true);
     expect(startAck.data.starting).toBe(true);

@@ -199,4 +199,50 @@ describe('LobbyPage Component', () => {
 
     expect(mockLeaveRoom).toHaveBeenCalledTimes(1);
   });
+
+  it('renders disabled button with loading spinner when isStarting is true', () => {
+    useGuestStore.setState({ guest: mockHostGuest, sessionToken: 'token' });
+    useRoomStore.setState({
+      room: createMockRoom(true),
+      isLoading: false,
+      isStarting: true,
+      startingCountdown: null,
+      error: null,
+      initSocketListeners: mockInitSocketListeners,
+      leaveRoom: mockLeaveRoom,
+      toggleReady: mockToggleReady,
+      startGame: mockStartGame,
+      joinRoom: mockJoinRoom,
+    });
+
+    renderLobby();
+
+    const startBtn = screen.getByTestId('start-game-btn');
+    expect(startBtn).toBeDisabled();
+    expect(startBtn).toHaveTextContent(/starting game\.\.\./i);
+  });
+
+  it('calls startGame immediately when host clicks Start Game button', () => {
+    useGuestStore.setState({ guest: mockHostGuest, sessionToken: 'token' });
+    useRoomStore.setState({
+      room: createMockRoom(true),
+      isLoading: false,
+      isStarting: false,
+      startingCountdown: null,
+      error: null,
+      initSocketListeners: mockInitSocketListeners,
+      leaveRoom: mockLeaveRoom,
+      toggleReady: mockToggleReady,
+      startGame: mockStartGame,
+      joinRoom: mockJoinRoom,
+    });
+
+    renderLobby();
+
+    const startBtn = screen.getByTestId('start-game-btn');
+    expect(startBtn).toBeEnabled();
+    fireEvent.click(startBtn);
+
+    expect(mockStartGame).toHaveBeenCalledTimes(1);
+  });
 });
