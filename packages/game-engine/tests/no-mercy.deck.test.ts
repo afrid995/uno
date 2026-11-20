@@ -55,7 +55,7 @@ describe('UNO Show \'em No Mercy — Deck Inventory & Generation (HWV18)', () =>
     expect(wildCards).toHaveLength(24);
 
     expect(wildCards.filter((c) => c.value === 'wild_reverse_draw_four')).toHaveLength(8);
-    expect(wildCards.filter((c) => c.value === 'wild_color_roulette')).toHaveLength(8);
+    expect(wildCards.filter((c) => c.value === 'wild')).toHaveLength(8);
     expect(wildCards.filter((c) => c.value === 'wild_draw_six')).toHaveLength(4);
     expect(wildCards.filter((c) => c.value === 'wild_draw_ten')).toHaveLength(4);
   });

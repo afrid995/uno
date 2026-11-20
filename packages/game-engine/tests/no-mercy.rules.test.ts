@@ -238,8 +238,8 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
     });
   });
 
-  describe('4. Mercy Rule Elimination (Hand >= 25 cards)', () => {
-    it('instantly eliminates a player whose hand reaches 25 cards', () => {
+  describe('4. Mercy Rule Elimination (Hand > 25 cards)', () => {
+    it('instantly eliminates a player whose hand exceeds 25 cards (26+ cards)', () => {
       let state = NoMercyFixtureBuilder.createInitialGameFixture({
         dealerIndex: 2, // P1 starts
         players: [
@@ -252,7 +252,7 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
       // Expand Bob's hand to 20 cards
       state = NoMercyFixtureBuilder.setHandSize(state, 'p2', 20);
 
-      // Alice plays Wild Draw 6 targeting Bob (20 + 6 = 26 >= 25!)
+      // Alice plays Wild Draw 6 targeting Bob (20 + 6 = 26 > 25!)
       const { nextState: s1, card: d6 } = NoMercyFixtureBuilder.injectPlayableCard(
         state,
         'p1',
@@ -275,9 +275,48 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
       expect(bob.isEliminated).toBe(true);
       expect(bob.hand).toHaveLength(0); // Hand set aside
       expect(res2.nextState.eliminatedPlayerIds).toContain('p2');
-      expect(res2.nextState.setAsideCards?.length).toBeGreaterThanOrEqual(25);
+      expect(res2.nextState.setAsideCards?.length).toBeGreaterThanOrEqual(26);
       // Turn skips eliminated Bob, goes to Charlie
       expect(res2.nextState.currentPlayerIndex).toBe(2);
+      assertValidNoMercyGameState(res2.nextState);
+    });
+
+    it('keeps a player active when their hand reaches exactly 25 cards', () => {
+      let state = NoMercyFixtureBuilder.createInitialGameFixture({
+        dealerIndex: 2, // P1 starts
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+          { id: 'p3', username: 'Charlie' },
+        ],
+      });
+
+      // Expand Bob's hand to 19 cards
+      state = NoMercyFixtureBuilder.setHandSize(state, 'p2', 19);
+
+      // Alice plays Wild Draw 6 targeting Bob (19 + 6 = exactly 25 cards)
+      const { nextState: s1, card: d6 } = NoMercyFixtureBuilder.injectPlayableCard(
+        state,
+        'p1',
+        'wild_draw_six'
+      );
+      const res1 = NoMercyActionProcessor.process(s1, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: d6.id,
+        chosenColor: 'yellow',
+      });
+
+      // Bob accepts penalty
+      const res2 = NoMercyActionProcessor.process(res1.nextState, {
+        type: 'ACCEPT_STACK_PENALTY',
+        playerId: 'p2',
+      });
+
+      const bob = res2.nextState.players.find((p) => p.id === 'p2')!;
+      expect(bob.isEliminated).toBe(false);
+      expect(bob.hand).toHaveLength(25); // Exactly 25 cards -> Active!
+      expect(res2.nextState.eliminatedPlayerIds || []).not.toContain('p2');
       assertValidNoMercyGameState(res2.nextState);
     });
 
@@ -517,8 +556,8 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
       expect(res.nextState.currentPlayerIndex).toBe(0);
     });
 
-    it('Wild Color Roulette forces victim to draw until chosen color appears', () => {
-      let state = NoMercyFixtureBuilder.createInitialGameFixture({
+    it('standard Wild card allows player to change active color, advances turn, and generates zero draw penalty', () => {
+      const state = NoMercyFixtureBuilder.createInitialGameFixture({
         dealerIndex: 1, // P1 starts
         players: [
           { id: 'p1', username: 'Alice' },
@@ -526,47 +565,25 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
         ],
       });
 
-      let { nextState: s1, card: roulette } = NoMercyFixtureBuilder.injectPlayableCard(
+      const { nextState: s1, card: wildCard } = NoMercyFixtureBuilder.injectPlayableCard(
         state,
         'p1',
-        'wild_color_roulette'
+        'wild'
       );
-
-      // Ensure draw pile has a non-blue card then a blue card so Bob draws without exceeding 25 cards
-      const blueCard = s1.drawPile.find((c) => c.color === 'blue' && c.type === 'number')!;
-      const nonBlueCard = s1.drawPile.find((c) => c.color === 'red' && c.type === 'number')!;
-      const remainingDraw = s1.drawPile.filter((c) => c.id !== blueCard.id && c.id !== nonBlueCard.id);
-      s1 = {
-        ...s1,
-        drawPile: [...remainingDraw, blueCard, nonBlueCard],
-      };
 
       const res1 = NoMercyActionProcessor.process(s1, {
         type: 'PLAY_CARD',
         playerId: 'p1',
-        cardId: roulette.id,
+        cardId: wildCard.id,
+        chosenColor: 'yellow',
       });
 
-      expect(res1.nextState.pendingActionState).toEqual({
-        type: 'AWAITING_COLOR_ROULETTE_SELECTION',
-        victimPlayerId: 'p2',
-        playedByPlayerId: 'p1',
-      });
-
-      const p2PreHand = res1.nextState.players[1].hand.length;
-
-      const res2 = NoMercyActionProcessor.process(res1.nextState, {
-        type: 'CHOOSE_COLOR_ROULETTE_COLOR',
-        playerId: 'p2',
-        chosenColor: 'blue',
-      });
-
-      expect(res2.nextState.pendingActionState).toBeNull();
-      expect(res2.nextState.activeColor).toBe('blue');
-      expect(res2.nextState.players[1].hand.length).toBeGreaterThan(p2PreHand);
-      // Bob loses turn, Alice plays
-      expect(res2.nextState.currentPlayerIndex).toBe(0);
-      assertValidNoMercyGameState(res2.nextState);
+      expect(res1.nextState.pendingActionState).toBeNull();
+      expect(res1.nextState.activeColor).toBe('yellow');
+      expect(res1.nextState.topDiscardCard.id).toBe(wildCard.id);
+      expect(res1.nextState.currentPlayerIndex).toBe(1); // Advances to Bob
+      expect(res1.nextState.players[1].hand).toHaveLength(7); // Bob receives zero penalty
+      assertValidNoMercyGameState(res1.nextState);
     });
   });
 
@@ -744,31 +761,6 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
 
       expect(res.playableCard).not.toBeNull();
       expect(res.playableCard?.color).toBe('red');
-      expect(res.newSetAsideCards).toHaveLength(0);
-      expect(res.newDiscardPile).toEqual([topDiscard]);
-    });
-
-    it('allows Wild Color Roulette to continue and find color after recycling from set-aside cards', () => {
-      const topDiscard: Card = { id: 'top_card', color: 'red', type: 'number', value: '5', scoreValue: 5, variant: 'uno_show_em_no_mercy' };
-      // Draw pile has only a blue card
-      const drawPile: Card[] = [
-        { id: 'dp_blue', color: 'blue', type: 'number', value: '1', scoreValue: 1, variant: 'uno_show_em_no_mercy' },
-      ];
-      const discardPile: Card[] = [topDiscard];
-      // setAsideCards has a green card
-      const setAside: Card[] = [
-        { id: 'sa_green', color: 'green', type: 'number', value: '9', scoreValue: 9, variant: 'uno_show_em_no_mercy' },
-      ];
-
-      const res = NoMercyActionProcessor.drawUntilColor(
-        drawPile,
-        discardPile,
-        'green',
-        setAside
-      );
-
-      expect(res.drawnCards.length).toBe(2); // drew blue, then reshuffled, then drew green!
-      expect(res.drawnCards[res.drawnCards.length - 1].color).toBe('green');
       expect(res.newSetAsideCards).toHaveLength(0);
       expect(res.newDiscardPile).toEqual([topDiscard]);
     });
@@ -952,9 +944,10 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
       expect(res2.nextState.pendingActionState?.accumulatedPenalty).toBe(8);
       expect(res2.nextState.pendingActionState?.lastStackedValue).toBe(4);
       expect(res2.nextState.pendingActionState?.lastCardValue).toBe('wild_reverse_draw_four');
-      // Next player in counter-clockwise from Bob (idx 1) is Alice (idx 0)!
-      expect(res2.nextState.pendingActionState?.targetPlayerId).toBe('p1');
-      expect(res2.nextState.currentPlayerIndex).toBe(0);
+      // Next player in counter-clockwise from Bob (idx 1) is Alice (idx 0), but under custom rule
+      // Player B (who stacked Wild Reverse Draw 4) receives the accumulated penalty!
+      expect(res2.nextState.pendingActionState?.targetPlayerId).toBe('p2');
+      expect(res2.nextState.currentPlayerIndex).toBe(1);
 
       // Verify DIRECTION_REVERSED and STACK_PENALTY_PENDING events
       const dirEvent = res2.events.find((e) => e.type === 'DIRECTION_REVERSED');
@@ -964,7 +957,7 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
       const stackEvent = res2.events.find((e) => e.type === 'STACK_PENALTY_PENDING');
       expect(stackEvent).toBeDefined();
       expect(stackEvent?.payload).toEqual({
-        targetPlayerId: 'p1',
+        targetPlayerId: 'p2',
         accumulatedPenalty: 8,
         lastStackedValue: 4,
       });
@@ -995,7 +988,7 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
         cardId: d4.id,
       });
 
-      // Bob stacks Wild Reverse Draw 4 -> reverses to counter_clockwise, targets Alice with +8
+      // Bob stacks Wild Reverse Draw 4 -> reverses to counter_clockwise, targets Bob himself with +8 under custom rule
       const { nextState: s2, card: wrd4Bob } = NoMercyFixtureBuilder.injectPlayableCard(
         res1.nextState,
         'p2',
@@ -1009,18 +1002,19 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
       });
       expect(res2.nextState.turnDirection).toBe('counter_clockwise');
       expect(res2.nextState.pendingActionState?.accumulatedPenalty).toBe(8);
-      expect(res2.nextState.currentPlayerIndex).toBe(0);
+      expect(res2.nextState.currentPlayerIndex).toBe(1);
+      expect(res2.nextState.pendingActionState?.targetPlayerId).toBe('p2');
 
-      // Alice now stacks another Wild Reverse Draw 4!
-      const { nextState: s3, card: wrd4Alice } = NoMercyFixtureBuilder.injectPlayableCard(
+      // Bob now stacks another Wild Reverse Draw 4!
+      const { nextState: s3, card: wrd4Bob2 } = NoMercyFixtureBuilder.injectPlayableCard(
         res2.nextState,
-        'p1',
+        'p2',
         'wild_reverse_draw_four'
       );
       const res3 = NoMercyActionProcessor.process(s3, {
         type: 'PLAY_CARD',
-        playerId: 'p1',
-        cardId: wrd4Alice.id,
+        playerId: 'p2',
+        cardId: wrd4Bob2.id,
         chosenColor: 'green',
       });
 
@@ -1029,20 +1023,20 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
       // Accumulated penalty becomes 8 + 4 = 12
       expect(res3.nextState.pendingActionState?.accumulatedPenalty).toBe(12);
       expect(res3.nextState.pendingActionState?.lastStackedValue).toBe(4);
-      // Next in clockwise from Alice (idx 0) is Bob (idx 1)!
-      expect(res3.nextState.pendingActionState?.targetPlayerId).toBe('p2');
-      expect(res3.nextState.currentPlayerIndex).toBe(1);
+      // Next in clockwise from Bob (idx 1) is Charlie (idx 2)!
+      expect(res3.nextState.pendingActionState?.targetPlayerId).toBe('p3');
+      expect(res3.nextState.currentPlayerIndex).toBe(2);
 
-      // Bob now stacks Wild Draw Six (+6 >= 4)
-      const { nextState: s4, card: wd6Bob } = NoMercyFixtureBuilder.injectPlayableCard(
+      // Charlie now stacks Wild Draw Six (+6 >= 4)
+      const { nextState: s4, card: wd6Charlie } = NoMercyFixtureBuilder.injectPlayableCard(
         res3.nextState,
-        'p2',
+        'p3',
         'wild_draw_six'
       );
       const res4 = NoMercyActionProcessor.process(s4, {
         type: 'PLAY_CARD',
-        playerId: 'p2',
-        cardId: wd6Bob.id,
+        playerId: 'p3',
+        cardId: wd6Charlie.id,
         chosenColor: 'blue',
       });
 
@@ -1051,53 +1045,54 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
       // Accumulated penalty becomes 12 + 6 = 18
       expect(res4.nextState.pendingActionState?.accumulatedPenalty).toBe(18);
       expect(res4.nextState.pendingActionState?.lastStackedValue).toBe(6);
-      // Next in clockwise from Bob (idx 1) is Charlie (idx 2)!
-      expect(res4.nextState.pendingActionState?.targetPlayerId).toBe('p3');
-      expect(res4.nextState.currentPlayerIndex).toBe(2);
+      // Next in clockwise from Charlie (idx 2) is Alice (idx 0)!
+      expect(res4.nextState.pendingActionState?.targetPlayerId).toBe('p1');
+      expect(res4.nextState.currentPlayerIndex).toBe(0);
 
-      // Charlie attempts to stack a Draw Four or Wild Reverse Draw 4 (+4 < 6) -> REJECTED!
-      const { nextState: s5, card: wrd4Charlie } = NoMercyFixtureBuilder.injectPlayableCard(
+      // Alice attempts to stack a Draw Four or Wild Reverse Draw 4 (+4 < 6) -> REJECTED!
+      const { nextState: s5, card: wrd4Alice } = NoMercyFixtureBuilder.injectPlayableCard(
         res4.nextState,
-        'p3',
+        'p1',
         'wild_reverse_draw_four'
       );
 
-      // Verify Charlie's player state projection does NOT include wrd4Charlie (since 4 < 6)
-      const charlieView = getPlayerGameState(s5, 'p3');
-      expect(charlieView.self.isTargetedByStack).toBe(true);
-      expect(charlieView.self.playableCardIds).not.toContain(wrd4Charlie.id);
+      // Verify Alice's player state projection does NOT include wrd4Alice (since 4 < 6)
+      const aliceView = getPlayerGameState(s5, 'p1');
+      expect(aliceView.self.isTargetedByStack).toBe(true);
+      expect(aliceView.self.playableCardIds).not.toContain(wrd4Alice.id);
 
       expect(() => {
         NoMercyActionProcessor.process(s5, {
           type: 'PLAY_CARD',
-          playerId: 'p3',
-          cardId: wrd4Charlie.id,
+          playerId: 'p1',
+          cardId: wrd4Alice.id,
           chosenColor: 'red',
         });
       }).toThrow(/Cannot stack a \+4 onto a \+6/);
 
-      // Charlie attempts to play an invalid non-draw card (e.g. Reverse or Number card) -> REJECTED!
+      // Alice attempts to play an invalid non-draw card (e.g. Reverse or Number card) -> REJECTED!
       const { nextState: s6, card: revCard } = NoMercyFixtureBuilder.injectPlayableCard(
         s5,
-        'p3',
+        'p1',
         'reverse',
         'blue'
       );
       expect(() => {
         NoMercyActionProcessor.process(s6, {
           type: 'PLAY_CARD',
-          playerId: 'p3',
+          playerId: 'p1',
           cardId: revCard.id,
         });
       }).toThrow(/is not an eligible Draw Card/);
 
-      // Charlie accepts the penalty and draws 18 cards
+      // Alice accepts the penalty and draws 18 cards; hand had 6 cards left, now 6 + 18 = 24 -> Active with 24 cards!
       const acceptRes = NoMercyActionProcessor.process(s5, {
         type: 'ACCEPT_STACK_PENALTY',
-        playerId: 'p3',
+        playerId: 'p1',
       });
-      // Charlie draws 18 cards; hand had 7 cards, now 7 + 18 = 25 -> Mercy Rule Elimination!
-      expect(acceptRes.nextState.players.find((p) => p.id === 'p3')?.isEliminated).toBe(true);
+      const alice = acceptRes.nextState.players.find((p) => p.id === 'p1')!;
+      expect(alice.isEliminated).toBe(false);
+      expect(alice.hand).toHaveLength(24);
       assertValidNoMercyGameState(acceptRes.nextState);
     });
 
@@ -1239,326 +1234,340 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
     });
   });
 
-  describe('11. Deterministic Wild Color Roulette Invariants, Edge Cases & Card Retention', () => {
-    it('does not count Wild cards as matching color, retains all revealed Wild cards, and terminates only upon drawing non-Wild card of selected color', () => {
-      let state = NoMercyFixtureBuilder.createInitialGameFixture({
-        dealerIndex: 1, // P1 starts
-        players: [
-          { id: 'p1', username: 'Alice' },
-          { id: 'p2', username: 'Bob' },
-        ],
+  describe('11. No Mercy Rules Update: Elimination Boundary (> 25), Standard Wild, and Stacking Fix', () => {
+    describe('A. Elimination Threshold Boundary Matrix (> 25 cards)', () => {
+      it('evaluates hand sizes at 24 (active), 25 (active), 26 (eliminated), and 27 (eliminated) via stack accept', () => {
+        // Test 24 cards -> Active
+        let s24 = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 2,
+          players: [
+            { id: 'p1', username: 'Alice' },
+            { id: 'p2', username: 'Bob' },
+            { id: 'p3', username: 'Charlie' },
+          ],
+        });
+        s24 = NoMercyFixtureBuilder.setHandSize(s24, 'p2', 20);
+        const { nextState: s24_1, card: d4_24 } = NoMercyFixtureBuilder.injectPlayableCard(s24, 'p1', 'draw_four', s24.activeColor ?? 'blue');
+        const res24_1 = NoMercyActionProcessor.process(s24_1, { type: 'PLAY_CARD', playerId: 'p1', cardId: d4_24.id });
+        const res24_2 = NoMercyActionProcessor.process(res24_1.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p2' });
+        const bob24 = res24_2.nextState.players.find((p) => p.id === 'p2')!;
+        expect(bob24.isEliminated).toBe(false);
+        expect(bob24.hand).toHaveLength(24);
+        assertValidNoMercyGameState(res24_2.nextState);
+
+        // Test 25 cards -> Active
+        let s25 = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 2,
+          players: [
+            { id: 'p1', username: 'Alice' },
+            { id: 'p2', username: 'Bob' },
+            { id: 'p3', username: 'Charlie' },
+          ],
+        });
+        s25 = NoMercyFixtureBuilder.setHandSize(s25, 'p2', 21);
+        const { nextState: s25_1, card: d4_25 } = NoMercyFixtureBuilder.injectPlayableCard(s25, 'p1', 'draw_four', s25.activeColor ?? 'blue');
+        const res25_1 = NoMercyActionProcessor.process(s25_1, { type: 'PLAY_CARD', playerId: 'p1', cardId: d4_25.id });
+        const res25_2 = NoMercyActionProcessor.process(res25_1.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p2' });
+        const bob25 = res25_2.nextState.players.find((p) => p.id === 'p2')!;
+        expect(bob25.isEliminated).toBe(false);
+        expect(bob25.hand).toHaveLength(25);
+        assertValidNoMercyGameState(res25_2.nextState);
+
+        // Test 26 cards -> Eliminated
+        let s26 = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 2,
+          players: [
+            { id: 'p1', username: 'Alice' },
+            { id: 'p2', username: 'Bob' },
+            { id: 'p3', username: 'Charlie' },
+          ],
+        });
+        s26 = NoMercyFixtureBuilder.setHandSize(s26, 'p2', 22);
+        const { nextState: s26_1, card: d4_26 } = NoMercyFixtureBuilder.injectPlayableCard(s26, 'p1', 'draw_four', s26.activeColor ?? 'blue');
+        const res26_1 = NoMercyActionProcessor.process(s26_1, { type: 'PLAY_CARD', playerId: 'p1', cardId: d4_26.id });
+        const res26_2 = NoMercyActionProcessor.process(res26_1.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p2' });
+        const bob26 = res26_2.nextState.players.find((p) => p.id === 'p2')!;
+        expect(bob26.isEliminated).toBe(true);
+        expect(bob26.hand).toHaveLength(0);
+        expect(res26_2.nextState.setAsideCards?.length).toBeGreaterThanOrEqual(26);
+        assertValidNoMercyGameState(res26_2.nextState);
+
+        // Test 27 cards -> Eliminated
+        let s27 = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 2,
+          players: [
+            { id: 'p1', username: 'Alice' },
+            { id: 'p2', username: 'Bob' },
+            { id: 'p3', username: 'Charlie' },
+          ],
+        });
+        s27 = NoMercyFixtureBuilder.setHandSize(s27, 'p2', 21);
+        const { nextState: s27_1, card: d6_27 } = NoMercyFixtureBuilder.injectPlayableCard(s27, 'p1', 'wild_draw_six');
+        const res27_1 = NoMercyActionProcessor.process(s27_1, { type: 'PLAY_CARD', playerId: 'p1', cardId: d6_27.id, chosenColor: 'yellow' });
+        const res27_2 = NoMercyActionProcessor.process(res27_1.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p2' });
+        const bob27 = res27_2.nextState.players.find((p) => p.id === 'p2')!;
+        expect(bob27.isEliminated).toBe(true);
+        expect(bob27.hand).toHaveLength(0);
+        expect(res27_2.nextState.setAsideCards?.length).toBeGreaterThanOrEqual(27);
+        assertValidNoMercyGameState(res27_2.nextState);
       });
 
-      // Inject wild_color_roulette to Alice (P1)
-      const { nextState: s1, card: rouletteCard } = NoMercyFixtureBuilder.injectPlayableCard(
-        state,
-        'p1',
-        'wild_color_roulette'
-      );
+      it('evaluates hand sizes at 25 (active) and 26 (eliminated) via normal 1-card draw', () => {
+        // Player with 24 cards draws 1 card -> 25 cards -> Active!
+        let state24 = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 1, // P1 starts
+          players: [
+            { id: 'p1', username: 'Alice' },
+            { id: 'p2', username: 'Bob' },
+          ],
+        });
+        state24 = NoMercyFixtureBuilder.setHandSize(state24, 'p1', 24);
+        const res1 = NoMercyActionProcessor.process(state24, { type: 'DRAW_CARD', playerId: 'p1' });
+        const p1After25 = res1.nextState.players.find((p) => p.id === 'p1')!;
+        expect(p1After25.isEliminated).toBe(false);
+        expect(p1After25.hand).toHaveLength(25);
+        assertValidNoMercyGameState(res1.nextState);
 
-      // Alice plays Wild Color Roulette targeting Bob (P2)
-      const res1 = NoMercyActionProcessor.process(s1, {
-        type: 'PLAY_CARD',
-        playerId: 'p1',
-        cardId: rouletteCard.id,
+        // Player with 25 cards draws 1 card -> 26 cards -> Eliminated!
+        let state25 = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 1, // P1 starts
+          players: [
+            { id: 'p1', username: 'Alice' },
+            { id: 'p2', username: 'Bob' },
+          ],
+        });
+        state25 = NoMercyFixtureBuilder.setHandSize(state25, 'p1', 25);
+        const res2 = NoMercyActionProcessor.process(state25, { type: 'DRAW_CARD', playerId: 'p1' });
+        const p1After26 = res2.nextState.players.find((p) => p.id === 'p1')!;
+        expect(p1After26.isEliminated).toBe(true);
+        expect(p1After26.hand).toHaveLength(0);
+        assertValidNoMercyGameState(res2.nextState);
       });
-
-      expect(res1.nextState.pendingActionState).toEqual({
-        type: 'AWAITING_COLOR_ROULETTE_SELECTION',
-        victimPlayerId: 'p2',
-        playedByPlayerId: 'p1',
-      });
-
-      // Find specific cards in drawPile to arrange deterministically:
-      // 1. Red number card (color mismatch)
-      // 2. Wild Draw Six (wild -> must NOT match chosen blue, drawing continues!)
-      // 3. Wild Reverse Draw 4 (wild -> must NOT match chosen blue, drawing continues!)
-      // 4. Yellow number card (color mismatch)
-      // 5. Wild Color Roulette (wild -> must NOT match chosen blue, drawing continues!)
-      // 6. Blue number card (non-wild matching chosen blue -> STOPS drawing!)
-      const dp = res1.nextState.drawPile;
-      const cRed = dp.find((c) => c.color === 'red' && c.type === 'number')!;
-      const cWild1 = dp.find((c) => c.value === 'wild_draw_six')!;
-      const cWild2 = dp.find((c) => c.value === 'wild_reverse_draw_four')!;
-      const cYellow = dp.find((c) => c.color === 'yellow' && c.type === 'number')!;
-      const cWild3 = dp.find((c) => c.value === 'wild_color_roulette' && c.id !== rouletteCard.id)!;
-      const cBlueTarget = dp.find((c) => c.color === 'blue' && c.type === 'number')!;
-
-      const selectedIds = new Set([cRed.id, cWild1.id, cWild2.id, cYellow.id, cWild3.id, cBlueTarget.id]);
-      const otherDrawCards = dp.filter((c) => !selectedIds.has(c.id));
-
-      // Array pop() draws from the end. So the drawing order will be:
-      // cRed -> cWild1 -> cWild2 -> cYellow -> cWild3 -> cBlueTarget (stops!)
-      const arrangedDrawPile = [
-        ...otherDrawCards,
-        cBlueTarget,
-        cWild3,
-        cYellow,
-        cWild2,
-        cWild1,
-        cRed,
-      ];
-
-      const deterministicState: GameState = {
-        ...res1.nextState,
-        drawPile: arrangedDrawPile,
-      };
-      assertValidNoMercyGameState(deterministicState);
-
-      const p2InitialHand = deterministicState.players[1].hand;
-      const p2InitialCount = p2InitialHand.length;
-
-      // Bob chooses 'blue'
-      const res2 = NoMercyActionProcessor.process(deterministicState, {
-        type: 'CHOOSE_COLOR_ROULETTE_COLOR',
-        playerId: 'p2',
-        chosenColor: 'blue',
-      });
-
-      expect(res2.nextState.pendingActionState).toBeNull();
-      expect(res2.nextState.activeColor).toBe('blue');
-
-      const p2NewHand = res2.nextState.players[1].hand;
-      // Exactly 6 cards drawn
-      expect(p2NewHand.length).toBe(p2InitialCount + 6);
-
-      // Every drawn card must be retained in Bob's hand
-      expect(p2NewHand.some((c) => c.id === cRed.id)).toBe(true);
-      expect(p2NewHand.some((c) => c.id === cWild1.id)).toBe(true);
-      expect(p2NewHand.some((c) => c.id === cWild2.id)).toBe(true);
-      expect(p2NewHand.some((c) => c.id === cYellow.id)).toBe(true);
-      expect(p2NewHand.some((c) => c.id === cWild3.id)).toBe(true);
-      expect(p2NewHand.some((c) => c.id === cBlueTarget.id)).toBe(true);
-
-      // Verify the event records the exact drawn cards sequence
-      const rouletteEvent = res2.events.find((e) => e.type === 'ROULETTE_RESOLVED');
-      expect(rouletteEvent).toBeDefined();
-      expect(rouletteEvent?.payload?.drawnCount).toBe(6);
-      const eventCards = rouletteEvent?.payload?.drawnCards as Card[];
-      expect(eventCards.map((c) => c.id)).toEqual([
-        cRed.id,
-        cWild1.id,
-        cWild2.id,
-        cYellow.id,
-        cWild3.id,
-        cBlueTarget.id,
-      ]);
-
-      // Bob loses turn, Alice plays next
-      expect(res2.nextState.currentPlayerIndex).toBe(0);
-
-      // Invariant check: strict 168 physical cards and unique IDs
-      assertValidNoMercyGameState(res2.nextState);
     });
 
-    it('recycles set-aside cards when draw pile is exhausted during Roulette and adds all cards to victim hand', () => {
-      let state = NoMercyFixtureBuilder.createInitialGameFixture({
-        dealerIndex: 2, // P1 starts
-        players: [
-          { id: 'p1', username: 'Alice' },
-          { id: 'p2', username: 'Bob' },
-          { id: 'p3', username: 'Charlie' },
-        ],
+    describe('B. Standard Wild Color Change Mechanics', () => {
+      it('supports choosing red, yellow, green, and blue with normal turn progression and zero penalties', () => {
+        const colors = ['red', 'yellow', 'green', 'blue'] as const;
+        for (const chosenColor of colors) {
+          const state = NoMercyFixtureBuilder.createInitialGameFixture({
+            dealerIndex: 1, // P1 starts
+            players: [
+              { id: 'p1', username: 'Alice' },
+              { id: 'p2', username: 'Bob' },
+            ],
+          });
+
+          const { nextState: s1, card: wildCard } = NoMercyFixtureBuilder.injectPlayableCard(state, 'p1', 'wild');
+          const res = NoMercyActionProcessor.process(s1, {
+            type: 'PLAY_CARD',
+            playerId: 'p1',
+            cardId: wildCard.id,
+            chosenColor,
+          });
+
+          expect(res.nextState.pendingActionState).toBeNull();
+          expect(res.nextState.activeColor).toBe(chosenColor);
+          expect(res.nextState.topDiscardCard.id).toBe(wildCard.id);
+          expect(res.nextState.topDiscardCard.value).toBe('wild');
+          expect(res.nextState.currentPlayerIndex).toBe(1); // Bob
+          expect(res.nextState.players[1].hand).toHaveLength(7); // Zero penalty
+          assertValidNoMercyGameState(res.nextState);
+        }
       });
-
-      // Expand Bob (P2) to 24 cards and eliminate him with Draw Two from Alice (P1)
-      state = NoMercyFixtureBuilder.setHandSize(state, 'p2', 24);
-      const { nextState: s1, card: d2 } = NoMercyFixtureBuilder.injectPlayableCard(
-        state,
-        'p1',
-        'draw_two',
-        state.activeColor ?? 'blue'
-      );
-      const r1 = NoMercyActionProcessor.process(s1, {
-        type: 'PLAY_CARD',
-        playerId: 'p1',
-        cardId: d2.id,
-      });
-      // Bob accepts penalty -> reaches 26 cards -> eliminated!
-      const r2 = NoMercyActionProcessor.process(r1.nextState, {
-        type: 'ACCEPT_STACK_PENALTY',
-        playerId: 'p2',
-      });
-
-      expect(r2.nextState.players[1].isEliminated).toBe(true);
-      expect(r2.nextState.setAsideCards?.length).toBe(26);
-      assertValidNoMercyGameState(r2.nextState);
-
-      // Next active player is Charlie (P3, index 2)
-      expect(r2.nextState.currentPlayerIndex).toBe(2);
-
-      // Charlie plays Wild Color Roulette targeting Alice (P1)
-      const { nextState: sWithRoulette, card: rouletteCard } = NoMercyFixtureBuilder.injectPlayableCard(
-        r2.nextState,
-        'p3',
-        'wild_color_roulette'
-      );
-      const r3 = NoMercyActionProcessor.process(sWithRoulette, {
-        type: 'PLAY_CARD',
-        playerId: 'p3',
-        cardId: rouletteCard.id,
-      });
-
-      expect(r3.nextState.pendingActionState).toEqual({
-        type: 'AWAITING_COLOR_ROULETTE_SELECTION',
-        victimPlayerId: 'p1',
-        playedByPlayerId: 'p3',
-      });
-
-      // Guarantee a green number card exists in setAsideCards
-      let setAside = [...(r3.nextState.setAsideCards || [])];
-      let targetGreenCard = setAside.find((c) => c.color === 'green' && c.type === 'number');
-      let dp = [...r3.nextState.drawPile];
-      if (!targetGreenCard) {
-        const greenIdx = dp.findIndex((c) => c.color === 'green' && c.type === 'number');
-        targetGreenCard = dp[greenIdx];
-        dp[greenIdx] = setAside[0];
-        setAside[0] = targetGreenCard;
-      }
-
-      // Configure a 2-card draw pile with non-green cards (cRedDraw and cWildDraw)
-      const cRedDraw = dp.find((c) => c.color !== 'green' && c.type !== 'wild')!;
-      const cWildDraw = dp.find((c) => c.type === 'wild')!;
-      const remainingDrawCards = dp.filter((c) => c.id !== cRedDraw.id && c.id !== cWildDraw.id);
-
-      // Low draw pile: pop order: cRedDraw, then cWildDraw, then exhausted!
-      const lowDrawPile = [cWildDraw, cRedDraw];
-      const expandedDiscardPile = [...remainingDrawCards, ...r3.nextState.discardPile];
-
-      const stateBeforeRoulette: GameState = {
-        ...r3.nextState,
-        drawPile: lowDrawPile,
-        discardPile: expandedDiscardPile,
-        setAsideCards: setAside,
-      };
-      assertValidNoMercyGameState(stateBeforeRoulette);
-
-      const p1InitialCount = stateBeforeRoulette.players[0].hand.length;
-
-      // Alice chooses 'green'
-      const r4 = NoMercyActionProcessor.process(stateBeforeRoulette, {
-        type: 'CHOOSE_COLOR_ROULETTE_COLOR',
-        playerId: 'p1',
-        chosenColor: 'green',
-      });
-
-      expect(r4.nextState.pendingActionState).toBeNull();
-      expect(r4.nextState.activeColor).toBe('green');
-
-      // Set-aside cards must have been recycled into the new draw pile during exhaustion
-      expect(r4.nextState.setAsideCards).toHaveLength(0);
-
-      // Alice drew at least the 2 initial cards (cRedDraw, cWildDraw) plus cards from reshuffled pile
-      const p1NewHand = r4.nextState.players[0].hand;
-      expect(p1NewHand.length).toBeGreaterThanOrEqual(p1InitialCount + 3);
-      expect(p1NewHand.some((c) => c.id === cRedDraw.id)).toBe(true);
-      expect(p1NewHand.some((c) => c.id === cWildDraw.id)).toBe(true);
-
-      // Last drawn card must be a non-wild green card
-      const lastDrawnCard = p1NewHand[p1NewHand.length - 1];
-      expect(lastDrawnCard.color).toBe('green');
-      expect(lastDrawnCard.type).not.toBe('wild');
-
-      // Full card conservation & ID uniqueness
-      assertValidNoMercyGameState(r4.nextState);
     });
 
-    it('triggers Mercy Rule elimination if cards drawn during Wild Color Roulette push hand to >= 25 cards', () => {
-      let state = NoMercyFixtureBuilder.createInitialGameFixture({
-        dealerIndex: 2, // P1 starts ( (2 + 1) % 3 = 0 )
-        players: [
-          { id: 'p1', username: 'Alice' },
-          { id: 'p2', username: 'Bob' },
-          { id: 'p3', username: 'Charlie' },
-        ],
+    describe('C. Wild Draw 4 + Wild Reverse Draw 4 Stacking Bug Fix & Edge Cases', () => {
+      it('Edge case 1: Wild Draw 4 followed by Wild Reverse Draw 4 targets Player B with 8 cards under custom rule', () => {
+        const state = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 2,
+          players: [
+            { id: 'p1', username: 'Alice' },
+            { id: 'p2', username: 'Bob' },
+            { id: 'p3', username: 'Charlie' },
+          ],
+        });
+
+        // Alice plays Draw Four on Bob
+        const { nextState: s1, card: d4 } = NoMercyFixtureBuilder.injectPlayableCard(state, 'p1', 'draw_four', state.activeColor ?? 'blue');
+        const res1 = NoMercyActionProcessor.process(s1, { type: 'PLAY_CARD', playerId: 'p1', cardId: d4.id });
+
+        // Bob stacks Wild Reverse Draw 4
+        const { nextState: s2, card: wrd4 } = NoMercyFixtureBuilder.injectPlayableCard(res1.nextState, 'p2', 'wild_reverse_draw_four');
+        const res2 = NoMercyActionProcessor.process(s2, {
+          type: 'PLAY_CARD',
+          playerId: 'p2',
+          cardId: wrd4.id,
+          chosenColor: 'red',
+        });
+
+        expect(res2.nextState.turnDirection).toBe('counter_clockwise');
+        expect(res2.nextState.pendingActionState?.accumulatedPenalty).toBe(8);
+        expect(res2.nextState.pendingActionState?.targetPlayerId).toBe('p2');
+        expect(res2.nextState.currentPlayerIndex).toBe(1);
+
+        // Bob accepts the penalty: draws 8 cards, hand was 6 cards -> 14 cards (active)
+        const res3 = NoMercyActionProcessor.process(res2.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p2' });
+        const bob = res3.nextState.players.find((p) => p.id === 'p2')!;
+        expect(bob.isEliminated).toBe(false);
+        expect(bob.hand).toHaveLength(14);
+        expect(res3.nextState.pendingActionState).toBeNull();
+        // Turn advances in counter_clockwise direction from Bob (idx 1) to Alice (idx 0)
+        expect(res3.nextState.currentPlayerIndex).toBe(0);
+        assertValidNoMercyGameState(res3.nextState);
       });
 
-      // Expand Bob (P2) to 22 cards
-      state = NoMercyFixtureBuilder.setHandSize(state, 'p2', 22);
+      it('Edge case 2: Wild Reverse Draw 4 used without an existing penalty functions normally', () => {
+        // 2-player: Reverse rebounds to self
+        const state2 = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 1,
+          players: [{ id: 'p1', username: 'Alice' }, { id: 'p2', username: 'Bob' }],
+        });
+        const { nextState: s2_1, card: wrd4_2 } = NoMercyFixtureBuilder.injectPlayableCard(state2, 'p1', 'wild_reverse_draw_four');
+        const res2_1 = NoMercyActionProcessor.process(s2_1, { type: 'PLAY_CARD', playerId: 'p1', cardId: wrd4_2.id, chosenColor: 'blue' });
+        expect(res2_1.nextState.pendingActionState?.targetPlayerId).toBe('p1');
+        expect(res2_1.nextState.pendingActionState?.accumulatedPenalty).toBe(4);
 
-      // Alice plays Wild Color Roulette targeting Bob
-      const { nextState: s1, card: rouletteCard } = NoMercyFixtureBuilder.injectPlayableCard(
-        state,
-        'p1',
-        'wild_color_roulette'
-      );
-      const res1 = NoMercyActionProcessor.process(s1, {
-        type: 'PLAY_CARD',
-        playerId: 'p1',
-        cardId: rouletteCard.id,
+        // 3-player: Reverse changes direction and targets next player in new direction
+        const state3 = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 2,
+          players: [{ id: 'p1', username: 'Alice' }, { id: 'p2', username: 'Bob' }, { id: 'p3', username: 'Charlie' }],
+        });
+        const { nextState: s3_1, card: wrd4_3 } = NoMercyFixtureBuilder.injectPlayableCard(state3, 'p1', 'wild_reverse_draw_four');
+        const res3_1 = NoMercyActionProcessor.process(s3_1, { type: 'PLAY_CARD', playerId: 'p1', cardId: wrd4_3.id, chosenColor: 'yellow' });
+        expect(res3_1.nextState.turnDirection).toBe('counter_clockwise');
+        expect(res3_1.nextState.pendingActionState?.targetPlayerId).toBe('p3');
+        expect(res3_1.nextState.pendingActionState?.accumulatedPenalty).toBe(4);
       });
 
-      // Arrange draw pile so Bob must draw 4 cards (22 + 4 = 26 >= 25 -> elimination!)
-      const dp = res1.nextState.drawPile;
-      const c1 = dp.find((c) => c.color === 'red' && c.type === 'number')!;
-      const c2 = dp.find((c) => c.color === 'yellow' && c.type === 'number')!;
-      const c3 = dp.find((c) => c.value === 'wild_draw_six')!;
-      const cTarget = dp.find((c) => c.color === 'blue' && c.type === 'number')!;
+      it('Edge cases 3 & 4: Multiple stacked draw cards and Wild Reverse Draw 4 followed by another stack', () => {
+        const state = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 2,
+          players: [
+            { id: 'p1', username: 'Alice' },
+            { id: 'p2', username: 'Bob' },
+            { id: 'p3', username: 'Charlie' },
+          ],
+        });
 
-      const selectedIds = new Set([c1.id, c2.id, c3.id, cTarget.id]);
-      const otherCards = dp.filter((c) => !selectedIds.has(c.id));
-      const arrangedDrawPile = [...otherCards, cTarget, c3, c2, c1]; // Pop order: c1, c2, c3, cTarget (4 cards)
+        // 1. Alice plays Draw Four on Bob (+4)
+        const { nextState: s1, card: d4 } = NoMercyFixtureBuilder.injectPlayableCard(state, 'p1', 'draw_four', state.activeColor ?? 'blue');
+        const r1 = NoMercyActionProcessor.process(s1, { type: 'PLAY_CARD', playerId: 'p1', cardId: d4.id });
 
-      const stateWithArrangedDraw: GameState = {
-        ...res1.nextState,
-        drawPile: arrangedDrawPile,
-      };
-      assertValidNoMercyGameState(stateWithArrangedDraw);
+        // 2. Bob stacks Wild Reverse Draw 4 -> Bob receives +8
+        const { nextState: s2, card: wrd4_1 } = NoMercyFixtureBuilder.injectPlayableCard(r1.nextState, 'p2', 'wild_reverse_draw_four');
+        const r2 = NoMercyActionProcessor.process(s2, { type: 'PLAY_CARD', playerId: 'p2', cardId: wrd4_1.id, chosenColor: 'red' });
+        expect(r2.nextState.pendingActionState?.targetPlayerId).toBe('p2');
+        expect(r2.nextState.pendingActionState?.accumulatedPenalty).toBe(8);
 
-      // Bob chooses 'blue'
-      const res2 = NoMercyActionProcessor.process(stateWithArrangedDraw, {
-        type: 'CHOOSE_COLOR_ROULETTE_COLOR',
-        playerId: 'p2',
-        chosenColor: 'blue',
+        // 3. Bob stacks Wild Draw Six (+6 >= 4) -> Passes 8 + 6 = 14 to Alice (counter_clockwise)
+        const { nextState: s3, card: wd6 } = NoMercyFixtureBuilder.injectPlayableCard(r2.nextState, 'p2', 'wild_draw_six');
+        const r3 = NoMercyActionProcessor.process(s3, { type: 'PLAY_CARD', playerId: 'p2', cardId: wd6.id, chosenColor: 'green' });
+        expect(r3.nextState.pendingActionState?.targetPlayerId).toBe('p1');
+        expect(r3.nextState.pendingActionState?.accumulatedPenalty).toBe(14);
+
+        // 4. Alice stacks Wild Draw Ten (+10 >= 6) -> Passes 14 + 10 = 24 to Charlie (counter_clockwise)
+        const { nextState: s4, card: wd10 } = NoMercyFixtureBuilder.injectPlayableCard(r3.nextState, 'p1', 'wild_draw_ten');
+        const r4 = NoMercyActionProcessor.process(s4, { type: 'PLAY_CARD', playerId: 'p1', cardId: wd10.id, chosenColor: 'blue' });
+        expect(r4.nextState.pendingActionState?.targetPlayerId).toBe('p3');
+        expect(r4.nextState.pendingActionState?.accumulatedPenalty).toBe(24);
+
+        // 5. Charlie accepts the 24 cards: had 7 cards, now 7 + 24 = 31 > 25 -> Eliminated!
+        const r5 = NoMercyActionProcessor.process(r4.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p3' });
+        const charlie = r5.nextState.players.find((p) => p.id === 'p3')!;
+        expect(charlie.isEliminated).toBe(true);
+        expect(r5.nextState.eliminatedPlayerIds).toContain('p3');
+        assertValidNoMercyGameState(r5.nextState);
       });
 
-      // Bob reached 26 cards and was eliminated by Mercy Rule!
-      const bob = res2.nextState.players.find((p) => p.id === 'p2')!;
-      expect(bob.isEliminated).toBe(true);
-      expect(bob.hand).toHaveLength(0);
+      it('Edge cases 5, 6, 7: Wild Draw 4 + Wild Reverse Draw 4 in 2, 3, and 4 player matches', () => {
+        // 2-Player Match
+        const st2 = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 1,
+          players: [{ id: 'p1', username: 'Alice' }, { id: 'p2', username: 'Bob' }],
+        });
+        const { nextState: st2_1, card: d4_2 } = NoMercyFixtureBuilder.injectPlayableCard(st2, 'p1', 'draw_four', st2.activeColor ?? 'blue');
+        const r2_1 = NoMercyActionProcessor.process(st2_1, { type: 'PLAY_CARD', playerId: 'p1', cardId: d4_2.id });
+        const { nextState: st2_2, card: wrd4_p2 } = NoMercyFixtureBuilder.injectPlayableCard(r2_1.nextState, 'p2', 'wild_reverse_draw_four');
+        const r2_2 = NoMercyActionProcessor.process(st2_2, { type: 'PLAY_CARD', playerId: 'p2', cardId: wrd4_p2.id, chosenColor: 'red' });
+        expect(r2_2.nextState.pendingActionState?.targetPlayerId).toBe('p2');
+        expect(r2_2.nextState.pendingActionState?.accumulatedPenalty).toBe(8);
 
-      // Bob's 26 cards are transferred to setAsideCards
-      expect(res2.nextState.setAsideCards?.length).toBe(26);
-      expect(res2.nextState.setAsideCards?.some((c) => c.id === c1.id)).toBe(true);
-      expect(res2.nextState.setAsideCards?.some((c) => c.id === c2.id)).toBe(true);
-      expect(res2.nextState.setAsideCards?.some((c) => c.id === c3.id)).toBe(true);
-      expect(res2.nextState.setAsideCards?.some((c) => c.id === cTarget.id)).toBe(true);
+        // 4-Player Match
+        const st4 = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 3, // P1 starts
+          players: [
+            { id: 'p1', username: 'Alice' },
+            { id: 'p2', username: 'Bob' },
+            { id: 'p3', username: 'Charlie' },
+            { id: 'p4', username: 'Diana' },
+          ],
+        });
+        const { nextState: st4_1, card: d4_4 } = NoMercyFixtureBuilder.injectPlayableCard(st4, 'p1', 'draw_four', st4.activeColor ?? 'blue');
+        const r4_1 = NoMercyActionProcessor.process(st4_1, { type: 'PLAY_CARD', playerId: 'p1', cardId: d4_4.id });
+        const { nextState: st4_2, card: wrd4_4 } = NoMercyFixtureBuilder.injectPlayableCard(r4_1.nextState, 'p2', 'wild_reverse_draw_four');
+        const r4_2 = NoMercyActionProcessor.process(st4_2, { type: 'PLAY_CARD', playerId: 'p2', cardId: wrd4_4.id, chosenColor: 'green' });
+        expect(r4_2.nextState.pendingActionState?.targetPlayerId).toBe('p2');
+        expect(r4_2.nextState.pendingActionState?.accumulatedPenalty).toBe(8);
+        expect(r4_2.nextState.turnDirection).toBe('counter_clockwise');
+      });
 
-      // Check invariants
-      assertValidNoMercyGameState(res2.nextState);
-    });
+      it('Edge cases 8 & 9: Penalty recipient reaches exactly 25 cards (active) vs exceeds 25 cards (eliminated)', () => {
+        // Recipient reaches exactly 25 cards
+        let sExact = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 2,
+          players: [{ id: 'p1', username: 'Alice' }, { id: 'p2', username: 'Bob' }, { id: 'p3', username: 'Charlie' }],
+        });
+        // Bob hand size 18: plays 1 card (17), receives 8 cards penalty -> 17 + 8 = 25 cards!
+        sExact = NoMercyFixtureBuilder.setHandSize(sExact, 'p2', 18);
+        const { nextState: se1, card: d4_e } = NoMercyFixtureBuilder.injectPlayableCard(sExact, 'p1', 'draw_four', sExact.activeColor ?? 'blue');
+        const re1 = NoMercyActionProcessor.process(se1, { type: 'PLAY_CARD', playerId: 'p1', cardId: d4_e.id });
+        const { nextState: se2, card: wrd4_e } = NoMercyFixtureBuilder.injectPlayableCard(re1.nextState, 'p2', 'wild_reverse_draw_four');
+        const re2 = NoMercyActionProcessor.process(se2, { type: 'PLAY_CARD', playerId: 'p2', cardId: wrd4_e.id, chosenColor: 'red' });
+        const re3 = NoMercyActionProcessor.process(re2.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p2' });
+        const bobExact = re3.nextState.players.find((p) => p.id === 'p2')!;
+        expect(bobExact.isEliminated).toBe(false);
+        expect(bobExact.hand).toHaveLength(25); // Exactly 25 -> ACTIVE!
 
-    it('direct unit test: drawUntilColor retains all Wild cards and terminates strictly on matching non-Wild card', () => {
-      const topDiscard: Card = { id: 'top_card', color: 'red', type: 'number', value: '5', scoreValue: 5, variant: 'uno_show_em_no_mercy' };
-      const cRed: Card = { id: 'c_red', color: 'red', type: 'number', value: '3', scoreValue: 3, variant: 'uno_show_em_no_mercy' };
-      const cWild1: Card = { id: 'c_w1', color: null, type: 'wild', value: 'wild_draw_six', scoreValue: 50, variant: 'uno_show_em_no_mercy' };
-      const cWild2: Card = { id: 'c_w2', color: null, type: 'wild', value: 'wild_color_roulette', scoreValue: 50, variant: 'uno_show_em_no_mercy' };
-      const cYellow: Card = { id: 'c_yel', color: 'yellow', type: 'number', value: '8', scoreValue: 8, variant: 'uno_show_em_no_mercy' };
-      const cBlueTarget: Card = { id: 'c_blue', color: 'blue', type: 'number', value: '7', scoreValue: 7, variant: 'uno_show_em_no_mercy' };
+        // Recipient exceeds 25 cards (e.g. 26 cards)
+        let sExceed = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 2,
+          players: [{ id: 'p1', username: 'Alice' }, { id: 'p2', username: 'Bob' }, { id: 'p3', username: 'Charlie' }],
+        });
+        // Bob hand size 19: plays 1 card (18), receives 8 cards penalty -> 18 + 8 = 26 cards!
+        sExceed = NoMercyFixtureBuilder.setHandSize(sExceed, 'p2', 19);
+        const { nextState: sx1, card: d4_x } = NoMercyFixtureBuilder.injectPlayableCard(sExceed, 'p1', 'draw_four', sExceed.activeColor ?? 'blue');
+        const rx1 = NoMercyActionProcessor.process(sx1, { type: 'PLAY_CARD', playerId: 'p1', cardId: d4_x.id });
+        const { nextState: sx2, card: wrd4_x } = NoMercyFixtureBuilder.injectPlayableCard(rx1.nextState, 'p2', 'wild_reverse_draw_four');
+        const rx2 = NoMercyActionProcessor.process(sx2, { type: 'PLAY_CARD', playerId: 'p2', cardId: wrd4_x.id, chosenColor: 'yellow' });
+        const rx3 = NoMercyActionProcessor.process(rx2.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p2' });
+        const bobExceed = rx3.nextState.players.find((p) => p.id === 'p2')!;
+        expect(bobExceed.isEliminated).toBe(true);
+        expect(bobExceed.hand).toHaveLength(0); // Eliminated and hand set aside
+        expect(rx3.nextState.eliminatedPlayerIds).toContain('p2');
+      });
 
-      // Array pop order: cRed -> cWild1 -> cWild2 -> cYellow -> cBlueTarget (stops!)
-      const drawPile = [cBlueTarget, cYellow, cWild2, cWild1, cRed];
+      it('Edge case 10: Rejects invalid or duplicate Accept Cards requests idempotently', () => {
+        const state = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 2,
+          players: [{ id: 'p1', username: 'Alice' }, { id: 'p2', username: 'Bob' }, { id: 'p3', username: 'Charlie' }],
+        });
+        const { nextState: s1, card: d4 } = NoMercyFixtureBuilder.injectPlayableCard(state, 'p1', 'draw_four', state.activeColor ?? 'blue');
+        const r1 = NoMercyActionProcessor.process(s1, { type: 'PLAY_CARD', playerId: 'p1', cardId: d4.id });
 
-      const res = NoMercyActionProcessor.drawUntilColor(
-        drawPile,
-        [topDiscard],
-        'blue',
-        []
-      );
+        // Non-targeted player Charlie tries to accept penalty -> REJECTED!
+        expect(() => {
+          NoMercyActionProcessor.process(r1.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p3' });
+        }).toThrow(/Only the targeted player may accept/);
 
-      expect(res.drawnCards).toHaveLength(5);
-      expect(res.drawnCards.map((c) => c.id)).toEqual([
-        'c_red',
-        'c_w1',
-        'c_w2',
-        'c_yel',
-        'c_blue',
-      ]);
-      expect(res.drawnCards.filter((c) => isWildCard(c))).toHaveLength(2);
-      expect(res.drawnCards[res.drawnCards.length - 1].color).toBe('blue');
-      expect(res.drawnCards[res.drawnCards.length - 1].type).not.toBe('wild');
-      expect(res.newDrawPile).toHaveLength(0);
-      expect(res.newDiscardPile).toEqual([topDiscard]);
+        // Targeted player Bob accepts penalty -> Resolves successfully
+        const r2 = NoMercyActionProcessor.process(r1.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p2' });
+        expect(r2.nextState.pendingActionState).toBeNull();
+
+        // Duplicate accept when no penalty is pending -> REJECTED!
+        expect(() => {
+          NoMercyActionProcessor.process(r2.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p2' });
+        }).toThrow(/ACCEPT_STACK_PENALTY/);
+      });
     });
   });
 });

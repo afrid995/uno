@@ -319,8 +319,8 @@ describe('Full Application-Wide Interaction Reliability Socket Integration Tests
     });
   });
 
-  describe('No Mercy Color Roulette Flow & Idempotency', () => {
-    it('resolves color roulette, delivers authoritative state, and absorbs duplicates', async () => {
+  describe('No Mercy Stacking Flow & Idempotency', () => {
+    it('accepts stack penalty, delivers authoritative state, and absorbs duplicates', async () => {
       const { c2, p1Id, p2Id, roomCode } = await createAndJoinRoom('uno_show_em_no_mercy');
 
       const session = gameSessionManager.getSessionByRoomCode(roomCode)!;
@@ -328,24 +328,27 @@ describe('Full Application-Wide Interaction Reliability Socket Integration Tests
         ...session.state,
         currentPlayerIndex: 1,
         pendingActionState: {
-          type: 'AWAITING_COLOR_ROULETTE_SELECTION',
-          victimPlayerId: p2Id,
+          type: 'AWAITING_STACK_RESOLUTION',
+          targetPlayerId: p2Id,
           playedByPlayerId: p1Id,
+          accumulatedPenalty: 4,
+          lastStackedValue: 4,
+          lastCardValue: 'draw_four',
         },
       };
       gameSessionManager.updateState(session.matchId, modifiedState);
 
-      // Player 2 emits GAME_CHOOSE_ROULETTE_COLOR
+      // Player 2 emits GAME_ACCEPT_STACK_PENALTY
       const res1 = await new Promise<{
         success: boolean;
-        data?: { success: boolean; cardsRevealed: number; eliminated: boolean; state?: PlayerGameState };
+        data?: { success: boolean; cardsDrawn: number; eliminated: boolean; state?: PlayerGameState };
       }>((resolve) => {
         c2.emit(
-          SOCKET_EVENTS.GAME_CHOOSE_ROULETTE_COLOR,
-          { chosenColor: 'red' },
+          SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY,
+          {},
           (ack: {
             success: boolean;
-            data?: { success: boolean; cardsRevealed: number; eliminated: boolean; state?: PlayerGameState };
+            data?: { success: boolean; cardsDrawn: number; eliminated: boolean; state?: PlayerGameState };
           }) => resolve(ack)
         );
       });
@@ -356,8 +359,8 @@ describe('Full Application-Wide Interaction Reliability Socket Integration Tests
       // Duplicate click is safely absorbed
       const res2 = await new Promise<{ success: boolean }>((resolve) => {
         c2.emit(
-          SOCKET_EVENTS.GAME_CHOOSE_ROULETTE_COLOR,
-          { chosenColor: 'red' },
+          SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY,
+          {},
           (ack: { success: boolean }) => resolve(ack)
         );
       });

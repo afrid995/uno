@@ -20,7 +20,7 @@ export const UNO_NO_MERCY_RULES = {
 
   // Action card point values per official Mattel HWV18 scoring table
   COLORED_ACTION_POINTS: 20, // Skip, Reverse, Draw 2, Draw 4, Discard All, Skip Everyone
-  WILD_ACTION_POINTS: 50, // Wild Reverse Draw 4, Wild Draw 6, Wild Draw 10, Wild Color Roulette
+  WILD_ACTION_POINTS: 50, // Wild, Wild Reverse Draw 4, Wild Draw 6, Wild Draw 10
 } as const;
 
 export function getNoMercyDrawPenalty(cardValue: string): number | null {

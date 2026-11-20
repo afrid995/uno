@@ -51,7 +51,6 @@ interface GameStateStore {
   acceptWildDrawColor: () => Promise<boolean>;
   chooseStartingWildColor: (chosenColor: CardColor) => Promise<boolean>;
   choose7sSwap: (targetPlayerId: string) => Promise<boolean>;
-  chooseRouletteColor: (chosenColor: 'red' | 'yellow' | 'green' | 'blue') => Promise<boolean>;
   acceptStackPenalty: () => Promise<boolean>;
   chooseTargetedDrawTwo: (targetPlayerId: string) => Promise<boolean>;
   chooseTargetedDrawFour: (targetPlayerId: string) => Promise<boolean>;
@@ -663,44 +662,6 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
           resolve(true);
         } else {
           set({ error: res.error?.message || 'Failed to swap hands' });
-          resolve(false);
-        }
-      });
-    });
-  },
-
-  chooseRouletteColor: async (chosenColor: 'red' | 'yellow' | 'green' | 'blue') => {
-    if (get().isActionLoading) {
-      return false;
-    }
-    set({ isActionLoading: true, error: null });
-    const socket = socketManager.getSocket();
-
-    return new Promise<boolean>((resolve) => {
-      let isSettled = false;
-      const timer = setTimeout(() => {
-        if (!isSettled) {
-          isSettled = true;
-          set({
-            isActionLoading: false,
-            error: 'Request timed out while choosing roulette color. Please try again.',
-          });
-          resolve(false);
-        }
-      }, 5000);
-
-      socket.emit(SOCKET_EVENTS.GAME_CHOOSE_ROULETTE_COLOR, { chosenColor }, (res) => {
-        if (isSettled) return;
-        isSettled = true;
-        clearTimeout(timer);
-        set({ isActionLoading: false });
-        if (res.success) {
-          if (res.data?.state) {
-            set({ gameState: res.data.state as PlayerGameState });
-          }
-          resolve(true);
-        } else {
-          set({ error: res.error?.message || 'Failed to choose roulette color' });
           resolve(false);
         }
       });

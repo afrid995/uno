@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SevenSwapModal } from '../SevenSwapModal';
-import { ColorRouletteModal } from '../ColorRouletteModal';
 import { StackPenaltyBanner } from '../StackPenaltyBanner';
 import { PublicPlayer, PublicPendingStack } from '@uno-ultimate/game-protocol';
 
@@ -40,28 +39,6 @@ describe('No Mercy UI Modals and Banners', () => {
       );
 
       expect(screen.queryByText('7 Played — Swap Hands!')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('ColorRouletteModal', () => {
-    it('renders 4 color buttons and triggers callback on click', () => {
-      const onSelect = vi.fn();
-
-      render(
-        <ColorRouletteModal
-          isOpen={true}
-          onSelectColor={onSelect}
-        />
-      );
-
-      expect(screen.getByText('Wild Color Roulette!')).toBeInTheDocument();
-      expect(screen.getByTestId('roulette-color-red')).toBeInTheDocument();
-      expect(screen.getByTestId('roulette-color-yellow')).toBeInTheDocument();
-      expect(screen.getByTestId('roulette-color-green')).toBeInTheDocument();
-      expect(screen.getByTestId('roulette-color-blue')).toBeInTheDocument();
-
-      fireEvent.click(screen.getByTestId('roulette-color-green'));
-      expect(onSelect).toHaveBeenCalledWith('green');
     });
   });
 

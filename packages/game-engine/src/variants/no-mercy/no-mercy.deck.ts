@@ -21,7 +21,7 @@ export class NoMercyDeckFactory {
    *
    * 3. Wild Action Cards (24 cards):
    *    - Wild Reverse Draw 4: 8 cards (Score: 50)
-   *    - Wild Color Roulette: 8 cards (Score: 50)
+   *    - Wild: 8 cards (Score: 50)
    *    - Wild Draw 6: 4 cards (Score: 50)
    *    - Wild Draw 10: 4 cards (Score: 50)
    *
@@ -84,11 +84,11 @@ export class NoMercyDeckFactory {
 
     // 3. Wild Action Cards (24 cards)
     const wildActions: Array<{
-      value: 'wild_reverse_draw_four' | 'wild_color_roulette' | 'wild_draw_six' | 'wild_draw_ten';
+      value: 'wild_reverse_draw_four' | 'wild' | 'wild_draw_six' | 'wild_draw_ten';
       count: number;
     }> = [
       { value: 'wild_reverse_draw_four', count: 8 },
-      { value: 'wild_color_roulette', count: 8 },
+      { value: 'wild', count: 8 },
       { value: 'wild_draw_six', count: 4 },
       { value: 'wild_draw_ten', count: 4 },
     ];

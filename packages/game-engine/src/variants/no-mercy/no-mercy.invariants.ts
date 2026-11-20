@@ -15,7 +15,7 @@ export interface NoMercyInvariantValidationResult {
  * 2. Uniqueness of every card ID.
  * 3. Mercy Rule compliance: active players must hold < 25 cards; eliminated players hold 0 cards.
  * 4. Turn order integrity: current active player must be non-eliminated.
- * 5. Pending states internal consistency (Stacking, 7s Swap, Color Roulette).
+ * 5. Pending states internal consistency (Stacking, 7s Swap).
  */
 export function validateNoMercyGameStateInvariants(
   state: GameState
@@ -87,9 +87,9 @@ export function validateNoMercyGameStateInvariants(
         );
       }
     } else {
-      if (player.hand.length >= UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
+      if (player.hand.length > UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
         errors.push(
-          `Mercy Rule violation: Active player ${player.id} (${player.username}) holds ${player.hand.length} cards (>= ${UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT}) without being eliminated.`
+          `Mercy Rule violation: Active player ${player.id} (${player.username}) holds ${player.hand.length} cards (> ${UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT}) without being eliminated.`
         );
       }
     }
@@ -125,11 +125,6 @@ export function validateNoMercyGameStateInvariants(
       const source = state.players.find((p) => p.id === pending.sourcePlayerId);
       if (!source || source.isEliminated || eliminatedSet.has(source.id)) {
         errors.push(`7s Swap source player ${pending.sourcePlayerId} is invalid or eliminated.`);
-      }
-    } else if (pending.type === 'AWAITING_COLOR_ROULETTE_SELECTION') {
-      const victim = state.players.find((p) => p.id === pending.victimPlayerId);
-      if (!victim || victim.isEliminated || eliminatedSet.has(victim.id)) {
-        errors.push(`Color Roulette victim player ${pending.victimPlayerId} is invalid or eliminated.`);
       }
     }
   }

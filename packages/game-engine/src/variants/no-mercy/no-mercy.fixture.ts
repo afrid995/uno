@@ -141,7 +141,7 @@ export class NoMercyFixtureBuilder {
   /**
    * Adjusts target player's hand size to exact count for Mercy rule testing.
    * Transfers cards between drawPile and player's hand while maintaining 168-card conservation.
-   * Target count is capped below MERCY_HAND_LIMIT (25) to avoid creating impossible active-player states.
+   * Target count is capped at MERCY_HAND_LIMIT (25) to avoid creating impossible active-player states.
    */
   static setHandSize(
     state: GameState,
@@ -150,8 +150,8 @@ export class NoMercyFixtureBuilder {
   ): GameState {
     assertValidNoMercyGameState(state);
 
-    if (targetCount < 1 || targetCount >= 25) {
-      throw new Error(`Invalid targetCount ${targetCount}. Must be between 1 and 24 to preserve active player validity.`);
+    if (targetCount < 1 || targetCount > 25) {
+      throw new Error(`Invalid targetCount ${targetCount}. Must be between 1 and 25 to preserve active player validity.`);
     }
 
     const playerIndex = state.players.findIndex((p) => p.id === targetPlayerId);

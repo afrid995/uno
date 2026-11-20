@@ -239,7 +239,6 @@ export class GameService {
       const isTargetModalAction =
         action.type === 'CHOOSE_7S_SWAP_TARGET' ||
         action.type === 'CHOOSE_FORCED_SWAP_TARGET' ||
-        action.type === 'CHOOSE_COLOR_ROULETTE_COLOR' ||
         action.type === 'CHOOSE_TARGETED_DRAW_TWO_TARGET' ||
         action.type === 'CHOOSE_TARGETED_DRAW_FOUR_TARGET' ||
         action.type === 'CHOOSE_ATTACK_TARGET' ||
@@ -507,18 +506,6 @@ export class GameService {
       type: 'CHOOSE_7S_SWAP_TARGET',
       playerId: guestId,
       targetPlayerId,
-    });
-  }
-
-  async chooseColorRouletteColor(
-    guestId: string,
-    roomCode: string,
-    chosenColor: CardColor
-  ): Promise<ActionProcessResult> {
-    return this.executeAction(roomCode, {
-      type: 'CHOOSE_COLOR_ROULETTE_COLOR',
-      playerId: guestId,
-      chosenColor,
     });
   }
 
@@ -862,7 +849,6 @@ export class GameService {
           }
         } else if (
           (p.type === 'AWAITING_7S_SWAP_SELECTION' && p.sourcePlayerId === guestId) ||
-          (p.type === 'AWAITING_COLOR_ROULETTE_SELECTION' && p.victimPlayerId === guestId) ||
           (p.type === 'AWAITING_TARGETED_DRAW_TWO_SELECTION' && p.sourcePlayerId === guestId) ||
           (p.type === 'AWAITING_TARGETED_DRAW_FOUR_SELECTION' && p.sourcePlayerId === guestId) ||
           (p.type === 'AWAITING_FORCED_SWAP_SELECTION' && p.sourcePlayerId === guestId) ||

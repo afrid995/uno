@@ -27,7 +27,6 @@ export interface PlayerPrivateView {
   readonly canStack?: boolean;
   readonly isTargetedByStack?: boolean;
   readonly canChoose7sSwap?: boolean;
-  readonly canChooseRouletteColor?: boolean;
   readonly canChooseTargetedDrawTwo?: boolean;
   readonly canChooseTargetedDrawFour?: boolean;
   readonly canChooseForcedSwap?: boolean;
@@ -144,10 +143,6 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     state.pendingActionState?.type === 'AWAITING_7S_SWAP_SELECTION' &&
     state.pendingActionState.sourcePlayerId === playerId;
 
-  const canChooseRouletteColor =
-    state.pendingActionState?.type === 'AWAITING_COLOR_ROULETTE_SELECTION' &&
-    state.pendingActionState.victimPlayerId === playerId;
-
   const canChooseTargetedDrawTwo =
     state.pendingActionState?.type === 'AWAITING_TARGETED_DRAW_TWO_SELECTION' &&
     state.pendingActionState.sourcePlayerId === playerId;
@@ -232,7 +227,6 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     canStack: isTargetedByStack && playableCardIds.length > 0,
     isTargetedByStack,
     canChoose7sSwap,
-    canChooseRouletteColor,
     canChooseTargetedDrawTwo,
     canChooseTargetedDrawFour,
     canChooseForcedSwap,

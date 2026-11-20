@@ -184,34 +184,6 @@ export class NoMercyMoveValidator {
       return { valid: true };
     }
 
-    if (pending.type === 'AWAITING_COLOR_ROULETTE_SELECTION') {
-      if (action.type !== 'CHOOSE_COLOR_ROULETTE_COLOR') {
-        return {
-          valid: false,
-          code: 'PENDING_ACTION_REQUIRED',
-          message: 'The targeted player must select a color for the Wild Color Roulette.',
-        };
-      }
-
-      if (action.playerId !== pending.victimPlayerId) {
-        return {
-          valid: false,
-          code: 'NOT_YOUR_TURN',
-          message: 'Only the player targeted by Wild Color Roulette can select the color.',
-        };
-      }
-
-      if (!NO_MERCY_COLORS.includes(action.chosenColor as ClassicCardColor)) {
-        return {
-          valid: false,
-          code: 'INVALID_CHOSEN_COLOR',
-          message: `Chosen color must be one of: ${NO_MERCY_COLORS.join(', ')}.`,
-        };
-      }
-
-      return { valid: true };
-    }
-
     return {
       valid: false,
       code: 'PENDING_ACTION_REQUIRED',
@@ -267,12 +239,7 @@ export class NoMercyMoveValidator {
       }
     }
 
-    // Wild Color Roulette: Next player chooses color, so chosenColor is not required on play
-    if (card.value === 'wild_color_roulette') {
-      return { valid: true };
-    }
-
-    // Other Wild cards require chosenColor
+    // Wild cards require chosenColor
     if (card.type === 'wild') {
       if (!chosenColor) {
         return {

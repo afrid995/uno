@@ -1,7 +1,6 @@
 import { GameState, GameWinner, PendingActionState } from '../../game/game.types';
 import { GameAction, GameEventRecord } from '../../actions/action.types';
 import { Card, CardColor, CardValue } from '../../cards/card.types';
-import { isWildCard } from '../../cards/card.validation';
 import { Player } from '../../players/player.types';
 import { TurnManager } from '../../turns/turn.manager';
 import { reverseDirection } from '../../turns/turn.direction';
@@ -24,8 +23,8 @@ export class NoMercyActionProcessor {
   /**
    * Reshuffles recyclable cards into the draw pile when draw pile is exhausted.
    *
-   * Per official Mattel HWV18 Mercy Rule:
-   * "If a player ever has 25 or more cards in their hand, they are out of the game.
+   * Per Mercy Rule (elimination threshold > 25 cards):
+   * "If a player ever has more than 25 cards in their hand, they are out of the game.
    *  Set aside their hand of cards until the deck runs out and needs to be reshuffled."
    *
    * Recycling lifecycle:
@@ -119,69 +118,6 @@ export class NoMercyActionProcessor {
       } else {
         // Deck completely exhausted and no recyclable cards exist
         break;
-      }
-    }
-
-    return {
-      drawnCards: drawn,
-      newDrawPile: currentDraw,
-      newDiscardPile: currentDiscard,
-      newSetAsideCards: currentSetAside,
-    };
-  }
-
-  /**
-   * Wild Color Roulette draw helper.
-   * Draws cards one by one from the draw pile until a card matching targetColor is revealed.
-   * Official rule: Wild cards do not count as a matching color.
-   */
-  static drawUntilColor(
-    drawPile: readonly Card[],
-    discardPile: readonly Card[],
-    targetColor: CardColor,
-    setAsideCards: readonly Card[] = [],
-    rng: RandomNumberGenerator = defaultCryptoRng
-  ): {
-    drawnCards: Card[];
-    newDrawPile: Card[];
-    newDiscardPile: Card[];
-    newSetAsideCards: Card[];
-  } {
-    let currentDraw = [...drawPile];
-    let currentDiscard = [...discardPile];
-    let currentSetAside = [...setAsideCards];
-    const drawn: Card[] = [];
-    let found = false;
-
-    // Safety loop: maximum draws bounded by total deck size (168)
-    const maxDraws = UNO_NO_MERCY_RULES.DECK_SIZE;
-    let iterations = 0;
-
-    while (!found && iterations < maxDraws) {
-      iterations++;
-
-      if (currentDraw.length === 0) {
-        const reshuffleResult = this.reshuffleRecyclableCards(
-          currentDraw,
-          currentDiscard,
-          currentSetAside,
-          rng
-        );
-        currentDraw = reshuffleResult.newDrawPile;
-        currentDiscard = reshuffleResult.newDiscardPile;
-        currentSetAside = reshuffleResult.newSetAsideCards;
-      }
-
-      if (currentDraw.length === 0) {
-        break;
-      }
-
-      const card = currentDraw.pop()!;
-      drawn.push(card);
-
-      // Must be non-wild and match chosen color
-      if (!isWildCard(card) && card.color === targetColor) {
-        found = true;
       }
     }
 
@@ -472,11 +408,7 @@ export class NoMercyActionProcessor {
     // Active color determination
     let activeColor: CardColor | null = card.color;
     if (card.type === 'wild') {
-      if (card.value === 'wild_color_roulette') {
-        activeColor = state.activeColor;
-      } else {
-        activeColor = action.chosenColor!;
-      }
+      activeColor = action.chosenColor!;
     }
 
     const newDiscardPile = [...state.discardPile];
@@ -613,7 +545,9 @@ export class NoMercyActionProcessor {
         nextPlayerIndex = this.getNextActivePlayerIndex(playerIndex, updatedPlayers, turnDirection, 1);
       }
     } else if (card.type === 'wild') {
-      if (card.value === 'wild_reverse_draw_four') {
+      if (card.value === 'wild') {
+        nextPlayerIndex = this.getNextActivePlayerIndex(playerIndex, updatedPlayers, turnDirection, 1);
+      } else if (card.value === 'wild_reverse_draw_four') {
         turnDirection = reverseDirection(turnDirection);
         ctx.addEvent('DIRECTION_REVERSED', player.id, { turnDirection });
 
@@ -658,20 +592,6 @@ export class NoMercyActionProcessor {
           accumulatedPenalty: penalty,
           lastStackedValue: penalty,
         });
-      } else if (card.value === 'wild_color_roulette') {
-        const targetIndex = this.getNextActivePlayerIndex(playerIndex, updatedPlayers, turnDirection, 1);
-        const targetPlayer = updatedPlayers[targetIndex];
-
-        pendingActionState = {
-          type: 'AWAITING_COLOR_ROULETTE_SELECTION',
-          victimPlayerId: targetPlayer.id,
-          playedByPlayerId: player.id,
-        };
-        nextPlayerIndex = targetIndex;
-        ctx.addEvent('PENDING_COLOR_ROULETTE', targetPlayer.id, {
-          victimPlayerId: targetPlayer.id,
-          playedByPlayerId: player.id,
-        });
       }
     }
 
@@ -713,12 +633,6 @@ export class NoMercyActionProcessor {
     if (pending.type === 'AWAITING_7S_SWAP_SELECTION') {
       if (action.type === 'CHOOSE_7S_SWAP_TARGET') {
         return this.process7sSwapTarget(state, action, ctx);
-      }
-    }
-
-    if (pending.type === 'AWAITING_COLOR_ROULETTE_SELECTION') {
-      if (action.type === 'CHOOSE_COLOR_ROULETTE_COLOR') {
-        return this.processColorRouletteSelection(state, action, rng, ctx);
       }
     }
 
@@ -784,7 +698,17 @@ export class NoMercyActionProcessor {
       ctx.addEvent('DIRECTION_REVERSED', player.id, { turnDirection });
     }
 
-    const nextTargetIndex = this.getNextActivePlayerIndex(playerIndex, state.players, turnDirection, 1);
+    let nextTargetIndex: number;
+    if (
+      card.value === 'wild_reverse_draw_four' &&
+      (pending.lastCardValue === 'draw_four' || pending.lastCardValue === 'wild_draw_four')
+    ) {
+      // Intended custom rule: When stacking Wild Reverse Draw 4 on top of Draw 4 / Wild Draw 4,
+      // the player who played the Wild Reverse Draw 4 receives the accumulated penalty.
+      nextTargetIndex = playerIndex;
+    } else {
+      nextTargetIndex = this.getNextActivePlayerIndex(playerIndex, state.players, turnDirection, 1);
+    }
     const nextTargetPlayer = state.players[nextTargetIndex];
 
     const updatedPlayers = state.players.map((p, idx) =>
@@ -863,8 +787,8 @@ export class NoMercyActionProcessor {
       drawnCards,
     });
 
-    // Check Mercy Rule (>= 25 cards in hand)
-    if (newHand.length >= UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
+    // Check Mercy Rule (> 25 cards in hand)
+    if (newHand.length > UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
       return this.applyMercyElimination(
         state,
         playerIndex,
@@ -990,81 +914,6 @@ export class NoMercyActionProcessor {
     return { nextState, events: ctx.events };
   }
 
-  private static processColorRouletteSelection(
-    state: GameState,
-    action: { playerId: string; chosenColor: CardColor },
-    rng: RandomNumberGenerator,
-    ctx: ActionContext
-  ): ActionProcessResult {
-    const victimIndex = state.currentPlayerIndex;
-    const victim = state.players[victimIndex];
-
-    const { drawnCards, newDrawPile, newDiscardPile, newSetAsideCards } = this.drawUntilColor(
-      state.drawPile,
-      state.discardPile,
-      action.chosenColor,
-      state.setAsideCards || [],
-      rng
-    );
-
-    const newHand = [...victim.hand, ...drawnCards];
-
-    ctx.addEvent('ROULETTE_RESOLVED', victim.id, {
-      victimPlayerId: victim.id,
-      chosenColor: action.chosenColor,
-      drawnCount: drawnCards.length,
-      drawnCards,
-    });
-
-    // Check Mercy Rule on victim
-    if (newHand.length >= UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
-      return this.applyMercyElimination(
-        state,
-        victimIndex,
-        newHand,
-        newDrawPile,
-        newDiscardPile,
-        ctx,
-        action.chosenColor,
-        newSetAsideCards
-      );
-    }
-
-    const updatedPlayers = state.players.map((p, idx) =>
-      idx === victimIndex
-        ? {
-            ...p,
-            hand: newHand,
-            hasDeclaredUno: false,
-          }
-        : p
-    );
-
-    // Victim loses their turn: turn passes to active player after victim
-    const nextPlayerIndex = this.getNextActivePlayerIndex(
-      victimIndex,
-      updatedPlayers,
-      state.turnDirection,
-      1
-    );
-
-    const nextState: GameState = {
-      ...state,
-      players: updatedPlayers,
-      currentPlayerIndex: nextPlayerIndex,
-      drawPile: newDrawPile,
-      discardPile: newDiscardPile,
-      setAsideCards: newSetAsideCards,
-      activeColor: action.chosenColor,
-      turnNumber: state.turnNumber + 1,
-      sequenceNumber: ctx.getSeq(),
-      pendingActionState: null,
-      updatedAt: ctx.timestamp,
-    };
-
-    return { nextState, events: ctx.events };
-  }
-
   private static processDrawCard(
     state: GameState,
     action: { playerId: string; chosenColor?: CardColor },
@@ -1086,8 +935,8 @@ export class NoMercyActionProcessor {
     const drawnCard = drawnCards[0];
     const newHand: Card[] = drawnCard ? [...player.hand, drawnCard] : [...player.hand];
 
-    // Check Mercy Rule during drawing
-    if (newHand.length >= UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
+    // Check Mercy Rule during drawing (> 25 cards in hand)
+    if (newHand.length > UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
       return this.applyMercyElimination(
         state,
         playerIndex,
@@ -1263,8 +1112,8 @@ export class NoMercyActionProcessor {
       penaltyCards: drawnCards.length,
     });
 
-    // Check Mercy Rule on penalized player
-    if (newHand.length >= UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
+    // Check Mercy Rule on penalized player (> 25 cards in hand)
+    if (newHand.length > UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
       return this.applyMercyElimination(
         state,
         targetIndex,
@@ -1302,7 +1151,7 @@ export class NoMercyActionProcessor {
   }
 
   /**
-   * Applies the Mercy Rule to eliminate a player who reached 25+ cards in hand.
+   * Applies the Mercy Rule to eliminate a player who exceeded 25 cards in hand (> 25 cards).
    */
   private static applyMercyElimination(
     state: GameState,

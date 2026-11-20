@@ -74,7 +74,6 @@ export const SOCKET_EVENTS = {
   GAME_CHALLENGE_WILD_DRAW_COLOR: 'game:challenge-wild-draw-color',
   GAME_ACCEPT_WILD_DRAW_COLOR: 'game:accept-wild-draw-color',
   GAME_CHOOSE_7S_SWAP: 'game:choose-7s-swap',
-  GAME_CHOOSE_ROULETTE_COLOR: 'game:choose-roulette-color',
   GAME_ACCEPT_STACK_PENALTY: 'game:accept-stack-penalty',
   GAME_CHOOSE_TARGETED_DRAW_TWO: 'game:choose-targeted-draw-two',
   GAME_CHOOSE_TARGETED_DRAW_FOUR: 'game:choose-targeted-draw-four',
@@ -143,11 +142,6 @@ export const choose7sSwapInputSchema = z.object({
   targetPlayerId: z.string().min(1, 'Target player ID is required'),
 });
 export type Choose7sSwapInput = z.infer<typeof choose7sSwapInputSchema>;
-
-export const chooseRouletteColorInputSchema = z.object({
-  chosenColor: z.enum(['red', 'yellow', 'green', 'blue']),
-});
-export type ChooseRouletteColorInput = z.infer<typeof chooseRouletteColorInputSchema>;
 
 export const acceptStackPenaltyInputSchema = z.object({}).optional();
 export type AcceptStackPenaltyInput = z.infer<typeof acceptStackPenaltyInputSchema>;
@@ -366,10 +360,6 @@ export interface ClientToServerEvents {
   [SOCKET_EVENTS.GAME_CHOOSE_7S_SWAP]: (
     payload: Choose7sSwapInput,
     callback: (response: SocketAck<{ success: boolean; targetPlayerId: string; state?: unknown }>) => void
-  ) => void;
-  [SOCKET_EVENTS.GAME_CHOOSE_ROULETTE_COLOR]: (
-    payload: ChooseRouletteColorInput,
-    callback: (response: SocketAck<{ success: boolean; cardsRevealed: number; eliminated: boolean; state?: unknown }>) => void
   ) => void;
   [SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY]: (
     payload: AcceptStackPenaltyInput,

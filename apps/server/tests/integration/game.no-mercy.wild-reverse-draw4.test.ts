@@ -72,7 +72,7 @@ describe('UNO Show \'em No Mercy — Wild Reverse Draw 4 Stacking Regression Tes
     return socket;
   };
 
-  it('allows Wild Reverse Draw 4 on Draw 4: penalty accumulates to +8, reverses direction, and passes to next player', async () => {
+  it('allows Wild Reverse Draw 4 on Draw 4: penalty accumulates to +8, reverses direction, and targets player who played it under custom rules', async () => {
     const s1 = createClient(p1Token);
     const s2 = createClient(p2Token);
     const s3 = createClient(p3Token);
@@ -196,80 +196,66 @@ describe('UNO Show \'em No Mercy — Wild Reverse Draw 4 Stacking Regression Tes
       expect(session.state.pendingActionState.lastStackedValue).toBe(4);
       expect(session.state.pendingActionState.lastCardValue).toBe('wild_reverse_draw_four');
 
-      // c. In counter_clockwise from Bob (idx 1), the next player is Alice (idx 0)!
-      expect(session.state.pendingActionState.targetPlayerId).toBe(p1Id);
-    }
-    expect(session.state.currentPlayerIndex).toBe(0);
-    assertValidNoMercyGameState(session.state);
-
-    // 4. Further stacking: Alice stacks another Wild Reverse Draw 4!
-    const { nextState: sWithWrd4Alice, card: wrd4Alice } = NoMercyFixtureBuilder.injectPlayableCard(
-      session.state,
-      p1Id,
-      'wild_reverse_draw_four'
-    );
-    session.state = sWithWrd4Alice;
-
-    const playWrd4AliceAck = await new Promise<any>((resolve) => {
-      s1.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: wrd4Alice.id, chosenColor: 'green' }, resolve);
-    });
-    expect(playWrd4AliceAck.success).toBe(true);
-
-    // Direction reverses back: counter_clockwise -> clockwise
-    expect(session.state.turnDirection).toBe('clockwise');
-    // Penalty accumulates: 8 + 4 = 12
-    if (session.state.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION') {
-      expect(session.state.pendingActionState.accumulatedPenalty).toBe(12);
-      expect(session.state.pendingActionState.lastStackedValue).toBe(4);
-      // Next in clockwise from Alice (idx 0) is Bob (idx 1)!
+      // c. Under the custom rule, Bob (the player who stacked Wild Reverse Draw 4) receives the accumulated penalty!
       expect(session.state.pendingActionState.targetPlayerId).toBe(p2Id);
     }
     expect(session.state.currentPlayerIndex).toBe(1);
+    assertValidNoMercyGameState(session.state);
 
-    // 5. Bob stacks Wild Draw Six (+6 >= 4)
-    const { nextState: sWithWd6, card: wd6 } = NoMercyFixtureBuilder.injectPlayableCard(
-      session.state,
-      p2Id,
-      'wild_draw_six'
-    );
-    session.state = sWithWd6;
-
-    const playWd6Ack = await new Promise<any>((resolve) => {
-      s2.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: wd6.id, chosenColor: 'blue' }, resolve);
+    // 4. Bob accepts the 8 cards penalty
+    const bobPreHandCount = session.state.players.find((p) => p.id === p2Id)!.hand.length;
+    const acceptBobAck = await new Promise<any>((resolve) => {
+      s2.emit(SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY, {}, resolve);
     });
-    expect(playWd6Ack.success).toBe(true);
+    expect(acceptBobAck.success).toBe(true);
+    expect(session.state.pendingActionState).toBeNull();
 
-    // Direction remains clockwise, penalty becomes 12 + 6 = 18, target is Charlie (idx 2)!
-    expect(session.state.turnDirection).toBe('clockwise');
+    // Bob's hand increased by 8
+    const bobPost = session.state.players.find((p) => p.id === p2Id)!;
+    expect(bobPost.hand.length).toBe(bobPreHandCount + 8);
+    // Since bobPost.hand.length <= 25, Bob is active (not eliminated)!
+    expect(bobPost.isEliminated).toBe(false);
+
+    // Turn advances counter-clockwise from Bob (idx 1) -> Alice (idx 0)!
+    expect(session.state.currentPlayerIndex).toBe(0);
+    assertValidNoMercyGameState(session.state);
+
+    // 5. Verify Elimination Threshold (> 25 cards):
+    // In counter-clockwise, from Alice (idx 0), the next player is Charlie (idx 2).
+    // Set Charlie's hand to 22 cards.
+    session.state = NoMercyFixtureBuilder.setHandSize(session.state, p3Id, 22);
+
+    // Inject Draw Four into Alice's hand
+    const { nextState: sWithD4Alice, card: d4Alice } = NoMercyFixtureBuilder.injectPlayableCard(
+      session.state,
+      p1Id,
+      'draw_four',
+      session.state.activeColor ?? 'red'
+    );
+    session.state = sWithD4Alice;
+
+    const playD4AliceAck = await new Promise<any>((resolve) => {
+      s1.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: d4Alice.id }, resolve);
+    });
+    expect(playD4AliceAck.success).toBe(true);
+
+    // Charlie is targeted by +4 penalty
+    expect(session.state.pendingActionState?.type).toBe('AWAITING_STACK_RESOLUTION');
     if (session.state.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION') {
-      expect(session.state.pendingActionState.accumulatedPenalty).toBe(18);
-      expect(session.state.pendingActionState.lastStackedValue).toBe(6);
       expect(session.state.pendingActionState.targetPlayerId).toBe(p3Id);
+      expect(session.state.pendingActionState.accumulatedPenalty).toBe(4);
     }
     expect(session.state.currentPlayerIndex).toBe(2);
 
-    // 6. Charlie tries to stack a Wild Reverse Draw 4 (+4 < 6) -> REJECTED!
-    const { nextState: sWithWrd4Charlie, card: wrd4Charlie } = NoMercyFixtureBuilder.injectPlayableCard(
-      session.state,
-      p3Id,
-      'wild_reverse_draw_four'
-    );
-    session.state = sWithWrd4Charlie;
-
-    const rejectStackAck = await new Promise<any>((resolve) => {
-      s3.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: wrd4Charlie.id, chosenColor: 'yellow' }, resolve);
-    });
-    expect(rejectStackAck.success).toBe(false);
-    expect(rejectStackAck.error?.message).toMatch(/Cannot stack a \+4 onto a \+6/);
-
-    // 7. Charlie accepts the 18 cards penalty
-    const acceptAck = await new Promise<any>((resolve) => {
+    // Charlie accepts the 4 penalty cards: 22 + 4 = 26 cards (> 25) -> Eliminated!
+    const acceptCharlieAck = await new Promise<any>((resolve) => {
       s3.emit(SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY, {}, resolve);
     });
-    expect(acceptAck.success).toBe(true);
+    expect(acceptCharlieAck.success).toBe(true);
 
-    // Charlie had 7 cards, now 7 + 18 = 25 -> Mercy Rule Elimination!
     const charlieInState = session.state.players.find((p) => p.id === p3Id)!;
+    // When eliminated, cards are discarded to the discard pile and hand is cleared
+    expect(charlieInState.hand.length).toBe(0);
     expect(charlieInState.isEliminated).toBe(true);
     assertValidNoMercyGameState(session.state);
 
@@ -279,7 +265,7 @@ describe('UNO Show \'em No Mercy — Wild Reverse Draw 4 Stacking Regression Tes
     await new Promise<void>((res) => s1.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
   });
 
-  it('2-player match: Wild Reverse Draw 4 stacked on Draw 4 rebounds penalty to opponent with +8', async () => {
+  it('2-player match: Wild Reverse Draw 4 stacked on Draw 4 targets the stacking player with +8 penalty', async () => {
     const s1 = createClient(p1Token);
     const s2 = createClient(p2Token);
 
@@ -352,21 +338,23 @@ describe('UNO Show \'em No Mercy — Wild Reverse Draw 4 Stacking Regression Tes
     });
     expect(playWrd4Ack.success).toBe(true);
 
-    // In 2-player mode, the +8 penalty rebounds to P1!
+    // Under custom rules, P2 (who stacked Wild Reverse Draw 4) receives the +8 penalty
     expect(session.state.pendingActionState?.type).toBe('AWAITING_STACK_RESOLUTION');
     if (session.state.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION') {
-      expect(session.state.pendingActionState.targetPlayerId).toBe(p1Id);
+      expect(session.state.pendingActionState.targetPlayerId).toBe(p2Id);
       expect(session.state.pendingActionState.accumulatedPenalty).toBe(8);
       expect(session.state.pendingActionState.lastStackedValue).toBe(4);
     }
-    expect(session.state.currentPlayerIndex).toBe(0);
+    expect(session.state.currentPlayerIndex).toBe(1);
 
-    // P1 accepts the 8 penalty cards
+    // P2 accepts the 8 penalty cards
     const acceptAck = await new Promise<any>((resolve) => {
-      s1.emit(SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY, {}, resolve);
+      s2.emit(SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY, {}, resolve);
     });
     expect(acceptAck.success).toBe(true);
     expect(session.state.pendingActionState).toBeNull();
+    // Turn advances to P1 (index 0)
+    expect(session.state.currentPlayerIndex).toBe(0);
 
     await new Promise<void>((res) => s2.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
     await new Promise<void>((res) => s1.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));

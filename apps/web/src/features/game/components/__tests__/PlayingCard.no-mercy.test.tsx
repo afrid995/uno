@@ -72,18 +72,17 @@ describe('PlayingCard No Mercy Components', () => {
     expect(screen.getAllByText('+10').length).toBeGreaterThan(0);
   });
 
-  it('renders Wild Color Roulette with ROUL and ROULETTE labels', () => {
-    const roulette: Card = {
-      id: 'nm_roul_1',
+  it('renders standard Wild Color Change in No Mercy with WILD label', () => {
+    const wildCard: Card = {
+      id: 'nm_wild_copy_1',
       color: null,
       type: 'wild',
-      value: 'wild_color_roulette',
+      value: 'wild',
       scoreValue: 50,
       variant: 'uno_show_em_no_mercy',
     };
 
-    render(<PlayingCard card={roulette} />);
-    expect(screen.getAllByText('ROUL').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('ROULETTE').length).toBeGreaterThan(0);
+    render(<PlayingCard card={wildCard} />);
+    expect(screen.getAllByText('WILD').length).toBeGreaterThan(0);
   });
 });

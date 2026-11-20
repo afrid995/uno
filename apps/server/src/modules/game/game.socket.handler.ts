@@ -8,7 +8,6 @@ import {
   playCardInputSchema,
   challengeUnoInputSchema,
   choose7sSwapInputSchema,
-  chooseRouletteColorInputSchema,
   acceptStackPenaltyInputSchema,
   chooseTargetedDrawTwoInputSchema,
   chooseTargetedDrawFourInputSchema,
@@ -812,81 +811,7 @@ export function registerGameHandlers(
     }
   });
 
-  // 15. Handle game:choose-roulette-color
-  socket.on(SOCKET_EVENTS.GAME_CHOOSE_ROULETTE_COLOR, async (payload, callback) => {
-    const startTime = Date.now();
-    try {
-      const guestId = getAuthenticatedGuestId();
-      const roomCode = getActiveRoomCode();
-      const validated = await chooseRouletteColorInputSchema.parseAsync(payload);
-
-      logger.info('Processing Color Roulette selection', {
-        action: 'CHOOSE_ROULETTE_COLOR_START',
-        roomCode,
-        guestId,
-        chosenColor: validated.chosenColor,
-      });
-
-      const { nextState, events } = await gameService.chooseColorRouletteColor(
-        guestId,
-        roomCode,
-        validated.chosenColor
-      );
-
-      const elim = events.find((e) => e.type === 'PLAYER_ELIMINATED');
-      if (elim) {
-        const pElim = elim.payload as { playerId: string; cardCount: number; eliminationOrder: number };
-        const elimPlayer = nextState.players.find((p) => p.id === pElim.playerId);
-        const remaining = nextState.players.filter((p) => !p.isEliminated).length;
-        io.to(roomCode).emit(SOCKET_EVENTS.GAME_PLAYER_ELIMINATED, {
-          guestId: pElim.playerId,
-          username: elimPlayer?.username ?? 'Player',
-          cardCount: pElim.cardCount,
-          remainingPlayerCount: remaining,
-        });
-      }
-
-      await handleGameStateBroadcasts(nextState, roomCode);
-
-      const resEvent = events.find((e) => e.type === 'ROULETTE_RESOLVED');
-      const cardsRevealed = (resEvent?.payload?.drawnCount as number) ?? 0;
-      const victimPlayer = nextState.players.find((p) => p.id === guestId);
-      const eliminated = !!victimPlayer?.isEliminated;
-
-      const playerState = getPlayerGameState(nextState, guestId);
-      const durationMs = Date.now() - startTime;
-      logger.info('Color Roulette resolved successfully', {
-        action: 'CHOOSE_ROULETTE_COLOR_COMPLETE',
-        roomCode,
-        guestId,
-        cardsRevealed,
-        eliminated,
-        durationMs,
-      });
-
-      if (typeof callback === 'function') {
-        callback({
-          success: true,
-          data: { success: true, cardsRevealed, eliminated, state: playerState },
-        });
-      }
-    } catch (err: unknown) {
-      const durationMs = Date.now() - startTime;
-      const message = (err as Error).message || 'Failed to resolve Color Roulette';
-      const code = (err as { code?: string }).code || ERROR_CODES.BAD_REQUEST;
-      logger.warn('Failed to resolve Color Roulette', {
-        action: 'CHOOSE_ROULETTE_COLOR_FAILED',
-        error: message,
-        code,
-        durationMs,
-      });
-      if (typeof callback === 'function') {
-        callback({ success: false, error: { code, message } });
-      }
-    }
-  });
-
-  // 16. Handle game:accept-stack-penalty
+  // 15. Handle game:accept-stack-penalty
   socket.on(SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY, async (payload, callback) => {
     const startTime = Date.now();
     try {

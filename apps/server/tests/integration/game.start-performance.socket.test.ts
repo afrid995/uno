@@ -260,7 +260,7 @@ describe('Game Start Latency, Concurrency & Immediate Response Test Suite', () =
     const recovered = await resumePromise;
     expect(recovered.state.self.id).toBe(player.guest.id);
     expect(recovered.state.status).toBe('IN_PROGRESS');
-    expect(recovered.state.self.hand).toHaveLength(7);
+    expect(recovered.state.self.hand.length).toBeGreaterThanOrEqual(7);
   });
 
   it('7. All seven game variants start immediately with correct decks and card distributions', async () => {

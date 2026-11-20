@@ -9,7 +9,6 @@ import { WildColorPicker } from './WildColorPicker';
 import { RoundResultModal } from './RoundResultModal';
 import { MatchResultModal } from './MatchResultModal';
 import { SevenSwapModal } from './SevenSwapModal';
-import { ColorRouletteModal } from './ColorRouletteModal';
 import { TargetedDrawTwoModal } from './TargetedDrawTwoModal';
 import { TargetedDrawFourModal } from './TargetedDrawFourModal';
 import { ForcedSwapModal } from './ForcedSwapModal';
@@ -34,7 +33,6 @@ export const GameBoard: React.FC = () => {
     challengeUno,
     chooseStartingWildColor,
     choose7sSwap,
-    chooseRouletteColor,
     acceptStackPenalty,
     chooseTargetedDrawTwo,
     chooseTargetedDrawFour,
@@ -449,15 +447,6 @@ export const GameBoard: React.FC = () => {
         isLoading={isActionLoading}
         onSelectTarget={(targetId) => {
           choose7sSwap(targetId);
-        }}
-      />
-
-      {/* Wild Color Roulette Modal */}
-      <ColorRouletteModal
-        isOpen={!!self.canChooseRouletteColor}
-        isLoading={isActionLoading}
-        onSelectColor={(color) => {
-          chooseRouletteColor(color);
         }}
       />
 

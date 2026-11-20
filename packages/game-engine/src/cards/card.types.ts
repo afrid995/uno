@@ -32,10 +32,10 @@ export type FlexWildCardValue =
   | 'flex_wild_target_draw_two'
   | 'flex_wild_all_draw';
 export type NoMercyWildCardValue =
+  | 'wild'
   | 'wild_reverse_draw_four'
   | 'wild_draw_six'
-  | 'wild_draw_ten'
-  | 'wild_color_roulette';
+  | 'wild_draw_ten';
 
 export type AllWildActionCardValue =
   | 'wild_reverse'
@@ -177,7 +177,6 @@ export const ALL_WILD_VALUES: readonly WildCardValue[] = [
   'wild_reverse_draw_four',
   'wild_draw_six',
   'wild_draw_ten',
-  'wild_color_roulette',
   'wild_all_flip',
   'flex_wild_draw_four',
   'flex_wild_target_draw_two',

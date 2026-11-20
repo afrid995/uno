@@ -75,9 +75,6 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         if (card.value === 'wild_draw_ten' || card.value === 'wild_draw_six' || card.value === 'wild_reverse_draw_four') {
           return 'from-slate-950 via-rose-950 to-slate-900 border-rose-500 text-white shadow-rose-500/30';
         }
-        if (card.value === 'wild_color_roulette') {
-          return 'from-slate-950 via-amber-950 to-slate-900 border-amber-400 text-white shadow-amber-500/30';
-        }
         if (card.value === 'wild_targeted_draw_two') {
           return 'from-slate-950 via-cyan-950 to-slate-900 border-cyan-400 text-white shadow-cyan-500/30';
         }
@@ -156,8 +153,6 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         return '+6';
       case 'wild_draw_ten':
         return '+10';
-      case 'wild_color_roulette':
-        return 'ROUL';
       case 'wild_draw_color':
         return 'COLOR';
       case 'wild_reverse':
@@ -207,8 +202,6 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
         return 'DISCARD';
       case 'skip_everyone':
         return 'SKIP ALL';
-      case 'wild_color_roulette':
-        return 'ROULETTE';
       case 'wild_reverse':
         return 'REVERSE';
       case 'wild_skip':
@@ -355,7 +348,6 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
                 'flip',
                 'discard_all',
                 'skip_everyone',
-                'wild_color_roulette',
                 'wild_reverse_draw_four',
                 'wild_all_flip',
                 'flex_wild_draw_four',
