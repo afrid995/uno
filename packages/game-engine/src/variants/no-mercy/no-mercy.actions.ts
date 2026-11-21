@@ -699,14 +699,22 @@ export class NoMercyActionProcessor {
     }
 
     let nextTargetIndex: number;
+    const activePlayers = state.players.filter(
+      (p) => !p.isEliminated && !state.eliminatedPlayerIds?.includes(p.id)
+    );
+    const activeCount = activePlayers.length;
+
     if (
       card.value === 'wild_reverse_draw_four' &&
-      (pending.lastCardValue === 'draw_four' || pending.lastCardValue === 'wild_draw_four')
+      (pending.lastCardValue === 'draw_four' || pending.lastCardValue === 'wild_draw_four') &&
+      activeCount === 2
     ) {
-      // Intended custom rule: When stacking Wild Reverse Draw 4 on top of Draw 4 / Wild Draw 4,
-      // the player who played the Wild Reverse Draw 4 receives the accumulated penalty.
+      // In exactly 2 active players, stacking Wild Reverse Draw 4 onto Draw 4 / Wild Draw 4
+      // reverses direction and rebounds the accumulated 8-card penalty onto Player B.
       nextTargetIndex = playerIndex;
     } else {
+      // In 3+ active players (or when non-reverse card is played), the penalty passes
+      // to the next active player in turnDirection (which was reversed if WRD4 was played).
       nextTargetIndex = this.getNextActivePlayerIndex(playerIndex, state.players, turnDirection, 1);
     }
     const nextTargetPlayer = state.players[nextTargetIndex];

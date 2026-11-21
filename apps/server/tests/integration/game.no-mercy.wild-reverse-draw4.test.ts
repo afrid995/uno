@@ -72,7 +72,7 @@ describe('UNO Show \'em No Mercy — Wild Reverse Draw 4 Stacking Regression Tes
     return socket;
   };
 
-  it('allows Wild Reverse Draw 4 on Draw 4: penalty accumulates to +8, reverses direction, and targets player who played it under custom rules', async () => {
+  it('allows Wild Reverse Draw 4 on Draw 4: penalty accumulates to +8, reverses direction, and in 3+ players targets preceding player', async () => {
     const s1 = createClient(p1Token);
     const s2 = createClient(p2Token);
     const s3 = createClient(p3Token);
@@ -196,67 +196,68 @@ describe('UNO Show \'em No Mercy — Wild Reverse Draw 4 Stacking Regression Tes
       expect(session.state.pendingActionState.lastStackedValue).toBe(4);
       expect(session.state.pendingActionState.lastCardValue).toBe('wild_reverse_draw_four');
 
-      // c. Under the custom rule, Bob (the player who stacked Wild Reverse Draw 4) receives the accumulated penalty!
-      expect(session.state.pendingActionState.targetPlayerId).toBe(p2Id);
+      // c. In 3+ active players, Alice (the preceding player who attacked Bob) receives the accumulated penalty!
+      // Bob must NOT receive the penalty.
+      expect(session.state.pendingActionState.targetPlayerId).toBe(p1Id);
     }
-    expect(session.state.currentPlayerIndex).toBe(1);
+    expect(session.state.currentPlayerIndex).toBe(0);
     assertValidNoMercyGameState(session.state);
 
-    // 4. Bob accepts the 8 cards penalty
-    const bobPreHandCount = session.state.players.find((p) => p.id === p2Id)!.hand.length;
+    // 4. Alice accepts the 8 cards penalty
+    const alicePreHandCount = session.state.players.find((p) => p.id === p1Id)!.hand.length;
+    const acceptAliceAck = await new Promise<any>((resolve) => {
+      s1.emit(SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY, {}, resolve);
+    });
+    expect(acceptAliceAck.success).toBe(true);
+    expect(session.state.pendingActionState).toBeNull();
+
+    // Alice's hand increased by 8
+    const alicePost = session.state.players.find((p) => p.id === p1Id)!;
+    expect(alicePost.hand.length).toBe(alicePreHandCount + 8);
+    // Since alicePost.hand.length <= 25, Alice is active (not eliminated)!
+    expect(alicePost.isEliminated).toBe(false);
+
+    // Turn advances counter-clockwise from Alice (idx 0) -> Charlie (idx 2)!
+    expect(session.state.currentPlayerIndex).toBe(2);
+    assertValidNoMercyGameState(session.state);
+
+    // 5. Verify Elimination Threshold (> 25 cards):
+    // In counter-clockwise, from Charlie (idx 2), the next player is Bob (idx 1).
+    // Set Bob's hand to 22 cards.
+    session.state = NoMercyFixtureBuilder.setHandSize(session.state, p2Id, 22);
+
+    // Inject Draw Four into Charlie's hand
+    const { nextState: sWithD4Charlie, card: d4Charlie } = NoMercyFixtureBuilder.injectPlayableCard(
+      session.state,
+      p3Id,
+      'draw_four',
+      session.state.activeColor ?? 'red'
+    );
+    session.state = sWithD4Charlie;
+
+    const playD4CharlieAck = await new Promise<any>((resolve) => {
+      s3.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: d4Charlie.id }, resolve);
+    });
+    expect(playD4CharlieAck.success).toBe(true);
+
+    // Bob is targeted by +4 penalty
+    expect(session.state.pendingActionState?.type).toBe('AWAITING_STACK_RESOLUTION');
+    if (session.state.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION') {
+      expect(session.state.pendingActionState.targetPlayerId).toBe(p2Id);
+      expect(session.state.pendingActionState.accumulatedPenalty).toBe(4);
+    }
+    expect(session.state.currentPlayerIndex).toBe(1);
+
+    // Bob accepts the 4 penalty cards: 22 + 4 = 26 cards (> 25) -> Eliminated!
     const acceptBobAck = await new Promise<any>((resolve) => {
       s2.emit(SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY, {}, resolve);
     });
     expect(acceptBobAck.success).toBe(true);
-    expect(session.state.pendingActionState).toBeNull();
 
-    // Bob's hand increased by 8
-    const bobPost = session.state.players.find((p) => p.id === p2Id)!;
-    expect(bobPost.hand.length).toBe(bobPreHandCount + 8);
-    // Since bobPost.hand.length <= 25, Bob is active (not eliminated)!
-    expect(bobPost.isEliminated).toBe(false);
-
-    // Turn advances counter-clockwise from Bob (idx 1) -> Alice (idx 0)!
-    expect(session.state.currentPlayerIndex).toBe(0);
-    assertValidNoMercyGameState(session.state);
-
-    // 5. Verify Elimination Threshold (> 25 cards):
-    // In counter-clockwise, from Alice (idx 0), the next player is Charlie (idx 2).
-    // Set Charlie's hand to 22 cards.
-    session.state = NoMercyFixtureBuilder.setHandSize(session.state, p3Id, 22);
-
-    // Inject Draw Four into Alice's hand
-    const { nextState: sWithD4Alice, card: d4Alice } = NoMercyFixtureBuilder.injectPlayableCard(
-      session.state,
-      p1Id,
-      'draw_four',
-      session.state.activeColor ?? 'red'
-    );
-    session.state = sWithD4Alice;
-
-    const playD4AliceAck = await new Promise<any>((resolve) => {
-      s1.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: d4Alice.id }, resolve);
-    });
-    expect(playD4AliceAck.success).toBe(true);
-
-    // Charlie is targeted by +4 penalty
-    expect(session.state.pendingActionState?.type).toBe('AWAITING_STACK_RESOLUTION');
-    if (session.state.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION') {
-      expect(session.state.pendingActionState.targetPlayerId).toBe(p3Id);
-      expect(session.state.pendingActionState.accumulatedPenalty).toBe(4);
-    }
-    expect(session.state.currentPlayerIndex).toBe(2);
-
-    // Charlie accepts the 4 penalty cards: 22 + 4 = 26 cards (> 25) -> Eliminated!
-    const acceptCharlieAck = await new Promise<any>((resolve) => {
-      s3.emit(SOCKET_EVENTS.GAME_ACCEPT_STACK_PENALTY, {}, resolve);
-    });
-    expect(acceptCharlieAck.success).toBe(true);
-
-    const charlieInState = session.state.players.find((p) => p.id === p3Id)!;
+    const bobInState = session.state.players.find((p) => p.id === p2Id)!;
     // When eliminated, cards are discarded to the discard pile and hand is cleared
-    expect(charlieInState.hand.length).toBe(0);
-    expect(charlieInState.isEliminated).toBe(true);
+    expect(bobInState.hand.length).toBe(0);
+    expect(bobInState.isEliminated).toBe(true);
     assertValidNoMercyGameState(session.state);
 
     // Cleanup room
