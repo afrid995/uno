@@ -35,6 +35,13 @@ const envSchema = z.object({
     .string()
     .default('60')
     .transform((val) => parseInt(val, 10)),
+  RECONNECT_GRACE_PERIOD_MS: z
+    .string()
+    .default('120000')
+    .transform((val) => parseInt(val, 10))
+    .refine((val) => !isNaN(val) && val > 0, {
+      message: 'RECONNECT_GRACE_PERIOD_MS must be a positive integer',
+    }),
   ENABLE_TEST_HELPERS: z
     .string()
     .optional()

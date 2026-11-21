@@ -14,6 +14,9 @@ import { guestService } from '../modules/guest/guest.service';
 import { registerRoomHandlers, registerAuthenticatedGuestSocket, guestSockets } from './roomSocketHandler';
 import { registerGameHandlers } from '../modules/game/game.socket.handler';
 import { registerChatHandlers } from '../modules/chat/chat.socket.handler';
+import { roomService } from '../modules/room/room.service';
+import { gameService } from '../modules/game/game.service';
+import { gameSessionManager } from '../modules/game/game.session.manager';
 
 function parseCookieHeader(cookieHeader: string): Record<string, string> {
   const list: Record<string, string> = {};
@@ -150,6 +153,43 @@ export function initializeSocketServer(httpServer: HttpServer): Server {
         reason,
       });
     });
+  });
+
+  // Reconcile durable disconnect timers from previous server process on startup
+  roomService.reconcileDurableDisconnects({
+    onGracePeriodExpired: async (expiredGuestId, expiredRoomCode, result) => {
+      try {
+        await gameService.handlePlayerDeparture(io, expiredGuestId, expiredRoomCode, 'DISCONNECT_TIMEOUT', guestSockets);
+      } catch (err) {
+        logger.error('Error handling game player departure on startup durable disconnect expiration', {
+          guestId: expiredGuestId,
+          roomCode: expiredRoomCode,
+          error: String(err),
+        });
+      }
+
+      if (result.roomDeleted) {
+        gameSessionManager.removeSessionByRoomCode(expiredRoomCode);
+        io.to(expiredRoomCode).emit(SOCKET_EVENTS.ROOM_CLOSED, {
+          reason: 'Room closed after disconnected members departed.',
+        });
+      } else if (result.room) {
+        if (result.newHostGuestId) {
+          io.to(expiredRoomCode).emit(SOCKET_EVENTS.ROOM_HOST_CHANGED, {
+            newHostGuestId: result.newHostGuestId,
+            version: result.room.version,
+          });
+        }
+        io.to(expiredRoomCode).emit(SOCKET_EVENTS.ROOM_PLAYER_LEFT, {
+          guestId: expiredGuestId,
+          newHostGuestId: result.newHostGuestId,
+          version: result.room.version,
+        });
+        io.to(expiredRoomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: result.room });
+      }
+    },
+  }).catch((err) => {
+    logger.warn('Initial durable disconnect reconciliation error', { error: String(err) });
   });
 
   return io;

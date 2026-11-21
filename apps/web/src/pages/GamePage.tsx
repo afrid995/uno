@@ -5,6 +5,7 @@ import { useRoomStore } from '../stores/roomStore';
 import { useGuestStore } from '../stores/guestStore';
 import { useChatStore } from '../stores/chatStore';
 import { GameBoard } from '../features/game/components/GameBoard';
+import { NetworkRecoveryOverlay } from '../features/game/components/NetworkRecoveryOverlay';
 import { CardAnimationOverlay } from '../features/game/components/CardAnimationOverlay';
 import { ChatPanel } from '../features/chat/ChatPanel';
 import { ChatToggleButton } from '../features/chat/ChatToggleButton';
@@ -153,6 +154,9 @@ export const GamePage: React.FC = () => {
       <main className="w-full flex-1 flex flex-col justify-center min-h-0 overflow-hidden">
         <GameBoard />
       </main>
+
+      {/* Network Recovery & Reconnection Overlay */}
+      <NetworkRecoveryOverlay />
 
       {/* Floating Card Animation Layer */}
       <CardAnimationOverlay />

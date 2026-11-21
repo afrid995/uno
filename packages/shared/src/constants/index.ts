@@ -21,7 +21,7 @@ export const ROOM_RULES = {
   MIN_PLAYERS: 2,
   MAX_PLAYERS: 10,
   DEFAULT_TTL_HOURS: 12,
-  RECONNECT_GRACE_PERIOD_MS: 30000, // 30 seconds
+  RECONNECT_GRACE_PERIOD_MS: 120000, // 120 seconds (configurable)
 } as const;
 
 export const NO_MERCY_RULES = {

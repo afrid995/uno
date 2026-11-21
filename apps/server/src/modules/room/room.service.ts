@@ -10,6 +10,7 @@ import {
   ConnectionStatus,
 } from '@uno-ultimate/shared';
 import { AppError } from '../../middleware/errorHandler';
+import { env } from '../../config/env';
 import { logger } from '../../utils/logger';
 import { generateRoomCode } from './room.utils';
 
@@ -27,7 +28,7 @@ export interface LeaveRoomResult {
 export class RoomService {
   // In-memory grace period timers for disconnected members (single instance)
   private disconnectTimers = new Map<string, NodeJS.Timeout>();
-  private reconnectGracePeriodMs: number = ROOM_RULES.RECONNECT_GRACE_PERIOD_MS;
+  private reconnectGracePeriodMs: number = env.RECONNECT_GRACE_PERIOD_MS || ROOM_RULES.RECONNECT_GRACE_PERIOD_MS;
 
   getReconnectGracePeriodMs(): number {
     return this.reconnectGracePeriodMs;
@@ -41,7 +42,7 @@ export class RoomService {
   }
 
   resetReconnectGracePeriodForTesting(): void {
-    this.reconnectGracePeriodMs = ROOM_RULES.RECONNECT_GRACE_PERIOD_MS;
+    this.reconnectGracePeriodMs = env.RECONNECT_GRACE_PERIOD_MS || ROOM_RULES.RECONNECT_GRACE_PERIOD_MS;
   }
 
   /**
@@ -747,6 +748,85 @@ export class RoomService {
 
     for (const m of existingMemberships) {
       await this.leaveRoom(guestId, m.room.roomCode);
+    }
+  }
+
+  /**
+   * Reconciles disconnected players after a server restart or process crash.
+   * Inspects database for disconnected members with active or expired grace periods.
+   */
+  async reconcileDurableDisconnects(
+    callback?: DisconnectTimerCallback
+  ): Promise<void> {
+    try {
+      const disconnectedMembers = await prisma.roomMember.findMany({
+        where: {
+          connectionStatus: 'DISCONNECTED',
+          room: {
+            status: { in: ['IN_GAME', 'WAITING', 'STARTING'] },
+          },
+        },
+        include: { room: true },
+      });
+
+      if (disconnectedMembers.length === 0) return;
+
+      logger.info('Reconciling durable disconnected members across server restart', {
+        count: disconnectedMembers.length,
+      });
+
+      const now = Date.now();
+      for (const member of disconnectedMembers) {
+        const elapsedMs = now - member.lastSeenAt.getTime();
+        const graceMs = this.reconnectGracePeriodMs;
+
+        if (elapsedMs >= graceMs) {
+          logger.info('Durable grace period already expired during server restart', {
+            guestId: member.guestId,
+            roomCode: member.room.roomCode,
+            elapsedMs,
+          });
+          try {
+            const result = await this.leaveRoom(member.guestId, member.room.roomCode);
+            if (callback) {
+              await callback.onGracePeriodExpired(member.guestId, member.room.roomCode, result);
+            }
+          } catch (err) {
+            logger.warn('Failed to process expired durable disconnect', {
+              guestId: member.guestId,
+              error: String(err),
+            });
+          }
+        } else {
+          const remainingMs = graceMs - elapsedMs;
+          logger.info('Scheduling remaining durable disconnect grace period after restart', {
+            guestId: member.guestId,
+            roomCode: member.room.roomCode,
+            remainingMs,
+          });
+
+          this.cancelDisconnectTimer(member.guestId);
+          const timer = setTimeout(async () => {
+            this.disconnectTimers.delete(member.guestId);
+            logger.info('Remaining reconnection grace period expired', {
+              guestId: member.guestId,
+              roomCode: member.room.roomCode,
+            });
+            try {
+              const result = await this.leaveRoom(member.guestId, member.room.roomCode);
+              if (callback) {
+                await callback.onGracePeriodExpired(member.guestId, member.room.roomCode, result);
+              }
+            } catch (err) {
+              logger.error('Error handling expired disconnect timer', { error: String(err) });
+            }
+          }, remainingMs);
+
+          this.disconnectTimers.set(member.guestId, timer);
+        }
+      }
+    } catch (err) {
+      logger.error('Failed to reconcile durable disconnects', { error: String(err) });
     }
   }
 

@@ -67,19 +67,23 @@ export const useGuestStore = create<GuestState>((set, _get) => ({
         });
         return true;
       } else {
-        set({
-          guest: null,
-          sessionToken: null,
-          isResuming: false,
-        });
+        // If the server explicitly declared the session invalid or expired, clear it
+        if (response.error?.code === 'SESSION_INVALID' || response.error?.code === 'UNAUTHORIZED') {
+          set({
+            guest: null,
+            sessionToken: null,
+            isResuming: false,
+          });
+          return false;
+        }
+        // Non-auth error -> keep existing guest in memory
+        set({ isResuming: false });
         return false;
       }
     } catch {
-      set({
-        guest: null,
-        sessionToken: null,
-        isResuming: false,
-      });
+      // Network interruption, temporary disconnection, or Render cold start:
+      // Preserve existing in-memory guest and token so the player is not kicked from the match
+      set({ isResuming: false });
       return false;
     }
   },

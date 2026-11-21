@@ -11,13 +11,14 @@ import {
   GamePlayerDepartedPayload,
   GameTurnRecoveredPayload,
 } from '@uno-ultimate/game-protocol';
-import { socketManager } from '../services/socketClient';
+import { socketManager, SocketConnectionStatus } from '../services/socketClient';
 import { useCardAnimationStore } from './cardAnimationStore';
 
 interface GameStateStore {
   roomCode: string | null;
   gameState: PlayerGameState | null;
   isConnected: boolean;
+  connectionStatus: SocketConnectionStatus;
   isActionLoading: boolean;
   error: string | null;
   selectedCardForWild: Card | null;
@@ -78,6 +79,7 @@ const initialGameState = {
   roomCode: null as string | null,
   gameState: null,
   isConnected: true,
+  connectionStatus: 'connected' as SocketConnectionStatus,
   isActionLoading: false,
   error: null,
   selectedCardForWild: null,
@@ -1059,8 +1061,29 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
 
     const socket = socketManager.getSocket();
 
+    const unsubscribeConnection = socketManager.onConnectionStatusChange((status) => {
+      set({
+        connectionStatus: status,
+        isConnected: status === 'connected' || status === 'reconnected',
+      });
+    });
+
+    const handleConnect = () => {
+      // Re-synchronize authoritative game state on socket reconnect
+      socket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode }, () => {});
+    };
+
     const handleGameState = (payload: { state: PlayerGameState }) => {
-      set({ gameState: payload.state });
+      const current = get().gameState;
+      // Discard stale out-of-order state updates
+      if (current && payload.state.sequenceNumber < current.sequenceNumber) {
+        return;
+      }
+
+      set({
+        gameState: payload.state,
+        isActionLoading: false,
+      });
 
       if (payload.state.status === 'IN_PROGRESS') {
         set({
@@ -1116,7 +1139,7 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
     };
 
     const handleGameError = (payload: { code: string; message: string }) => {
-      set({ error: payload.message });
+      set({ error: payload.message, isActionLoading: false });
     };
 
     const handleCardAnimation = (payload: CardAnimationEvent) => {
@@ -1161,6 +1184,7 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
       }, 5000);
     };
 
+    socket.on('connect', handleConnect);
     socket.on(SOCKET_EVENTS.GAME_STATE, handleGameState);
     socket.on(SOCKET_EVENTS.GAME_ROUND_FINISHED, handleRoundFinished);
     socket.on(SOCKET_EVENTS.GAME_FINISHED, handleGameFinished);
@@ -1175,6 +1199,8 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
     socket.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode }, () => {});
 
     return () => {
+      unsubscribeConnection();
+      socket.off('connect', handleConnect);
       socket.off(SOCKET_EVENTS.GAME_STATE, handleGameState);
       socket.off(SOCKET_EVENTS.GAME_ROUND_FINISHED, handleRoundFinished);
       socket.off(SOCKET_EVENTS.GAME_FINISHED, handleGameFinished);

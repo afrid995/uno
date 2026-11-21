@@ -165,7 +165,7 @@ describe('Multiplayer Disconnect, Leave, and Turn Recovery Socket Tests', () => 
 
     const discPayload = await disconnectEventPromise;
     expect(discPayload.guestId).toBe(nonActiveGuestId);
-    expect(discPayload.gracePeriodSeconds).toBe(30);
+    expect(discPayload.gracePeriodSeconds).toBe(120);
 
     // Reconnect non-active player before grace period expires
     const reconnectedPromise = new Promise<GamePlayerReconnectedPayload>((r) => {

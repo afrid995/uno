@@ -62,27 +62,39 @@ export function cancelAllCountdownTimersForTesting(): void {
   roomService.shutdown();
 }
 
+// Mutex locks to serialize simultaneous reconnect attempts for the same guest
+const reconnectGuestLocks = new Map<string, Promise<void>>();
+
 export async function registerAuthenticatedGuestSocket(
   io: UnoServer,
   socket: UnoSocket,
   guestId: string
 ): Promise<void> {
-  const existingSocket = guestSockets.get(guestId);
-  if (existingSocket && existingSocket.id !== socket.id) {
-    logger.info('Replacing previous socket for guest', {
-      guestId,
-      oldSocketId: existingSocket.id,
-      newSocketId: socket.id,
-    });
-    existingSocket.emit(SOCKET_EVENTS.ROOM_ERROR, {
-      code: 'SESSION_REPLACED',
-      message: 'Your session has connected in another tab or device.',
-    });
-    existingSocket.disconnect(true);
-  }
-  guestSockets.set(guestId, socket);
+  const currentLock = reconnectGuestLocks.get(guestId) || Promise.resolve();
+  let releaseLock: () => void = () => {};
+  const nextLock = new Promise<void>((resolve) => {
+    releaseLock = resolve;
+  });
+  reconnectGuestLocks.set(guestId, nextLock);
 
   try {
+    await currentLock;
+
+    const existingSocket = guestSockets.get(guestId);
+    if (existingSocket && existingSocket.id !== socket.id) {
+      logger.info('Replacing previous socket for guest', {
+        guestId,
+        oldSocketId: existingSocket.id,
+        newSocketId: socket.id,
+      });
+      existingSocket.emit(SOCKET_EVENTS.ROOM_ERROR, {
+        code: 'SESSION_REPLACED',
+        message: 'Your session has connected in another tab or device.',
+      });
+      existingSocket.disconnect(true);
+    }
+    guestSockets.set(guestId, socket);
+
     const activeRoom = await roomService.restoreConnection(guestId);
     if (activeRoom) {
       socket.data.currentRoomCode = activeRoom.roomCode;
@@ -99,7 +111,7 @@ export async function registerAuthenticatedGuestSocket(
           guestId,
           username: socket.data.username || 'Player',
         });
-        const playerState = gameService.getActivePlayerState(guestId, activeRoom.roomCode);
+        const playerState = await gameService.getOrRecoverPlayerState(guestId, activeRoom.id, activeRoom.roomCode);
         if (playerState) {
           socket.emit(SOCKET_EVENTS.GAME_STATE, { state: playerState });
         }
@@ -110,6 +122,11 @@ export async function registerAuthenticatedGuestSocket(
       guestId,
       error: String(err),
     });
+  } finally {
+    releaseLock();
+    if (reconnectGuestLocks.get(guestId) === nextLock) {
+      reconnectGuestLocks.delete(guestId);
+    }
   }
 }
 
@@ -237,20 +254,28 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
         return;
       }
 
-      socket.data.currentRoomCode = room.roomCode;
-      socket.join(room.roomCode);
+      // Cancel disconnect timer, restore CONNECTED status, and re-bind room
+      const restoredRoom = await roomService.restoreConnection(guestId);
+      const activeRoom = restoredRoom || room;
 
-      // If room is IN_GAME, restore player state (with durable crash/restart recovery)
-      if (room.status === 'IN_GAME') {
-        await gameService.checkAndRecoverStuckSession(room.roomCode, io, guestSockets);
-        const playerState = await gameService.getOrRecoverPlayerState(guestId, room.id, room.roomCode);
+      socket.data.currentRoomCode = activeRoom.roomCode;
+      socket.join(activeRoom.roomCode);
+
+      // If room is IN_GAME, restore player state (with durable crash/restart recovery) and broadcast reconnection
+      if (activeRoom.status === 'IN_GAME') {
+        io.to(activeRoom.roomCode).emit(SOCKET_EVENTS.GAME_PLAYER_RECONNECTED, {
+          guestId,
+          username: socket.data.username || 'Player',
+        });
+        await gameService.checkAndRecoverStuckSession(activeRoom.roomCode, io, guestSockets);
+        const playerState = await gameService.getOrRecoverPlayerState(guestId, activeRoom.id, activeRoom.roomCode);
         if (playerState) {
           socket.emit(SOCKET_EVENTS.GAME_STATE, { state: playerState });
         }
       }
 
-      io.to(room.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room });
-      callback({ success: true, data: room });
+      io.to(activeRoom.roomCode).emit(SOCKET_EVENTS.ROOM_STATE, { room: activeRoom });
+      callback({ success: true, data: activeRoom });
     } catch (err: unknown) {
       const message = (err as Error).message || 'Failed to resume room';
       const code = (err as { code?: string }).code || ERROR_CODES.INTERNAL_ERROR;
