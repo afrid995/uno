@@ -1,6 +1,5 @@
 import React from 'react';
 import { useGameStore } from '../../../stores/gameStore';
-import { PlayingCard } from './PlayingCard';
 import { motion } from 'framer-motion';
 
 export const ChallengePanel: React.FC = () => {
@@ -13,10 +12,11 @@ export const ChallengePanel: React.FC = () => {
     challengeWildDrawTwo,
     acceptWildDrawColor,
     challengeWildDrawColor,
+    lastChallengeResult,
+    clearChallengeResult,
   } = useGameStore();
 
   const [actionType, setActionType] = React.useState<'accept' | 'challenge' | null>(null);
-  const [isDismissed, setIsDismissed] = React.useState(false);
 
   React.useEffect(() => {
     if (!isActionLoading) {
@@ -24,9 +24,19 @@ export const ChallengePanel: React.FC = () => {
     }
   }, [isActionLoading]);
 
+  // Auto-dismiss challenge result after 6 seconds
+  React.useEffect(() => {
+    if (lastChallengeResult) {
+      const timer = setTimeout(() => {
+        clearChallengeResult();
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [lastChallengeResult, clearChallengeResult]);
+
   if (!gameState) return null;
 
-  const { self, pendingActionState, inspectedChallengedHand } = gameState;
+  const { self, pendingActionState } = gameState;
 
   const pType = pendingActionState?.type;
   const isTargetedByFour = !!self?.isTargetedByWildDrawFour;
@@ -34,13 +44,12 @@ export const ChallengePanel: React.FC = () => {
   const isTargetedByColor = !!self?.isTargetedByWildDrawColor;
   const isTargeted = isTargetedByFour || isTargetedByTwo || isTargetedByColor;
 
-  const hasInspectedHand = inspectedChallengedHand && inspectedChallengedHand.length > 0 && !isDismissed;
   const isChallengeResolution =
     pType === 'AWAITING_WILD_DRAW_FOUR_RESOLUTION' ||
     pType === 'AWAITING_WILD_DRAW_TWO_RESOLUTION' ||
     pType === 'AWAITING_WILD_DRAW_COLOR_RESOLUTION';
 
-  if (!isChallengeResolution && !hasInspectedHand) {
+  if (!isChallengeResolution && !lastChallengeResult) {
     return <div className="w-full max-w-xl mx-auto my-2" />;
   }
 
@@ -123,40 +132,51 @@ export const ChallengePanel: React.FC = () => {
 
   return (
     <div className="w-full max-w-xl mx-auto my-2">
-      {/* Inspected Hand View (Visible only to challenger after challenge) */}
-      {hasInspectedHand && inspectedChallengedHand && inspectedChallengedHand.length > 0 && (
+      {/* Challenge Result Banner (Pure result, penalty, & next-turn info; no opponent cards revealed) */}
+      {lastChallengeResult && (
         <motion.div
-          data-testid="inspected-hand"
+          data-testid="challenge-result-banner"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="mb-4 p-4 rounded-xl border border-amber-500/50 bg-slate-900/95 shadow-2xl"
+          className={`mb-4 p-4 rounded-xl border shadow-xl text-center ${
+            lastChallengeResult.challengeWon
+              ? 'border-emerald-500/60 bg-gradient-to-b from-emerald-950/90 to-slate-900/95'
+              : 'border-rose-500/60 bg-gradient-to-b from-rose-950/90 to-slate-900/95'
+          }`}
         >
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-              Hand Inspection (Visible Only To You)
+            <h4
+              className={`text-sm font-bold uppercase tracking-wider flex items-center gap-2 ${
+                lastChallengeResult.challengeWon ? 'text-emerald-400' : 'text-rose-400'
+              }`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full animate-ping ${
+                  lastChallengeResult.challengeWon ? 'bg-emerald-400' : 'bg-rose-400'
+                }`}
+              />
+              {lastChallengeResult.challengeWon
+                ? '⚔️ Challenge Succeeded!'
+                : '❌ Challenge Failed!'}
             </h4>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400">
-                {inspectedChallengedHand.length} cards held
-              </span>
-              <button
-                data-testid="dismiss-inspected-hand-btn"
-                onClick={() => setIsDismissed(true)}
-                className="px-2 py-0.5 rounded text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold cursor-pointer"
-              >
-                ✕ Close
-              </button>
-            </div>
+            <button
+              data-testid="dismiss-challenge-result-btn"
+              onClick={clearChallengeResult}
+              className="px-2 py-0.5 rounded text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold cursor-pointer"
+            >
+              ✕ Close
+            </button>
           </div>
-          <p className="text-xs text-slate-300 mb-3">
-            Authoritative verification: Inspected hand of {offenderName}.
+          <p className="text-xs text-slate-200 mb-1">
+            {lastChallengeResult.challengeWon
+              ? `Opponent played illegally! Opponent was penalized with ${lastChallengeResult.penaltyCards} cards.`
+              : `Opponent played legally! You drew ${lastChallengeResult.penaltyCards} cards as penalty.`}
           </p>
-          <div className="flex flex-wrap gap-2 justify-center max-h-48 overflow-y-auto p-1 bg-slate-950/60 rounded-lg">
-            {inspectedChallengedHand.map((card) => (
-              <PlayingCard key={card.id} card={card} size="sm" />
-            ))}
-          </div>
+          <p className="text-xs text-slate-400 font-medium">
+            {lastChallengeResult.challengeWon
+              ? 'Your turn continues. Make your play!'
+              : 'Your turn was forfeited and play advances to the next player.'}
+          </p>
         </motion.div>
       )}
 

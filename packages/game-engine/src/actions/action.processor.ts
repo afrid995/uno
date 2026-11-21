@@ -1,4 +1,4 @@
-import { GameState, GameWinner, PendingActionState, InspectionHand } from '../game/game.types';
+import { GameState, GameWinner, PendingActionState } from '../game/game.types';
 import { GameAction, GameEventRecord } from './action.types';
 import { Card, CardColor } from '../cards/card.types';
 import { isWildCard } from '../cards/card.validation';
@@ -655,13 +655,6 @@ export class ActionProcessor {
     let currentDrawPile = state.drawPile;
     let currentDiscardPile = state.discardPile;
 
-    // Grant temporary private hand disclosure to the authorized challenger only
-    const inspectionHand: InspectionHand = {
-      challengerPlayerId: challengerId,
-      offenderPlayerId: pending.playedByPlayerId,
-      hand: pending.offenderHandSnapshot,
-    };
-
     if (!pending.wasOfficiallyLegal) {
       // Challenge SUCCEEDED: Offender was GUILTY (they held matching active color)
       // Offender draws 4 penalty cards; challenger draws 0!
@@ -693,7 +686,7 @@ export class ActionProcessor {
         currentPlayerIndex: challengerIndex,
         turnNumber: state.turnNumber + 1,
         pendingActionState: null,
-        inspectionHand,
+        inspectionHand: null,
         unoVulnerablePlayerId: null,
         sequenceNumber: seq + 1,
         updatedAt: new Date().toISOString(),
@@ -752,7 +745,7 @@ export class ActionProcessor {
         currentPlayerIndex: nextPlayerIndex,
         turnNumber: state.turnNumber + 1,
         pendingActionState: null,
-        inspectionHand,
+        inspectionHand: null,
         unoVulnerablePlayerId: null,
         sequenceNumber: seq + 1,
         updatedAt: new Date().toISOString(),

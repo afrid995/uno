@@ -46,11 +46,6 @@ function getNoMercyDrawValue(card: Card): number | null {
 
 export interface PlayerGameState extends PublicGameState {
   readonly self: PlayerPrivateView;
-  /**
-   * Only disclosed to the authorized challenger during a Wild Draw Four, Two, or Color challenge inspection.
-   * Completely hidden from all other participants.
-   */
-  readonly inspectedChallengedHand?: readonly Card[] | null;
 }
 
 export function getPlayerGameState(state: GameState, playerId: string): PlayerGameState {
@@ -240,14 +235,8 @@ export function getPlayerGameState(state: GameState, playerId: string): PlayerGa
     isEliminated: player.isEliminated,
   };
 
-  // Temporary private disclosure of offender's hand to authorized challenger only
-  const inspectedChallengedHand = state.inspectionHand && state.inspectionHand.challengerPlayerId === playerId
-    ? state.inspectionHand.hand
-    : null;
-
   return {
     ...publicState,
     self,
-    inspectedChallengedHand,
   };
 }

@@ -5,8 +5,9 @@ import { useGameStore } from '../../../../stores/gameStore';
 import { PlayerGameState } from '@uno-ultimate/game-protocol';
 
 describe('ChallengePanel Component', () => {
-  it('renders nothing when there is no pending Wild Draw Four and no inspection hand', () => {
+  it('renders nothing when there is no pending Wild Draw Four and no challenge result', () => {
     useGameStore.setState({
+      lastChallengeResult: null,
       gameState: {
         id: 'g1',
         roomId: 'r1',
@@ -55,6 +56,7 @@ describe('ChallengePanel Component', () => {
     const challengeMock = vi.fn();
 
     useGameStore.setState({
+      lastChallengeResult: null,
       acceptWildDrawFour: acceptMock,
       challengeWildDrawFour: challengeMock,
       gameState: {
@@ -123,6 +125,7 @@ describe('ChallengePanel Component', () => {
     });
 
     useGameStore.setState({
+      lastChallengeResult: null,
       isActionLoading: false,
       challengeWildDrawFour: challengeMock,
       acceptWildDrawFour: vi.fn(),
@@ -184,9 +187,13 @@ describe('ChallengePanel Component', () => {
     expect(acceptBtn).toHaveTextContent(/Accept/i);
   });
 
-  it('renders inspected hand and dismisses it when close button is clicked', () => {
+  it('renders challenge result banner and dismisses it without rendering any opponent cards', () => {
     useGameStore.setState({
       isActionLoading: false,
+      lastChallengeResult: {
+        challengeWon: true,
+        penaltyCards: 4,
+      },
       gameState: {
         id: 'g1',
         roomId: 'r1',
@@ -195,7 +202,7 @@ describe('ChallengePanel Component', () => {
         roundNumber: 1,
         players: [
           { id: 'p1', username: 'Alice', cardCount: 6, score: 0, hasDeclaredUno: false },
-          { id: 'p2', username: 'Bob', cardCount: 6, score: 0, hasDeclaredUno: false },
+          { id: 'p2', username: 'Bob', cardCount: 10, score: 0, hasDeclaredUno: false },
         ],
         playerOrder: ['p1', 'p2'],
         currentPlayerIndex: 0,
@@ -203,16 +210,12 @@ describe('ChallengePanel Component', () => {
         turnDirection: 'clockwise',
         topDiscardCard: { id: 'c1', color: 'red', type: 'number', value: '5', scoreValue: 5 },
         activeColor: 'red',
-        drawPileCount: 90,
+        drawPileCount: 86,
         discardPileCount: 4,
         turnNumber: 2,
         sequenceNumber: 2,
         unoVulnerablePlayerId: null,
         pendingActionState: null,
-        inspectedChallengedHand: [
-          { id: 'card-1', color: 'blue', type: 'number', value: '7', scoreValue: 7 },
-          { id: 'card-2', color: 'green', type: 'skip', value: 'skip', scoreValue: 20 },
-        ],
         self: {
           id: 'p1',
           username: 'Alice',
@@ -231,13 +234,76 @@ describe('ChallengePanel Component', () => {
 
     render(<ChallengePanel />);
 
-    expect(screen.getByTestId('inspected-hand')).toBeInTheDocument();
-    expect(screen.getByText(/Hand Inspection \(Visible Only To You\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/2 cards held/i)).toBeInTheDocument();
+    // Result banner is present with penalty and turn info
+    expect(screen.getByTestId('challenge-result-banner')).toBeInTheDocument();
+    expect(screen.getByText(/Challenge Succeeded!/i)).toBeInTheDocument();
+    expect(screen.getByText(/Opponent was penalized with 4 cards/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your turn continues/i)).toBeInTheDocument();
 
-    const dismissBtn = screen.getByTestId('dismiss-inspected-hand-btn');
+    // NEVER renders inspected hand or opponent card details
+    expect(screen.queryByTestId('inspected-hand')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Hand Inspection/i)).not.toBeInTheDocument();
+
+    // Dismissing banner works
+    const dismissBtn = screen.getByTestId('dismiss-challenge-result-btn');
     fireEvent.click(dismissBtn);
 
+    expect(screen.queryByTestId('challenge-result-banner')).not.toBeInTheDocument();
+  });
+
+  it('renders challenge failed result with penalty and skip info without exposing opponent cards', () => {
+    useGameStore.setState({
+      isActionLoading: false,
+      lastChallengeResult: {
+        challengeWon: false,
+        penaltyCards: 6,
+      },
+      gameState: {
+        id: 'g1',
+        roomId: 'r1',
+        variant: 'classic',
+        status: 'IN_PROGRESS',
+        roundNumber: 1,
+        players: [
+          { id: 'p1', username: 'Alice', cardCount: 12, score: 0, hasDeclaredUno: false },
+          { id: 'p2', username: 'Bob', cardCount: 6, score: 0, hasDeclaredUno: false },
+        ],
+        playerOrder: ['p1', 'p2'],
+        currentPlayerIndex: 1,
+        currentTurnGuestId: 'p2',
+        turnDirection: 'clockwise',
+        topDiscardCard: { id: 'c1', color: 'red', type: 'number', value: '5', scoreValue: 5 },
+        activeColor: 'red',
+        drawPileCount: 84,
+        discardPileCount: 4,
+        turnNumber: 2,
+        sequenceNumber: 2,
+        unoVulnerablePlayerId: null,
+        pendingActionState: null,
+        self: {
+          id: 'p1',
+          username: 'Alice',
+          hand: [],
+          isCurrentTurn: false,
+          playableCardIds: [],
+          canDraw: false,
+          canPass: false,
+          canCallUno: false,
+          canCatchUno: false,
+          canResolveWildDrawFour: false,
+          isTargetedByWildDrawFour: false,
+        },
+      } as unknown as PlayerGameState,
+    });
+
+    render(<ChallengePanel />);
+
+    expect(screen.getByTestId('challenge-result-banner')).toBeInTheDocument();
+    expect(screen.getByText(/Challenge Failed!/i)).toBeInTheDocument();
+    expect(screen.getByText(/You drew 6 cards as penalty/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your turn was forfeited/i)).toBeInTheDocument();
+
+    // Zero cards or hand inspection UI
     expect(screen.queryByTestId('inspected-hand')).not.toBeInTheDocument();
   });
 });

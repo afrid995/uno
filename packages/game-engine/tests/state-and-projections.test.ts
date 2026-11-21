@@ -88,6 +88,37 @@ describe('Game State, Factory, Projections, and Serialization', () => {
       expect(Array.isArray(aliceView.self.playableCardIds)).toBe(true);
     });
 
+    it('never exposes challenged opponent hand or inspectedChallengedHand to challenger or any player', () => {
+      const state = GameFactory.createGame({ roomId: 'room_123', players });
+      // Simulate state with an inspection hand if one existed
+      const stateWithInspection = {
+        ...state,
+        inspectionHand: {
+          challengerPlayerId: 'guest_1',
+          offenderPlayerId: 'guest_2',
+          hand: state.players[1].hand,
+        },
+      };
+
+      const challengerProjection = getPlayerGameState(stateWithInspection, 'guest_1');
+      const offenderProjection = getPlayerGameState(stateWithInspection, 'guest_2');
+      const observerProjection = getPlayerGameState(stateWithInspection, 'guest_3');
+
+      // None of the players receive inspectedChallengedHand or offender's private cards
+      expect((challengerProjection as any).inspectedChallengedHand).toBeUndefined();
+      expect((offenderProjection as any).inspectedChallengedHand).toBeUndefined();
+      expect((observerProjection as any).inspectedChallengedHand).toBeUndefined();
+
+      // Challenger can only see their own cards
+      expect(challengerProjection.self.id).toBe('guest_1');
+      expect(challengerProjection.self.hand).toEqual(state.players[0].hand);
+
+      // Challenger cannot see offender's cards anywhere in public players list
+      const offenderInPublic = challengerProjection.players.find((p) => p.id === 'guest_2')!;
+      expect((offenderInPublic as any).hand).toBeUndefined();
+      expect(offenderInPublic.cardCount).toBe(state.players[1].hand.length);
+    });
+
     it('throws error when requesting private projection for non-participant', () => {
       const state = GameFactory.createGame({ roomId: 'room_123', players });
       expect(() => getPlayerGameState(state, 'intruder_guest')).toThrow(/not a participant/);

@@ -586,7 +586,7 @@ describe('UNO Flex — Gameplay Rules & Mechanics Tests (Mattel Product HNB00 / 
 
       // Alice was innocent -> Bob draws 6 cards (4 + 2 penalty)
       expect(challengeRes.nextState.players[1].hand).toHaveLength(bobHandBefore + 6);
-      expect(challengeRes.nextState.inspectionHand?.challengerPlayerId).toBe('p2');
+      expect(challengeRes.nextState.inspectionHand).toBeNull();
     });
 
     it('Flex Wild Draw Four (flex mode): targeted Draw 4 with NO challenge, target draws 4 cards immediately', () => {

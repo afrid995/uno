@@ -163,7 +163,7 @@ describe('UNO Ultimate — Rematch & Cumulative Score Persistence Socket Integra
     });
 
     const rematchAck = await new Promise<any>((resolve) => {
-      sHost.emit(SOCKET_EVENTS.ROOM_REMATCH, {}, resolve);
+      sHost.emit(SOCKET_EVENTS.ROOM_REMATCH, { immediate: true }, resolve);
     });
     expect(rematchAck.success).toBe(true);
     expect(rematchAck.data?.starting).toBe(true);
@@ -281,7 +281,7 @@ describe('UNO Ultimate — Rematch & Cumulative Score Persistence Socket Integra
     // 10. Clean up room
     await new Promise<void>((res) => sPlayer.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
     await new Promise<void>((res) => sHostReconnected.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
-  });
+  }, 35000);
 
   it('rejects rematch when fewer than 2 active players remain in the room', async () => {
     const sHost = createClient(hostToken);
@@ -308,7 +308,7 @@ describe('UNO Ultimate — Rematch & Cumulative Score Persistence Socket Integra
 
     // Host attempts rematch with only 1 player in the room
     const rematchAck = await new Promise<any>((resolve) => {
-      sHost.emit(SOCKET_EVENTS.ROOM_REMATCH, {}, resolve);
+      sHost.emit(SOCKET_EVENTS.ROOM_REMATCH, { immediate: true }, resolve);
     });
     expect(rematchAck.success).toBe(false);
     expect(rematchAck.error?.code).toBe('NOT_ENOUGH_PLAYERS');

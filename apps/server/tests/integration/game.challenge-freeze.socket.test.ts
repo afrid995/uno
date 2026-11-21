@@ -188,6 +188,12 @@ describe('Comprehensive Game Freeze, Challenge Deadlock & State-Recovery Socket 
     expect(cardAnimationReceived).toBeDefined();
     expect(cardAnimationReceived!.playerId).toBe(p2Id);
     expect(cardAnimationReceived!.cardCount).toBe(6);
+
+    // Verify privacy: state in ack contains zero opponent cards and no inspectedChallengedHand
+    expect((ack.data.state as any).inspectedChallengedHand).toBeUndefined();
+    for (const p of (ack.data.state as any).players) {
+      expect(p.hand).toBeUndefined();
+    }
   });
 
   // 2. Classic UNO Wild Draw 4 challenge won (guilty offender)
@@ -232,6 +238,12 @@ describe('Comprehensive Game Freeze, Challenge Deadlock & State-Recovery Socket 
     expect(cardAnimationReceived).toBeDefined();
     expect(cardAnimationReceived!.playerId).toBe(p1Id);
     expect(cardAnimationReceived!.cardCount).toBe(4);
+
+    // Verify privacy: state in ack contains zero opponent cards and no inspectedChallengedHand
+    expect((ack.data.state as any).inspectedChallengedHand).toBeUndefined();
+    for (const p of (ack.data.state as any).players) {
+      expect(p.hand).toBeUndefined();
+    }
   });
 
   // 3. Idempotent duplicate absorption on GAME_CHALLENGE_WILD_DRAW_FOUR

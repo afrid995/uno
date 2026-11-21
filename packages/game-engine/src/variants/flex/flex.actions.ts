@@ -1,4 +1,4 @@
-import { GameState, GameWinner, InspectionHand, PendingActionState } from '../../game/game.types';
+import { GameState, GameWinner, PendingActionState } from '../../game/game.types';
 import { GameAction, GameEventRecord, PlayCardAction } from '../../actions/action.types';
 import { ActionProcessResult } from '../../actions/action.processor';
 import { Card, CardColor } from '../../cards/card.types';
@@ -546,8 +546,7 @@ export class FlexActionProcessor {
     topCard: Card,
     activeColor: CardColor | null,
     unoVulnerablePlayerId: string | null,
-    ctx: ActionContext,
-    inspectionHand: InspectionHand | null = null
+    ctx: ActionContext
   ): ActionProcessResult {
     const winner = players[winnerIndex];
 
@@ -601,7 +600,7 @@ export class FlexActionProcessor {
       activeColor,
       unoVulnerablePlayerId,
       pendingActionState: null,
-      inspectionHand,
+      inspectionHand: null,
       roundWinner: roundWinnerRecord,
       winner: matchWinnerRecord,
       sequenceNumber: ctx.nextSeq(),
@@ -839,12 +838,6 @@ export class FlexActionProcessor {
     let nextPlayers = [...state.players];
     let nextPlayerIndex = challengerIndex;
 
-    const inspectionHand: InspectionHand = {
-      challengerPlayerId: challenger.id,
-      offenderPlayerId: offender.id,
-      hand: pending.offenderHandSnapshot,
-    };
-
     if (pending.wasOfficiallyLegal) {
       // Offender was innocent (had NO matching active color card)
       // Challenger draws 6 cards (4 + 2 penalty) and loses turn!
@@ -887,8 +880,7 @@ export class FlexActionProcessor {
           state.topDiscardCard,
           state.activeColor,
           null,
-          ctx,
-          inspectionHand
+          ctx
         );
       }
     } else {
@@ -926,7 +918,7 @@ export class FlexActionProcessor {
       discardPile: currentDiscardPile,
       currentPlayerIndex: nextPlayerIndex,
       pendingActionState: null,
-      inspectionHand,
+      inspectionHand: null,
       unoVulnerablePlayerId: null,
       turnNumber: state.turnNumber + 1,
       sequenceNumber: ctx.nextSeq(),

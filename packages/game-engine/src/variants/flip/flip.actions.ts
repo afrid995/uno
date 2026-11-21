@@ -1,4 +1,4 @@
-import { GameState, GameWinner, InspectionHand } from '../../game/game.types';
+import { GameState, GameWinner } from '../../game/game.types';
 import { GameAction, GameEventRecord } from '../../actions/action.types';
 import { Card, CardColor, FlipSide } from '../../cards/card.types';
 import { HandManager } from '../../players/hand.manager';
@@ -770,12 +770,6 @@ export class FlipActionProcessor {
           }
         }
 
-        const inspectionHand: InspectionHand = {
-          challengerPlayerId: challenger.id,
-          offenderPlayerId: offender.id,
-          hand: pending.offenderHandSnapshot,
-        };
-
         // Check if offender had 0 cards and round finishes after challenge resolution
         const offenderPlayer = updatedPlayers.find((p) => p.id === offender.id)!;
         let newStatus = state.status;
@@ -812,7 +806,7 @@ export class FlipActionProcessor {
           currentPlayerIndex: nextPlayerIndex,
           turnNumber: state.turnNumber + 1,
           pendingActionState: null,
-          inspectionHand,
+          inspectionHand: null,
           unoVulnerablePlayerId: null,
           status: newStatus,
           roundWinner,
@@ -1011,12 +1005,6 @@ export class FlipActionProcessor {
           }
         }
 
-        const inspectionHand: InspectionHand = {
-          challengerPlayerId: challenger.id,
-          offenderPlayerId: offender.id,
-          hand: pending.offenderHandSnapshot,
-        };
-
         const offenderPlayer = updatedPlayers.find((p) => p.id === offender.id)!;
         let newStatus = state.status;
         let roundWinner: GameWinner | null = null;
@@ -1052,7 +1040,7 @@ export class FlipActionProcessor {
           currentPlayerIndex: nextPlayerIndex,
           turnNumber: state.turnNumber + 1,
           pendingActionState: null,
-          inspectionHand,
+          inspectionHand: null,
           unoVulnerablePlayerId: null,
           status: newStatus,
           roundWinner,

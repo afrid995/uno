@@ -869,13 +869,7 @@ export class GameService {
       }
 
       // C. Clear inspection hand & uno vulnerable if departing player involved
-      let newInspectionHand = state.inspectionHand;
-      if (
-        newInspectionHand &&
-        (newInspectionHand.challengerPlayerId === guestId || newInspectionHand.offenderPlayerId === guestId)
-      ) {
-        newInspectionHand = null;
-      }
+      const newInspectionHand = null;
       const newUnoVulnerablePlayerId =
         state.unoVulnerablePlayerId === guestId ? null : state.unoVulnerablePlayerId;
 

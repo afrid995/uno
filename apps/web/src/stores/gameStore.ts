@@ -29,10 +29,15 @@ interface GameStateStore {
   disconnectedPlayers: Record<string, { disconnectTimestamp: number; gracePeriodSeconds: number }>;
   turnRecoveryNotification: string | null;
   isUnoDeclaredForNextPlay: boolean;
+  lastChallengeResult: {
+    challengeWon: boolean;
+    penaltyCards: number;
+  } | null;
 
   // Actions
   toggleDeclareUno: () => void;
   dismissTurnRecoveryNotification: () => void;
+  clearChallengeResult: () => void;
   playCard: (
     cardId: string,
     chosenColor?: CardColor,
@@ -84,6 +89,7 @@ const initialGameState = {
   disconnectedPlayers: {} as Record<string, { disconnectTimestamp: number; gracePeriodSeconds: number }>,
   turnRecoveryNotification: null as string | null,
   isUnoDeclaredForNextPlay: false,
+  lastChallengeResult: null as { challengeWon: boolean; penaltyCards: number } | null,
 };
 
 export const useGameStore = create<GameStateStore>((set, get) => ({
@@ -94,6 +100,7 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   closeWildColorPicker: () => set({ selectedCardForWild: null }),
   dismissRoundModal: () => set({ showRoundResultModal: false }),
   dismissTurnRecoveryNotification: () => set({ turnRecoveryNotification: null }),
+  clearChallengeResult: () => set({ lastChallengeResult: null }),
   toggleDeclareUno: () =>
     set((state) => ({ isUnoDeclaredForNextPlay: !state.isUnoDeclaredForNextPlay })),
   clearError: () => set({ error: null }),
@@ -340,8 +347,17 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
         clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          const resultData = {
+            challengeWon: res.data?.challengeWon ?? false,
+            penaltyCards: res.data?.penaltyCards ?? 0,
+          };
           if (res.data?.state) {
-            set({ gameState: res.data.state as PlayerGameState });
+            set({
+              gameState: res.data.state as PlayerGameState,
+              lastChallengeResult: resultData,
+            });
+          } else {
+            set({ lastChallengeResult: resultData });
           }
           resolve(true);
         } else {
@@ -434,8 +450,17 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
         clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          const resultData = {
+            challengeWon: res.data?.challengeWon ?? false,
+            penaltyCards: res.data?.penaltyCards ?? 0,
+          };
           if (res.data?.state) {
-            set({ gameState: res.data.state as PlayerGameState });
+            set({
+              gameState: res.data.state as PlayerGameState,
+              lastChallengeResult: resultData,
+            });
+          } else {
+            set({ lastChallengeResult: resultData });
           }
           resolve(true);
         } else {
@@ -528,8 +553,17 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
         clearTimeout(timer);
         set({ isActionLoading: false });
         if (res.success) {
+          const resultData = {
+            challengeWon: res.data?.challengeWon ?? false,
+            penaltyCards: res.data?.penaltyCards ?? 0,
+          };
           if (res.data?.state) {
-            set({ gameState: res.data.state as PlayerGameState });
+            set({
+              gameState: res.data.state as PlayerGameState,
+              lastChallengeResult: resultData,
+            });
+          } else {
+            set({ lastChallengeResult: resultData });
           }
           resolve(true);
         } else {

@@ -210,7 +210,7 @@ export const RoundTable: React.FC<RoundTableProps> = ({
             />
           )}
 
-          {/* Wild Draw Four challenge or inspected hand banner */}
+          {/* Wild Draw Four challenge decision or resolution banner */}
           <ChallengePanel />
 
           {/* Draw & Discard Piles / Attack Launcher */}
