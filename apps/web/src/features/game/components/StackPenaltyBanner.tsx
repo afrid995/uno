@@ -22,6 +22,7 @@ export const StackPenaltyBanner: React.FC<StackPenaltyBannerProps> = ({
 }) => {
   return (
     <motion.div
+      data-testid="stack-penalty-banner"
       initial={{ opacity: 0, scale: 0.95, y: -10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: -10 }}

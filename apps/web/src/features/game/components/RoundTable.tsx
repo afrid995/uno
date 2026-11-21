@@ -24,6 +24,7 @@ export interface RoundTableProps {
   className?: string;
   disconnectedPlayers?: Record<string, { disconnectTimestamp: number; gracePeriodSeconds: number }>;
   turnRecoveryNotification?: string | null;
+  isPortrait?: boolean;
 }
 
 /**
@@ -126,6 +127,7 @@ export const RoundTable: React.FC<RoundTableProps> = ({
   className = '',
   disconnectedPlayers = {},
   turnRecoveryNotification,
+  isPortrait = false,
 }) => {
   const {
     players,
@@ -154,94 +156,167 @@ export const RoundTable: React.FC<RoundTableProps> = ({
   // Order opponents clockwise from local player
   const seatedOpponents = getSeatedOpponents(playerOrder, players, self.id);
 
+  // Common Center Elements (Draw/Discard Piles & Status Banners)
+  const renderCenterPilesAndBanners = (compact = false) => (
+    <div className={`flex flex-col items-center justify-center z-10 ${compact ? 'space-y-1.5' : 'space-y-2 sm:space-y-3'} pointer-events-auto`}>
+      {/* Turn recovery notification banner */}
+      {turnRecoveryNotification && (
+        <div
+          data-testid="turn-recovery-banner"
+          className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/90 to-yellow-400/90 text-slate-950 font-bold text-xs sm:text-sm tracking-wide shadow-glow-amber animate-bounce flex items-center gap-2"
+        >
+          <span>⚡</span>
+          <span>{turnRecoveryNotification}</span>
+        </div>
+      )}
+
+      {/* Starting Wild banner if waiting for designated player */}
+      {self.isAwaitingStartingColor && !self.canChooseStartingColor && (
+        <div
+          data-testid="starting-wild-waiting-banner"
+          className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-400/40 text-amber-300 text-[10px] sm:text-xs font-semibold animate-pulse shadow-md backdrop-blur-xs text-center"
+        >
+          <span>🎨 Starting Wild: Waiting for {currentTurnPlayer?.username} to choose color...</span>
+        </div>
+      )}
+
+      {/* Stack attack resolution banner */}
+      {pendingStack && (
+        <StackPenaltyBanner
+          pendingStack={pendingStack}
+          isTarget={!!self.isTargetedByStack}
+          canStack={!!self.canStack}
+          targetUsername={
+            players.find((p) => p.id === pendingStack.targetPlayerId)?.username ?? 'Player'
+          }
+          isLoading={isActionLoading}
+          onAcceptPenalty={onAcceptStackPenalty}
+        />
+      )}
+
+      {/* Wild Draw Four challenge decision or resolution banner */}
+      <ChallengePanel />
+
+      {/* Draw & Discard Piles / Attack Launcher */}
+      <div className={`flex items-center justify-center ${compact ? 'gap-3 sm:gap-6 scale-90 sm:scale-100' : 'gap-4 sm:gap-10'}`}>
+        {/* Draw Pile or Virtual Attack Launcher */}
+        {isUnoAttack ? (
+          <AttackLauncher
+            cardCount={drawPileCount}
+            canPress={self.canDraw}
+            isLoading={isActionLoading}
+            launcherState={attackLauncherState}
+            activePlayerUsername={currentTurnPlayer?.username}
+            isMyTurn={isMyTurn}
+            onPress={onDrawCard}
+          />
+        ) : (
+          <DrawPile
+            drawCount={drawPileCount}
+            canDraw={self.canDraw}
+            isLoading={isActionLoading}
+            onDraw={onDrawCard}
+          />
+        )}
+
+        {/* Discard Pile */}
+        <DiscardPile
+          topCard={topDiscardCard}
+          activeColor={activeColor}
+          discardCount={discardPileCount}
+        />
+      </div>
+    </div>
+  );
+
+  // ---------------------------------------------------------------------------
+  // Dedicated Mobile Portrait Gameplay Layout
+  // ---------------------------------------------------------------------------
+  if (isPortrait) {
+    return (
+      <div
+        data-testid="round-table"
+        data-layout="portrait"
+        className={`relative w-full max-w-lg mx-auto flex flex-col justify-between my-0.5 select-none ${className}`}
+      >
+        {/* Top: Compact Opponents Ribbon */}
+        <div
+          data-testid="portrait-opponents-ribbon"
+          className="w-full flex items-center justify-center gap-1.5 px-1 py-1 overflow-x-auto no-scrollbar overscroll-contain touch-pan-x"
+        >
+          {seatedOpponents.map((opponent) => {
+            const isOpponentTurn = opponent.id === currentTurnGuestId;
+
+            return (
+              <PlayerSeat
+                key={opponent.id}
+                player={opponent}
+                isCurrentTurn={isOpponentTurn}
+                isVulnerableToUno={unoVulnerablePlayerId === opponent.id}
+                onCatchUno={() => onChallengeUno(opponent.id)}
+                disconnectInfo={disconnectedPlayers[opponent.id]}
+                compact={true}
+              />
+            );
+          })}
+        </div>
+
+        {/* Center: Compact Arena Table Felt */}
+        <div className="relative w-full h-[210px] xs:h-[230px] sm:h-[270px] rounded-[32px] sm:rounded-[44px] bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border-3 sm:border-4 border-slate-700/70 shadow-[0_8px_30px_rgba(0,0,0,0.8),inset_0_0_50px_rgba(0,0,0,0.8)] overflow-hidden flex items-center justify-center my-1">
+          {/* Felt Texture / Glow */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-950/20 via-slate-900/60 to-slate-950/95 pointer-events-none" />
+
+          {/* Inner Rail Seam */}
+          <div className="absolute inset-2 sm:inset-3 rounded-[24px] sm:rounded-[36px] border border-emerald-500/15 pointer-events-none" />
+
+          {/* Central Play Direction Orbit */}
+          <PlayDirectionIndicator
+            direction={turnDirection}
+            className="z-0 scale-90 sm:scale-100"
+          />
+
+          {/* Central Piles & Overlays */}
+          {renderCenterPilesAndBanners(true)}
+        </div>
+
+        {/* Bottom: Local Player Profile Badge */}
+        <div className="w-full flex justify-center py-0.5">
+          <LocalPlayerProfile
+            self={self}
+            selfPublic={selfPublic}
+            isMyTurn={isMyTurn}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Classic Round-Table Layout (Landscape & Desktop)
+  // ---------------------------------------------------------------------------
   return (
     <div
       data-testid="round-table"
+      data-layout="landscape"
       className={`relative w-full max-w-5xl mx-auto my-1 sm:my-2 select-none ${className}`}
     >
       {/* Table Felt & Rail Surface */}
-      <div className="relative w-full h-[400px] sm:h-[460px] md:h-[500px] rounded-[50px] sm:rounded-[80px] md:rounded-[120px] bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border-4 border-slate-700/70 shadow-[0_12px_45px_rgba(0,0,0,0.85),inset_0_0_60px_rgba(0,0,0,0.8)] overflow-hidden">
+      <div className="relative w-full h-[230px] xs:h-[270px] sm:h-[380px] md:h-[460px] lg:h-[500px] max-h-[55vh] sm:max-h-[62vh] md:max-h-none rounded-[50px] sm:rounded-[80px] md:rounded-[120px] bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border-4 border-slate-700/70 shadow-[0_12px_45px_rgba(0,0,0,0.85),inset_0_0_60px_rgba(0,0,0,0.8)] overflow-hidden">
         {/* Felt Texture / Radial Glow */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-950/20 via-slate-900/60 to-slate-950/95 pointer-events-none" />
 
         {/* Felt Seam / Inner Rail Line */}
-        <div className="absolute inset-3 sm:inset-5 md:inset-7 rounded-[40px] sm:rounded-[65px] md:rounded-[100px] border border-emerald-500/15 pointer-events-none" />
+        <div className="absolute inset-2 sm:inset-5 md:inset-7 rounded-[38px] sm:rounded-[65px] md:rounded-[100px] border border-emerald-500/15 pointer-events-none" />
 
         {/* Central Play Direction Indicator Track */}
         <PlayDirectionIndicator
           direction={turnDirection}
-          className="z-0"
+          className="z-0 scale-80 sm:scale-100"
         />
 
         {/* Center Table Area (Piles & Pending Action Banners) */}
-        <div className="absolute top-[48%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center z-10 space-y-2 sm:space-y-3 pointer-events-auto">
-          {/* Turn recovery notification banner */}
-          {turnRecoveryNotification && (
-            <div
-              data-testid="turn-recovery-banner"
-              className="px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/90 to-yellow-400/90 text-slate-950 font-bold text-xs sm:text-sm tracking-wide shadow-glow-amber animate-bounce flex items-center gap-2"
-            >
-              <span>⚡</span>
-              <span>{turnRecoveryNotification}</span>
-            </div>
-          )}
-
-          {/* Starting Wild banner if waiting for designated player */}
-          {self.isAwaitingStartingColor && !self.canChooseStartingColor && (
-            <div
-              data-testid="starting-wild-waiting-banner"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-400/40 text-amber-300 text-[11px] sm:text-xs font-semibold animate-pulse shadow-md backdrop-blur-xs text-center"
-            >
-              <span>🎨 Starting Wild: Waiting for {currentTurnPlayer?.username} to choose color...</span>
-            </div>
-          )}
-
-          {/* Stack attack resolution banner */}
-          {pendingStack && (
-            <StackPenaltyBanner
-              pendingStack={pendingStack}
-              isTarget={!!self.isTargetedByStack}
-              canStack={!!self.canStack}
-              targetUsername={
-                players.find((p) => p.id === pendingStack.targetPlayerId)?.username ?? 'Player'
-              }
-              isLoading={isActionLoading}
-              onAcceptPenalty={onAcceptStackPenalty}
-            />
-          )}
-
-          {/* Wild Draw Four challenge decision or resolution banner */}
-          <ChallengePanel />
-
-          {/* Draw & Discard Piles / Attack Launcher */}
-          <div className="flex items-center justify-center gap-5 sm:gap-10">
-            {/* Draw Pile or Virtual Attack Launcher */}
-            {isUnoAttack ? (
-              <AttackLauncher
-                cardCount={drawPileCount}
-                canPress={self.canDraw}
-                isLoading={isActionLoading}
-                launcherState={attackLauncherState}
-                activePlayerUsername={currentTurnPlayer?.username}
-                isMyTurn={isMyTurn}
-                onPress={onDrawCard}
-              />
-            ) : (
-              <DrawPile
-                drawCount={drawPileCount}
-                canDraw={self.canDraw}
-                isLoading={isActionLoading}
-                onDraw={onDrawCard}
-              />
-            )}
-
-            {/* Discard Pile */}
-            <DiscardPile
-              topCard={topDiscardCard}
-              activeColor={activeColor}
-              discardCount={discardPileCount}
-            />
-          </div>
+        <div className="absolute top-[48%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center z-10 pointer-events-auto">
+          {renderCenterPilesAndBanners(false)}
         </div>
 
         {/* Opponent Seats Positioned Along the Upper Table Perimeter */}
@@ -261,14 +336,14 @@ export const RoundTable: React.FC<RoundTableProps> = ({
                 isVulnerableToUno={unoVulnerablePlayerId === opponent.id}
                 onCatchUno={() => onChallengeUno(opponent.id)}
                 disconnectInfo={disconnectedPlayers[opponent.id]}
-                className="scale-85 sm:scale-95 md:scale-100 shadow-2xl"
+                className="scale-75 xs:scale-80 sm:scale-95 md:scale-100 shadow-2xl"
               />
             </div>
           );
         })}
 
         {/* Local Player Profile Positioned at Bottom Center Table Rail */}
-        <div className="absolute bottom-1.5 sm:bottom-3 left-1/2 -translate-x-1/2 z-20">
+        <div className="absolute bottom-1 sm:bottom-3 left-1/2 -translate-x-1/2 z-20">
           <LocalPlayerProfile
             self={self}
             selfPublic={selfPublic}

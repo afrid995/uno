@@ -15,6 +15,7 @@ import { ForcedSwapModal } from './ForcedSwapModal';
 import { FlexCardChoiceModal } from './FlexCardChoiceModal';
 import { TeamPassModal } from './TeamPassModal';
 import { AttackTargetModal } from './AttackTargetModal';
+import { useOrientation } from '../hooks/useOrientation';
 import { AlertCircle, RotateCcw, RotateCw, Skull } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -50,6 +51,7 @@ export const GameBoard: React.FC = () => {
 
   const [selectedCardForFlexChoice, setSelectedCardForFlexChoice] = React.useState<Card | null>(null);
   const [pendingPlayMode, setPendingPlayMode] = React.useState<'regular' | 'flex'>('regular');
+  const { isPortrait, isMobile } = useOrientation();
 
   if (!gameState) {
     return (
@@ -128,18 +130,18 @@ export const GameBoard: React.FC = () => {
   };
 
   return (
-    <div data-testid="game-board" className="relative w-full max-w-7xl mx-auto flex flex-col justify-between min-h-[82vh] px-2 sm:px-4 py-2 select-none">
+    <div data-testid="game-board" className="relative w-full max-w-7xl mx-auto flex flex-col justify-between flex-1 px-1 sm:px-4 py-1 select-none overflow-hidden min-h-0">
       {/* Top Bar: Turn status & Scoreboard */}
-      <div className="flex items-center justify-between gap-2 px-2 py-1">
+      <div className="flex items-center justify-between gap-1.5 sm:gap-2 px-1 sm:px-2 py-0.5 sm:py-1 shrink-0 flex-wrap sm:flex-nowrap">
         {/* Turn indicator badge */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           {isMyTurn ? (
-            <div data-testid="your-turn-badge" className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-400/20 border border-amber-400 text-amber-300 font-bold text-xs sm:text-sm animate-pulse shadow-glow-amber">
+            <div data-testid="your-turn-badge" className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-amber-400/20 border border-amber-400 text-amber-300 font-bold text-xs sm:text-sm animate-pulse shadow-glow-amber">
               <span className="w-2 h-2 rounded-full bg-amber-400" />
               <span>YOUR TURN</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-400 text-xs">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-400 text-[11px] sm:text-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
               <span>
                 Waiting for <strong className="text-slate-200">{currentTurnPlayer?.username}</strong>...
@@ -166,7 +168,7 @@ export const GameBoard: React.FC = () => {
           {gameState.activeSide && (
             <div
               data-testid="active-side-badge"
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl font-display font-black text-xs tracking-wider border shadow-md transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-xl font-display font-black text-[11px] sm:text-xs tracking-wider border shadow-md transition-all ${
                 gameState.activeSide === 'DARK'
                   ? 'bg-gradient-to-r from-purple-950 via-fuchsia-950 to-slate-950 border-fuchsia-500/80 text-fuchsia-300 shadow-fuchsia-950/60 shadow-lg'
                   : 'bg-gradient-to-r from-amber-950/60 to-yellow-950/60 border-amber-400/60 text-amber-300'
@@ -180,7 +182,7 @@ export const GameBoard: React.FC = () => {
           {isAllWild && (
             <div
               data-testid="all-wild-badge"
-              className="flex items-center gap-1.5 px-3 py-1 rounded-xl font-display font-black text-xs tracking-wider border shadow-md bg-gradient-to-r from-indigo-950 via-purple-950 to-slate-950 border-indigo-400 text-indigo-300 shadow-indigo-950/60 shadow-lg"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-xl font-display font-black text-[11px] sm:text-xs tracking-wider border shadow-md bg-gradient-to-r from-indigo-950 via-purple-950 to-slate-950 border-indigo-400 text-indigo-300 shadow-indigo-950/60 shadow-lg"
             >
               <span>🌈 ALL WILD</span>
             </div>
@@ -190,14 +192,14 @@ export const GameBoard: React.FC = () => {
           {gameState.variant === 'uno_flex' && (
             <div
               data-testid="uno-flex-badge"
-              className="flex items-center gap-2 px-3 py-1 rounded-xl font-display font-black text-xs tracking-wider border shadow-md bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-950 border-emerald-400 text-emerald-300 shadow-emerald-950/60"
+              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-xl font-display font-black text-[11px] sm:text-xs tracking-wider border shadow-md bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-950 border-emerald-400 text-emerald-300 shadow-emerald-950/60"
             >
               <span>⚡ UNO FLEX</span>
               {selfPublic?.powerCardStatus && (
                 <span
                   data-testid="self-power-card-status"
                   data-power-status={selfPublic.powerCardStatus}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
+                  className={`px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-mono border ${
                     selfPublic.powerCardStatus === 'green_check'
                       ? 'bg-emerald-500/30 text-emerald-300 border-emerald-400'
                       : 'bg-rose-500/30 text-rose-300 border-rose-400'
@@ -213,13 +215,13 @@ export const GameBoard: React.FC = () => {
           {gameState.variant === 'uno_teams' && (
             <div
               data-testid="uno-teams-badge"
-              className="flex items-center gap-2 px-3 py-1 rounded-xl font-display font-black text-xs tracking-wider border shadow-md bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-950 border-blue-400 text-blue-300 shadow-blue-950/60"
+              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-xl font-display font-black text-[11px] sm:text-xs tracking-wider border shadow-md bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-950 border-blue-400 text-blue-300 shadow-blue-950/60"
             >
               <span>👥 UNO TEAMS</span>
               {selfPublic?.teamId && (
                 <span
                   data-testid="self-team-badge"
-                  className="px-1.5 py-0.5 rounded text-[10px] font-mono border bg-blue-500/30 text-blue-300 border-blue-400"
+                  className="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-mono border bg-blue-500/30 text-blue-300 border-blue-400"
                 >
                   {selfPublic.teamId.toUpperCase().replace('_', ' ')}
                 </span>
@@ -231,7 +233,7 @@ export const GameBoard: React.FC = () => {
           {isUnoAttack && (
             <div
               data-testid="uno-attack-badge"
-              className="flex items-center gap-1.5 px-3 py-1 rounded-xl font-display font-black text-xs tracking-wider border shadow-md bg-gradient-to-r from-red-950 via-rose-950 to-slate-950 border-red-500 text-red-300 shadow-red-950/60 shadow-lg"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-xl font-display font-black text-[11px] sm:text-xs tracking-wider border shadow-md bg-gradient-to-r from-red-950 via-rose-950 to-slate-950 border-red-500 text-red-300 shadow-red-950/60 shadow-lg"
             >
               <span>💥 UNO ATTACK</span>
             </div>
@@ -276,6 +278,7 @@ export const GameBoard: React.FC = () => {
         onAcceptStackPenalty={acceptStackPenalty}
         disconnectedPlayers={disconnectedPlayers}
         turnRecoveryNotification={turnRecoveryNotification}
+        isPortrait={isPortrait}
       />
 
       {/* Eliminated Player Spectator Banner */}
@@ -319,9 +322,9 @@ export const GameBoard: React.FC = () => {
       )}
 
       {/* Bottom Area: Controls & Player Hand */}
-      <div className="w-full flex flex-col items-center space-y-2 mt-auto">
+      <div className="w-full flex flex-col items-center space-y-1 sm:space-y-2 mt-auto shrink-0 pb-1">
         {/* Action Controls Row */}
-        <div className="flex items-center justify-between w-full max-w-2xl px-2">
+        <div className="flex items-center justify-between w-full max-w-2xl px-1 sm:px-2 gap-1.5 sm:gap-2">
           {/* UNO Button */}
           <UnoButton
             canCallUno={self.canCallUno}
@@ -339,7 +342,7 @@ export const GameBoard: React.FC = () => {
 
           {/* Drawn Card Action Controls (Case A) */}
           {isMyTurn && hasDrawn && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               {isDrawnCardPlayable && drawnCard && (
                 <motion.button
                   data-testid="play-drawn-card-btn"
@@ -349,7 +352,7 @@ export const GameBoard: React.FC = () => {
                   whileTap={{ scale: 0.95 }}
                   disabled={isActionLoading}
                   onClick={() => handleCardClick(drawnCard)}
-                  className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-display font-bold text-xs uppercase tracking-wider border border-emerald-400 shadow-lg cursor-pointer"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-display font-bold text-[11px] sm:text-xs uppercase tracking-wider border border-emerald-400 shadow-lg cursor-pointer"
                 >
                   Play Drawn Card
                 </motion.button>
@@ -364,7 +367,7 @@ export const GameBoard: React.FC = () => {
                   whileTap={{ scale: 0.95 }}
                   disabled={isActionLoading}
                   onClick={passTurn}
-                  className="px-4 py-2 rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 text-white font-display font-bold text-xs uppercase tracking-wider border border-slate-600 shadow-lg cursor-pointer"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 text-white font-display font-bold text-[11px] sm:text-xs uppercase tracking-wider border border-slate-600 shadow-lg cursor-pointer"
                 >
                   Keep Card / End Turn
                 </motion.button>
@@ -373,7 +376,7 @@ export const GameBoard: React.FC = () => {
                   data-testid="keep-card-disabled-btn"
                   disabled
                   title="Drawn card must be played under this variant's rules."
-                  className="px-4 py-2 rounded-2xl bg-slate-800 text-slate-500 font-display font-bold text-xs uppercase tracking-wider border border-slate-700 shadow-sm cursor-not-allowed opacity-50"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl bg-slate-800 text-slate-500 font-display font-bold text-[11px] sm:text-xs uppercase tracking-wider border border-slate-700 shadow-sm cursor-not-allowed opacity-50"
                 >
                   Keep Card / End Turn
                 </button>
@@ -391,14 +394,14 @@ export const GameBoard: React.FC = () => {
               whileTap={{ scale: 0.95 }}
               disabled={isActionLoading}
               onClick={passTurn}
-              className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 text-white font-display font-bold text-xs uppercase tracking-wider border border-slate-600 shadow-lg cursor-pointer"
+              className="px-4 sm:px-5 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 text-white font-display font-bold text-[11px] sm:text-xs uppercase tracking-wider border border-slate-600 shadow-lg cursor-pointer"
             >
               Pass Turn
             </motion.button>
           )}
 
           {/* Hand Card Count Badge */}
-          <div className="text-xs font-semibold text-slate-400 bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-800">
+          <div className="text-[11px] sm:text-xs font-semibold text-slate-400 bg-slate-900/60 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-slate-800 shrink-0">
             {self.hand.length} {self.hand.length === 1 ? 'card' : 'cards'}
           </div>
         </div>
@@ -409,6 +412,7 @@ export const GameBoard: React.FC = () => {
           playableCardIds={self.playableCardIds}
           isCurrentTurn={self.isCurrentTurn}
           onCardClick={handleCardClick}
+          cardSize={isPortrait || isMobile ? 'sm' : 'md'}
         />
       </div>
 

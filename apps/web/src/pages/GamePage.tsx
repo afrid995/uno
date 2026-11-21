@@ -80,9 +80,9 @@ export const GamePage: React.FC = () => {
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col justify-between py-2">
+    <div className="w-full h-full flex-1 flex flex-col justify-between safe-p py-1 sm:py-2 select-none overflow-hidden">
       {/* Top Header Row */}
-      <header className="w-full max-w-7xl mx-auto px-4 flex items-center justify-between py-1 border-b border-slate-800/80 mb-1">
+      <header className="w-full max-w-7xl mx-auto px-2 sm:px-4 flex items-center justify-between py-1 border-b border-slate-800/80 mb-0.5 sm:mb-1 shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -150,7 +150,7 @@ export const GamePage: React.FC = () => {
       </header>
 
       {/* Main Game Board */}
-      <main className="w-full flex-1 flex flex-col justify-center">
+      <main className="w-full flex-1 flex flex-col justify-center min-h-0 overflow-hidden">
         <GameBoard />
       </main>
 

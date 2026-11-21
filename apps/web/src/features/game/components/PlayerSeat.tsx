@@ -9,6 +9,7 @@ export interface PlayerSeatProps {
   onCatchUno?: () => void;
   className?: string;
   disconnectInfo?: { disconnectTimestamp: number; gracePeriodSeconds: number };
+  compact?: boolean;
 }
 
 export const PlayerSeat: React.FC<PlayerSeatProps> = ({
@@ -18,6 +19,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
   onCatchUno,
   className = '',
   disconnectInfo,
+  compact = false,
 }) => {
   const isEliminated = !!player.isEliminated;
 
@@ -38,6 +40,137 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
   }, [disconnectInfo]);
+
+  if (compact) {
+    return (
+      <div
+        data-testid="player-seat"
+        data-player-id={player.id}
+        data-is-eliminated={isEliminated}
+        className={`flex items-center gap-2 p-1.5 sm:p-2 rounded-xl transition-all duration-300 border select-none shrink-0 ${
+          isEliminated
+            ? 'bg-slate-950/70 border-rose-950/60 opacity-60'
+            : isCurrentTurn
+            ? 'border-amber-400/90 ring-2 ring-amber-400/40 shadow-glow-amber bg-slate-800/95'
+            : 'bg-slate-900/85 border-slate-800 hover:border-slate-700'
+        } ${className}`}
+      >
+        {/* Avatar & Turn Indicator */}
+        <div className="relative shrink-0">
+          <div
+            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-display font-black text-xs ${
+              isEliminated
+                ? 'bg-rose-950/60 text-rose-400/60 border border-rose-900/40'
+                : isCurrentTurn
+                ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 shadow-sm'
+                : 'bg-slate-800 text-slate-300 border border-slate-700'
+            }`}
+          >
+            <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </div>
+
+          {/* Current turn pulsing dot */}
+          {isCurrentTurn && !isEliminated && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 border border-slate-950" />
+            </span>
+          )}
+        </div>
+
+        {/* Username, Score & Card Count */}
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="text-[11px] sm:text-xs font-bold text-slate-200 truncate max-w-[65px] sm:max-w-[85px]">
+              {player.username}
+            </p>
+            {isCurrentTurn && !isEliminated && (
+              <span
+                data-testid="playing-badge"
+                className="px-1 py-0.2 rounded-full bg-amber-400 text-slate-950 font-display font-black text-[8px] uppercase tracking-wider animate-pulse"
+              >
+                TURN
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px]">
+            <span className="text-slate-400 flex items-center gap-0.5">
+              <Award className="w-2.5 h-2.5 text-amber-400/80" />
+              <span>{player.score}</span>
+            </span>
+            <span className="text-slate-600">•</span>
+            {isEliminated ? (
+              <span className="text-rose-400 font-bold">OUT</span>
+            ) : (
+              <span className="font-mono font-bold text-amber-300 flex items-center gap-0.5">
+                <span className="w-2 h-2.5 rounded-xs bg-uno-red inline-block rotate-[-5deg]" />
+                <span>{player.cardCount}</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Status badges & UNO triggers */}
+        <div className="flex items-center gap-1 ml-auto shrink-0">
+          {/* UNO Flex Power Card Badge */}
+          {!isEliminated && player.powerCardStatus && (
+            <span
+              data-testid="power-card-badge"
+              data-power-status={player.powerCardStatus}
+              className={`px-1 py-0.5 rounded text-[8px] font-black border ${
+                player.powerCardStatus === 'green_check'
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+                  : 'bg-rose-500/20 text-rose-400 border-rose-500/50'
+              }`}
+            >
+              {player.powerCardStatus === 'green_check' ? '⚡' : '✗'}
+            </span>
+          )}
+
+          {/* UNO Teams Team Badge */}
+          {player.teamId && (
+            <span
+              data-testid="player-team-badge"
+              data-team-id={player.teamId}
+              className="px-1 py-0.5 rounded text-[8px] font-mono bg-blue-500/20 text-blue-300 border border-blue-400/40"
+            >
+              {player.teamId.toUpperCase().replace('TEAM_', 'T')}
+            </span>
+          )}
+
+          {/* UNO declared pill */}
+          {!isEliminated && player.hasDeclaredUno && (
+            <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-emerald-500 text-slate-950 animate-pulse">
+              UNO!
+            </span>
+          )}
+
+          {/* Catch UNO button */}
+          {!isEliminated && isVulnerableToUno && onCatchUno && (
+            <button
+              data-testid="catch-uno-btn"
+              onClick={onCatchUno}
+              className="px-1.5 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-black text-[9px] flex items-center gap-0.5 shadow-glow-red animate-bounce cursor-pointer border border-rose-400"
+            >
+              <ShieldAlert className="w-2.5 h-2.5" />
+              <span>CATCH</span>
+            </button>
+          )}
+
+          {disconnectInfo && (
+            <span
+              data-testid="disconnected-badge"
+              className="px-1 py-0.5 rounded bg-rose-500/20 border border-rose-500/60 text-rose-300 font-bold text-[8px] animate-pulse flex items-center gap-0.5"
+            >
+              <WifiOff className="w-2 h-2" />
+              <span>{secondsRemaining}s</span>
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

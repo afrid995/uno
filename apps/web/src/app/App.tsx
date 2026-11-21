@@ -30,11 +30,13 @@ export const App: React.FC = () => {
     }
   }, [searchParams, location.pathname, navigate]);
 
-  return (
-    <div className="min-h-screen flex flex-col justify-between">
-      <Header />
+  const isGameRoute = location.pathname.startsWith('/game/');
 
-      <main className="flex-1 flex flex-col items-center justify-center">
+  return (
+    <div className={`min-h-screen flex flex-col justify-between ${isGameRoute ? 'h-[100dvh] max-h-[100dvh] overflow-hidden' : ''}`}>
+      {!isGameRoute && <Header />}
+
+      <main className={`flex-1 flex flex-col items-center justify-center ${isGameRoute ? 'w-full h-full overflow-hidden' : ''}`}>
         {isResuming ? (
           <div className="flex flex-col items-center justify-center p-12 space-y-3">
             <div className="w-10 h-10 border-3 border-uno-red border-t-transparent rounded-full animate-spin" />
@@ -71,7 +73,7 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      <Footer />
+      {!isGameRoute && <Footer />}
     </div>
   );
 };
