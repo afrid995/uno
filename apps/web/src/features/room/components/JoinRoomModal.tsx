@@ -50,14 +50,11 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({ isOpen, onClose })
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="glass-panel w-full max-w-md p-6 sm:p-8 rounded-3xl border border-slate-700/80 shadow-2xl relative overflow-hidden"
+          className="bg-surface-card w-full max-w-md p-6 sm:p-7 rounded-2xl border border-white/[0.08] shadow-modal relative overflow-hidden"
         >
-          {/* Header Accent */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-uno-blue via-emerald-400 to-uno-yellow" />
-
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-uno-blue/10 border border-uno-blue/30 flex items-center justify-center text-uno-blue">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
                 <LogIn className="w-5 h-5" />
               </div>
               <div>
@@ -67,13 +64,13 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({ isOpen, onClose })
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-surface-elevated transition-colors border border-transparent hover:border-white/[0.06]"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <form onSubmit={handleJoin} className="space-y-6">
+          <form onSubmit={handleJoin} className="space-y-5">
             <div className="space-y-2">
               <label htmlFor="room-code-input" className="block text-xs font-medium text-slate-300">
                 Room Code
@@ -89,7 +86,7 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({ isOpen, onClose })
                   maxLength={ROOM_RULES.CODE_LENGTH}
                   autoComplete="off"
                   autoFocus
-                  className="w-full text-center text-2xl font-mono uppercase tracking-[0.3em] font-extrabold py-3.5 px-4 rounded-xl bg-slate-900 border border-slate-700 text-uno-yellow placeholder-slate-600 focus:border-uno-yellow focus:ring-2 focus:ring-uno-yellow/40 focus:outline-none transition-all"
+                  className="w-full text-center text-2xl font-mono uppercase tracking-[0.25em] font-extrabold py-3.5 px-4 rounded-xl bg-surface-panel border border-white/[0.12] text-amber-300 placeholder-slate-600 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 focus:outline-none transition-all"
                 />
               </div>
 
@@ -108,7 +105,7 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({ isOpen, onClose })
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:bg-slate-800 transition-colors"
+                className="flex-1 py-3 px-4 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-surface-elevated border border-white/[0.08] hover:bg-surface-highlight transition-colors"
               >
                 Cancel
               </button>
@@ -116,7 +113,7 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({ isOpen, onClose })
                 type="submit"
                 data-testid="confirm-join-room-btn"
                 disabled={isLoading || roomCode.length !== ROOM_RULES.CODE_LENGTH}
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold font-display text-white bg-gradient-to-r from-uno-blue to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-glow-blue disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold font-display text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 border border-blue-500/30 shadow-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isLoading ? (
                   <>

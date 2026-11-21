@@ -60,12 +60,12 @@ export const ChatPanel: React.FC = () => {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           transition={{ duration: 0.2 }}
-          className="fixed bottom-16 sm:bottom-20 right-2 sm:right-6 w-[calc(100vw-1rem)] sm:w-96 h-[460px] max-h-[75vh] flex flex-col bg-slate-900/95 border border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-md z-50 overflow-hidden"
+          className="fixed bottom-16 sm:bottom-20 right-2 sm:right-6 w-[calc(100vw-1rem)] sm:w-96 h-[460px] max-h-[75vh] flex flex-col bg-surface-card border border-white/[0.08] rounded-2xl shadow-modal backdrop-blur-md z-50 overflow-hidden"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-950/60">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-surface-panel/80">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-uno-blue/20 border border-uno-blue/40 flex items-center justify-center text-uno-blue">
+              <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
                 <MessageSquare className="w-4 h-4" />
               </div>
               <div>
@@ -78,7 +78,7 @@ export const ChatPanel: React.FC = () => {
             <button
               data-testid="chat-close-btn"
               onClick={() => setIsOpen(false)}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="p-1 rounded-lg text-slate-400 hover:text-white bg-surface-panel hover:bg-surface-elevated border border-white/[0.06] transition-colors"
               aria-label="Close Chat"
             >
               <X className="w-4 h-4" />
@@ -127,17 +127,17 @@ export const ChatPanel: React.FC = () => {
                       <span className="text-[10px] font-bold text-slate-400">
                         {isSelf ? 'You' : msg.senderUsername}
                       </span>
-                      <span className="text-[9px] text-slate-500">
+                      <span className="text-[9px] text-slate-500 font-mono">
                         {formatTime(msg.createdAt)}
                       </span>
                     </div>
 
                     {/* Speech Bubble */}
                     <div
-                      className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs break-words shadow-sm ${
+                      className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs break-words shadow-card ${
                         isSelf
-                          ? 'bg-gradient-to-r from-uno-blue to-blue-600 text-white rounded-tr-xs'
-                          : 'bg-slate-800 border border-slate-700/80 text-slate-200 rounded-tl-xs'
+                          ? 'bg-blue-600 text-white rounded-tr-xs'
+                          : 'bg-surface-panel border border-white/[0.08] text-slate-200 rounded-tl-xs'
                       }`}
                     >
                       {msg.message}
@@ -150,7 +150,7 @@ export const ChatPanel: React.FC = () => {
           </div>
 
           {/* Input Footer */}
-          <div className="p-2.5 border-t border-slate-800 bg-slate-950/40">
+          <div className="p-2.5 border-t border-white/[0.06] bg-surface-panel/50">
             <div className="relative flex items-center gap-2">
               <textarea
                 ref={inputRef}
@@ -161,13 +161,13 @@ export const ChatPanel: React.FC = () => {
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Type a message... (Enter to send)"
-                className="w-full resize-none py-2 pl-3 pr-10 rounded-xl bg-slate-800/90 border border-slate-700 focus:border-uno-blue focus:ring-1 focus:ring-uno-blue text-xs text-white placeholder-slate-400 outline-none transition-all max-h-24 no-scrollbar"
+                className="w-full resize-none py-2 pl-3 pr-10 rounded-xl bg-surface-panel border border-white/[0.08] focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 text-xs text-white placeholder-slate-500 outline-none transition-all max-h-24 no-scrollbar"
               />
               <button
                 data-testid="chat-send-btn"
                 disabled={!inputText.trim() || isSending}
                 onClick={handleSend}
-                className="absolute right-1.5 p-1.5 rounded-lg bg-uno-blue hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all cursor-pointer shadow-md"
+                className="absolute right-1.5 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all cursor-pointer shadow-card"
                 aria-label="Send message"
               >
                 <Send className="w-3.5 h-3.5" />

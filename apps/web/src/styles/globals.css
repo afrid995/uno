@@ -4,34 +4,44 @@
 
 @layer base {
   body {
-    @apply bg-[#0b0f19] text-slate-100 antialiased font-sans overflow-x-hidden;
+    @apply bg-[#090c12] text-slate-100 antialiased font-sans overflow-x-hidden selection:bg-amber-600 selection:text-white;
     background-image: 
-      radial-gradient(circle at 15% 20%, rgba(239, 68, 68, 0.08) 0%, transparent 40%),
-      radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
-      radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.06) 0%, transparent 50%),
-      radial-gradient(circle at 75% 75%, rgba(245, 158, 11, 0.06) 0%, transparent 40%);
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(17, 38, 26, 0.35) 0%, transparent 70%),
+      radial-gradient(ellipse 70% 45% at 50% 110%, rgba(15, 21, 32, 0.5) 0%, transparent 80%);
   }
 
   /* Accessible focus indicators */
   :focus-visible {
-    @apply outline-none ring-2 ring-uno-yellow ring-offset-2 ring-offset-slate-900;
+    @apply outline-none ring-2 ring-amber-400/90 ring-offset-2 ring-offset-[#090c12];
   }
 }
 
 @layer utilities {
   .glass-panel {
-    background: rgba(24, 34, 52, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(17, 22, 32, 0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+  }
+
+  .premium-card {
+    background: #141a26;
     border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
+  }
+
+  .felt-surface {
+    background: radial-gradient(ellipse at center, #103322 0%, #0c2518 60%, #07180f 100%);
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.85), 0 16px 45px rgba(0, 0, 0, 0.85);
   }
 
   .text-glow-red {
-    text-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+    text-shadow: 0 0 16px rgba(224, 49, 49, 0.4);
   }
 
   .text-glow-blue {
-    text-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+    text-shadow: 0 0 16px rgba(25, 113, 194, 0.4);
   }
 
   /* Mobile safe-area utilities */

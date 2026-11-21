@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, AlertCircle, Loader2, Sparkles, ArrowRight, RefreshCw, Play, KeyRound } from 'lucide-react';
+import { Users, AlertCircle, Loader2, ArrowRight, RefreshCw, Play, KeyRound } from 'lucide-react';
 import { USERNAME_RULES, RoomMetadataResponse } from '@uno-ultimate/shared';
 import { useGuestStore } from '../stores/guestStore';
 import { useRoomStore } from '../stores/roomStore';
@@ -170,7 +170,7 @@ export const JoinInvitePage: React.FC = () => {
   if (isResuming || checkingRoom) {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-3">
-        <div className="w-10 h-10 border-3 border-uno-red border-t-transparent rounded-full animate-spin" />
+        <div className="w-9 h-9 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-xs text-slate-400 font-medium">
           {activeRoomCode ? `Inspecting room ${activeRoomCode}...` : 'Inspecting invitation...'}
         </p>
@@ -185,15 +185,13 @@ export const JoinInvitePage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-700/80 shadow-2xl relative overflow-hidden"
+          className="p-6 sm:p-8 rounded-2xl bg-surface-card border border-white/[0.08] shadow-modal relative"
         >
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-uno-red via-uno-yellow to-uno-blue" />
-
           <div className="text-center mb-6 space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-uno-blue/10 border border-uno-blue/30 text-uno-blue mx-auto flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 mx-auto flex items-center justify-center">
               <KeyRound className="w-6 h-6" />
             </div>
-            <h2 className="font-display font-black text-2xl text-white">Enter Room Code</h2>
+            <h2 className="font-display font-bold text-2xl text-slate-100">Enter Room Code</h2>
             <p className="text-xs text-slate-400">
               Enter the 6-character room code from your friend or host to join their lobby.
             </p>
@@ -215,7 +213,7 @@ export const JoinInvitePage: React.FC = () => {
                 placeholder="e.g. AB12CD"
                 maxLength={6}
                 autoFocus
-                className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 font-mono text-center tracking-widest text-lg font-bold focus:outline-none focus:border-uno-yellow focus:ring-2 focus:ring-uno-yellow/40 uppercase"
+                className="w-full px-4 py-3 rounded-xl bg-surface-panel border border-white/[0.08] text-white placeholder-slate-600 font-mono text-center tracking-widest text-lg font-bold focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 uppercase"
               />
 
               {localError && (
@@ -228,7 +226,7 @@ export const JoinInvitePage: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3.5 px-6 rounded-xl font-display font-bold text-sm text-white bg-gradient-to-r from-uno-blue to-cyan-600 hover:from-blue-500 hover:to-cyan-500 shadow-glow transition-all flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-6 rounded-xl font-display font-bold text-sm text-white bg-blue-600 hover:bg-blue-500 shadow-card transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
             >
               <span>Continue to Room</span>
               <ArrowRight className="w-4 h-4" />
@@ -254,14 +252,14 @@ export const JoinInvitePage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="glass-panel p-8 rounded-3xl border border-slate-800 space-y-4"
+          className="p-8 rounded-2xl bg-surface-card border border-white/[0.08] shadow-modal space-y-4"
         >
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 mx-auto flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 mx-auto flex items-center justify-center">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <h2 className="font-display font-bold text-xl text-white">Invalid or Expired Invitation</h2>
+          <h2 className="font-display font-bold text-xl text-slate-100">Invalid or Expired Invitation</h2>
           <p className="text-xs text-slate-400 leading-relaxed">
-            The private room code <code className="text-uno-yellow font-mono font-bold">{activeRoomCode}</code> does not exist, has expired, or is no longer available.
+            The private room code <code className="text-amber-300 font-mono font-bold">{activeRoomCode}</code> does not exist, has expired, or is no longer available.
           </p>
           <div className="pt-2 space-y-2">
             <button
@@ -269,14 +267,14 @@ export const JoinInvitePage: React.FC = () => {
                 setManualInputCode('');
                 setIsManualEntryOpen(true);
               }}
-              className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-uno-blue/20 hover:bg-uno-blue/30 text-uno-blue border border-uno-blue/40 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-surface-panel hover:bg-surface-elevated text-slate-200 border border-white/[0.08] transition-colors flex items-center justify-center gap-2"
             >
               <KeyRound className="w-4 h-4" />
               <span>Enter Code Manually</span>
             </button>
             <button
               onClick={() => navigate('/')}
-              className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white transition-colors"
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-surface-panel hover:bg-surface-elevated text-slate-400 hover:text-white transition-colors"
             >
               Go to Home
             </button>
@@ -293,26 +291,26 @@ export const JoinInvitePage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="glass-panel p-8 rounded-3xl border border-slate-800 space-y-4"
+          className="p-8 rounded-2xl bg-surface-card border border-white/[0.08] shadow-modal space-y-4"
         >
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mx-auto flex items-center justify-center">
             <Play className="w-6 h-6" />
           </div>
-          <h2 className="font-display font-bold text-xl text-white">Match Already in Progress</h2>
+          <h2 className="font-display font-bold text-xl text-slate-100">Match Already in Progress</h2>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Room <code className="text-uno-yellow font-mono font-bold">{activeRoomCode}</code> is currently playing a match. New players cannot join once a game has started. Please wait for the match to finish or ask the host for a rematch link.
+            Room <code className="text-amber-300 font-mono font-bold">{activeRoomCode}</code> is currently playing a match. New players cannot join once a game has started. Please wait for the match to finish or ask the host for a rematch link.
           </p>
           <div className="pt-2 space-y-2">
             <button
               onClick={() => verifyRoom(activeRoomCode)}
-              className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-surface-panel hover:bg-surface-elevated text-amber-300 border border-amber-500/30 transition-colors flex items-center justify-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Check Again</span>
             </button>
             <button
               onClick={() => navigate('/')}
-              className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white transition-colors"
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-surface-panel hover:bg-surface-elevated text-slate-400 hover:text-white transition-colors"
             >
               Return to Home
             </button>
@@ -329,12 +327,12 @@ export const JoinInvitePage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="glass-panel p-8 rounded-3xl border border-slate-800 space-y-4"
+          className="p-8 rounded-2xl bg-surface-card border border-white/[0.08] shadow-modal space-y-4"
         >
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mx-auto flex items-center justify-center">
             <Users className="w-6 h-6" />
           </div>
-          <h2 className="font-display font-bold text-xl text-white">Room is Full</h2>
+          <h2 className="font-display font-bold text-xl text-slate-100">Room is Full</h2>
           <p className="text-xs text-slate-400 leading-relaxed">
             This private room has reached its maximum capacity of {roomMetadata.maxPlayers} players.
           </p>
@@ -344,14 +342,14 @@ export const JoinInvitePage: React.FC = () => {
                 setManualInputCode('');
                 setIsManualEntryOpen(true);
               }}
-              className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-uno-blue/20 hover:bg-uno-blue/30 text-uno-blue border border-uno-blue/40 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-surface-panel hover:bg-surface-elevated text-slate-200 border border-white/[0.08] transition-colors flex items-center justify-center gap-2"
             >
               <KeyRound className="w-4 h-4" />
               <span>Join Another Room</span>
             </button>
             <button
               onClick={() => navigate('/')}
-              className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white transition-colors"
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-surface-panel hover:bg-surface-elevated text-slate-400 hover:text-white transition-colors"
             >
               Return to Home
             </button>
@@ -370,33 +368,31 @@ export const JoinInvitePage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="glass-panel p-8 rounded-3xl border border-slate-700/80 shadow-2xl space-y-5 relative overflow-hidden"
+          className="p-8 rounded-2xl bg-surface-card border border-white/[0.08] shadow-modal space-y-5 relative"
         >
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-uno-green via-uno-yellow to-uno-blue" />
-
           {isJoiningRoom && !errorMsg ? (
             <>
-              <div className="w-12 h-12 rounded-2xl bg-uno-green/10 border border-uno-green/30 text-uno-green mx-auto flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center">
                 <Loader2 className="w-6 h-6 animate-spin" />
               </div>
-              <h2 className="font-display font-bold text-xl text-white">Entering Room...</h2>
+              <h2 className="font-display font-bold text-xl text-slate-100">Entering Room...</h2>
               <p className="text-xs text-slate-300">
-                Joining room <span className="font-mono font-bold text-uno-yellow">{activeRoomCode}</span> as{' '}
+                Joining room <span className="font-mono font-bold text-amber-300">{activeRoomCode}</span> as{' '}
                 <span className="font-bold text-white">{guest.username}</span>.
               </p>
             </>
           ) : errorMsg ? (
             <>
-              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 mx-auto flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 mx-auto flex items-center justify-center">
                 <AlertCircle className="w-6 h-6" />
               </div>
-              <h2 className="font-display font-bold text-xl text-white">Could Not Join Room</h2>
+              <h2 className="font-display font-bold text-xl text-slate-100">Could Not Join Room</h2>
               <p className="text-xs text-rose-300 leading-relaxed">{errorMsg}</p>
               <div className="pt-2 space-y-2">
                 <button
                   onClick={() => performJoin(activeRoomCode)}
                   disabled={isJoiningRoom}
-                  className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-gradient-to-r from-uno-green to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-glow transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 px-4 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-card transition-all flex items-center justify-center gap-2"
                 >
                   {isJoiningRoom ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   <span>Try Again</span>
@@ -407,7 +403,7 @@ export const JoinInvitePage: React.FC = () => {
                     setHasAttemptedAutoJoin(false);
                     setAutoJoinError(null);
                   }}
-                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-surface-panel hover:bg-surface-elevated text-slate-300 border border-white/[0.06] transition-colors"
                 >
                   Join as Different Player
                 </button>
@@ -421,17 +417,17 @@ export const JoinInvitePage: React.FC = () => {
             </>
           ) : (
             <>
-              <div className="w-12 h-12 rounded-2xl bg-uno-blue/10 border border-uno-blue/30 text-uno-blue mx-auto flex items-center justify-center">
-                <Sparkles className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 mx-auto flex items-center justify-center">
+                <Users className="w-6 h-6" />
               </div>
-              <h2 className="font-display font-bold text-xl text-white">Ready to Join</h2>
+              <h2 className="font-display font-bold text-xl text-slate-100">Ready to Join</h2>
               <p className="text-xs text-slate-300">
-                You are joining room <span className="font-mono font-bold text-uno-yellow">{activeRoomCode}</span> as{' '}
+                You are joining room <span className="font-mono font-bold text-amber-300">{activeRoomCode}</span> as{' '}
                 <span className="font-bold text-white">{guest.username}</span>.
               </p>
               <button
                 onClick={() => performJoin(activeRoomCode)}
-                className="w-full py-3.5 px-6 rounded-xl font-display font-bold text-sm text-white bg-gradient-to-r from-uno-green to-emerald-600 hover:from-green-500 hover:to-emerald-500 shadow-glow transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-6 rounded-xl font-display font-bold text-sm text-white bg-emerald-600 hover:bg-emerald-500 shadow-card transition-all flex items-center justify-center gap-2"
               >
                 <span>Enter Game Lobby</span>
                 <ArrowRight className="w-4 h-4" />
@@ -451,20 +447,18 @@ export const JoinInvitePage: React.FC = () => {
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-700/80 shadow-2xl relative overflow-hidden"
+        className="p-6 sm:p-8 rounded-2xl bg-surface-card border border-white/[0.08] shadow-modal relative"
       >
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-uno-red via-uno-yellow to-uno-blue" />
-
         <div className="text-center mb-6 space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-uno-blue/10 text-uno-blue border border-uno-blue/30">
-            <Sparkles className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <Users className="w-3.5 h-3.5" />
             <span>Private Room Invitation</span>
           </div>
 
-          <h2 className="font-display font-black text-2xl text-white">Join UNO Lobby</h2>
+          <h2 className="font-display font-bold text-2xl text-slate-100">Join UNO Lobby</h2>
           <p className="text-xs text-slate-400">
             You were invited to room{' '}
-            <span className="font-mono font-bold text-uno-yellow text-sm tracking-wider">
+            <span className="font-mono font-bold text-amber-300 text-sm tracking-wider">
               {activeRoomCode}
             </span>{' '}
             ({roomMetadata.playerCount}/{roomMetadata.maxPlayers} players)
@@ -487,7 +481,7 @@ export const JoinInvitePage: React.FC = () => {
               placeholder="e.g. CardPro, Alex"
               maxLength={USERNAME_RULES.MAX_LENGTH}
               autoFocus
-              className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-uno-yellow focus:ring-2 focus:ring-uno-yellow/40 text-sm"
+              className="w-full px-4 py-3 rounded-xl bg-surface-panel border border-white/[0.08] text-white placeholder-slate-600 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 text-sm"
             />
 
             {displayError && (
@@ -501,7 +495,7 @@ export const JoinInvitePage: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting || isJoiningRoom}
-            className="w-full py-3.5 px-6 rounded-xl font-display font-bold text-sm text-white bg-gradient-to-r from-uno-red to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-glow disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-6 rounded-xl font-display font-bold text-sm text-white bg-red-600 hover:bg-red-500 shadow-card disabled:opacity-50 transition-all flex items-center justify-center gap-2"
           >
             {isSubmitting || isJoiningRoom ? (
               <>

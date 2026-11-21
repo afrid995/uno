@@ -27,27 +27,24 @@ export const FlexCardChoiceModal: React.FC<FlexCardChoiceModalProps> = ({
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="glass-panel w-full max-w-md p-6 rounded-3xl border border-emerald-500/50 shadow-2xl relative overflow-hidden"
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          className="w-full max-w-md p-6 rounded-2xl bg-surface-card border border-white/[0.08] shadow-modal relative"
         >
-          {/* Top highlight bar */}
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500" />
-
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white bg-surface-panel hover:bg-surface-elevated border border-white/[0.06] transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
 
           <div className="text-center space-y-2 mb-6">
-            <div className="inline-flex p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mb-1">
-              <Zap className="w-8 h-8" />
+            <div className="inline-flex p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-1">
+              <Zap className="w-7 h-7" />
             </div>
-            <h3 className="font-display font-black text-2xl text-white tracking-tight">
+            <h3 className="font-display font-bold text-xl text-white tracking-tight">
               Play Regular or Flex?
             </h3>
             <p className="text-xs text-slate-400 max-w-xs mx-auto">
@@ -66,7 +63,7 @@ export const FlexCardChoiceModal: React.FC<FlexCardChoiceModalProps> = ({
               data-testid="flex-choice-regular"
               disabled={isLoading}
               onClick={onChooseRegular}
-              className="p-4 rounded-2xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-700/80 hover:border-slate-500 text-left transition-all group cursor-pointer disabled:opacity-50"
+              className="p-4 rounded-xl bg-surface-panel hover:bg-surface-elevated border border-white/[0.08] hover:border-white/[0.15] text-left transition-all group cursor-pointer disabled:opacity-50"
             >
               <div className="flex items-center gap-2 mb-1">
                 <CheckCircle2 className="w-4 h-4 text-slate-400 group-hover:text-white" />
@@ -82,11 +79,11 @@ export const FlexCardChoiceModal: React.FC<FlexCardChoiceModalProps> = ({
               data-testid="flex-choice-flex"
               disabled={isLoading}
               onClick={onChooseFlex}
-              className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/60 to-teal-950/60 hover:from-emerald-900/70 hover:to-teal-900/70 border border-emerald-500/80 hover:border-emerald-400 text-left transition-all shadow-glow-emerald group cursor-pointer disabled:opacity-50"
+              className="p-4 rounded-xl bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-500/60 hover:border-emerald-400 text-left transition-all shadow-card group cursor-pointer disabled:opacity-50"
             >
               <div className="flex items-center gap-2 mb-1">
-                <Zap className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300 animate-pulse" />
-                <span className="font-display font-bold text-sm text-emerald-300">Play Flex ⚡</span>
+                <Zap className="w-4 h-4 text-emerald-400 group-hover:text-emerald-300" />
+                <span className="font-display font-bold text-sm text-emerald-300">Play Flex</span>
               </div>
               <p className="text-[11px] text-slate-300 leading-tight">
                 Use flex color/action. Power Card flips to <strong className="text-rose-400">Red (Used)</strong>.

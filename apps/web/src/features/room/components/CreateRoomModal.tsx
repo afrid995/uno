@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Users, Sparkles, Loader2, PlusCircle } from 'lucide-react';
+import { X, Users, Loader2, PlusCircle } from 'lucide-react';
 import { ROOM_RULES } from '@uno-ultimate/shared';
 import { useRoomStore } from '../../../stores/roomStore';
 
@@ -59,37 +59,31 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="glass-panel w-full max-w-md max-h-[90vh] p-6 sm:p-8 rounded-3xl border border-slate-700/80 shadow-2xl relative overflow-y-auto overflow-x-hidden"
+          className="bg-surface-card w-full max-w-lg max-h-[90vh] p-6 sm:p-7 rounded-2xl border border-white/[0.08] shadow-modal relative overflow-y-auto overflow-x-hidden"
         >
-          {/* Header Accent */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-uno-red via-uno-yellow to-uno-blue" />
-
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-uno-red/10 border border-uno-red/30 flex items-center justify-center text-uno-red">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
                 <PlusCircle className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="font-display font-bold text-xl text-white">Create Private Room</h3>
-                <p className="text-xs text-slate-400">Host a game with your friends</p>
+                <p className="text-xs text-slate-400">Choose game rules and host your match</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-surface-elevated transition-colors border border-transparent hover:border-white/[0.06]"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <form onSubmit={handleCreate} className="space-y-6">
+          <form onSubmit={handleCreate} className="space-y-5">
             {/* Game Variant Selector */}
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               <label className="font-medium text-slate-300 flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-uno-yellow" />
-                  Game Variant
-                </span>
+                <span>Select Game Variant</span>
                 <span className="font-mono text-xs text-amber-400 font-bold uppercase">
                   {variant === 'classic'
                     ? 'Classic UNO'
@@ -107,15 +101,15 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                 </span>
               </label>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   data-testid="variant-select-classic"
                   onClick={() => handleSelectVariant('classic')}
-                  className={`p-3 rounded-2xl text-left border transition-all ${
+                  className={`p-3 rounded-xl text-left border transition-all ${
                     variant === 'classic'
-                      ? 'bg-gradient-to-br from-uno-red/20 to-uno-yellow/10 border-uno-red text-white shadow-glow'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                      ? 'bg-surface-elevated border-amber-400/90 text-white shadow-brass ring-1 ring-amber-400/30'
+                      : 'bg-surface-panel border-white/[0.06] text-slate-400 hover:border-white/[0.12] hover:text-white'
                   }`}
                 >
                   <div className="font-bold font-display text-sm text-white mb-0.5">Classic UNO</div>
@@ -128,15 +122,15 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                   type="button"
                   data-testid="variant-select-uno-flip"
                   onClick={() => handleSelectVariant('uno_flip')}
-                  className={`p-3 rounded-2xl text-left border transition-all ${
+                  className={`p-3 rounded-xl text-left border transition-all ${
                     variant === 'uno_flip'
-                      ? 'bg-gradient-to-br from-purple-600/30 to-teal-500/20 border-purple-400 text-white shadow-glow'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                      ? 'bg-surface-elevated border-amber-400/90 text-white shadow-brass ring-1 ring-amber-400/30'
+                      : 'bg-surface-panel border-white/[0.06] text-slate-400 hover:border-white/[0.12] hover:text-white'
                   }`}
                 >
                   <div className="font-bold font-display text-sm text-white mb-0.5 flex items-center gap-1.5">
                     UNO Flip!
-                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-500/30 text-purple-300 font-mono">112C</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-purple-500/20 text-purple-300 font-mono border border-purple-500/30">112C</span>
                   </div>
                   <div className="text-[11px] text-slate-400 leading-tight">
                     Dual-sided cards, Light &amp; Dark sides, Flip mechanic.
@@ -147,15 +141,15 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                   type="button"
                   data-testid="variant-select-no-mercy"
                   onClick={() => handleSelectVariant('uno_show_em_no_mercy')}
-                  className={`p-3 rounded-2xl text-left border transition-all ${
+                  className={`p-3 rounded-xl text-left border transition-all ${
                     variant === 'uno_show_em_no_mercy'
-                      ? 'bg-gradient-to-br from-rose-700/30 to-orange-600/20 border-rose-500 text-white shadow-glow'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                      ? 'bg-surface-elevated border-amber-400/90 text-white shadow-brass ring-1 ring-amber-400/30'
+                      : 'bg-surface-panel border-white/[0.06] text-slate-400 hover:border-white/[0.12] hover:text-white'
                   }`}
                 >
                   <div className="font-bold font-display text-sm text-white mb-0.5 flex items-center gap-1.5">
                     No Mercy
-                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500/30 text-rose-300 font-mono">168C</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500/20 text-rose-300 font-mono border border-rose-500/30">168C</span>
                   </div>
                   <div className="text-[11px] text-slate-400 leading-tight">
                     Mattel HWV18 rules (168 cards, stacking, 7-0 swaps, 25-card mercy).
@@ -166,15 +160,15 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                   type="button"
                   data-testid="variant-select-all-wild"
                   onClick={() => handleSelectVariant('uno_all_wild')}
-                  className={`p-3 rounded-2xl text-left border transition-all ${
+                  className={`p-3 rounded-xl text-left border transition-all ${
                     variant === 'uno_all_wild'
-                      ? 'bg-gradient-to-br from-indigo-700/30 to-fuchsia-600/20 border-indigo-400 text-white shadow-glow'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                      ? 'bg-surface-elevated border-amber-400/90 text-white shadow-brass ring-1 ring-amber-400/30'
+                      : 'bg-surface-panel border-white/[0.06] text-slate-400 hover:border-white/[0.12] hover:text-white'
                   }`}
                 >
                   <div className="font-bold font-display text-sm text-white mb-0.5 flex items-center gap-1.5">
                     All Wild
-                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-indigo-500/30 text-indigo-300 font-mono">112C</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-indigo-500/20 text-indigo-300 font-mono border border-indigo-500/30">112C</span>
                   </div>
                   <div className="text-[11px] text-slate-400 leading-tight">
                     Mattel HHL33 rules (112 cards, every card wild, targeted draw 2, forced swap).
@@ -185,15 +179,15 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                   type="button"
                   data-testid="variant-select-uno-flex"
                   onClick={() => handleSelectVariant('uno_flex')}
-                  className={`p-3 rounded-2xl text-left border transition-all ${
+                  className={`p-3 rounded-xl text-left border transition-all ${
                     variant === 'uno_flex'
-                      ? 'bg-gradient-to-br from-emerald-600/30 to-teal-500/20 border-emerald-400 text-white shadow-glow'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                      ? 'bg-surface-elevated border-amber-400/90 text-white shadow-brass ring-1 ring-amber-400/30'
+                      : 'bg-surface-panel border-white/[0.06] text-slate-400 hover:border-white/[0.12] hover:text-white'
                   }`}
                 >
                   <div className="font-bold font-display text-sm text-white mb-0.5 flex items-center gap-1.5">
                     UNO Flex
-                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/30 text-emerald-300 font-mono">112C</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/20 text-emerald-300 font-mono border border-emerald-500/30">112C</span>
                   </div>
                   <div className="text-[11px] text-slate-400 leading-tight">
                     Mattel HNB00 rules (112 cards, Power Cards, flex sides, flip mechanic).
@@ -204,15 +198,15 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                   type="button"
                   data-testid="variant-select-uno-teams"
                   onClick={() => handleSelectVariant('uno_teams')}
-                  className={`p-3 rounded-2xl text-left border transition-all ${
+                  className={`p-3 rounded-xl text-left border transition-all ${
                     variant === 'uno_teams'
-                      ? 'bg-gradient-to-br from-cyan-600/30 to-blue-500/20 border-cyan-400 text-white shadow-glow'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                      ? 'bg-surface-elevated border-amber-400/90 text-white shadow-brass ring-1 ring-amber-400/30'
+                      : 'bg-surface-panel border-white/[0.06] text-slate-400 hover:border-white/[0.12] hover:text-white'
                   }`}
                 >
                   <div className="font-bold font-display text-sm text-white mb-0.5 flex items-center gap-1.5">
                     UNO Teams
-                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-cyan-500/30 text-cyan-300 font-mono">112C</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-500/20 text-blue-300 font-mono border border-blue-500/30">112C</span>
                   </div>
                   <div className="text-[11px] text-slate-400 leading-tight">
                     Mattel HXT58 rules (112 cards, 2–4 teams of 2, passing symbol, Wild Team Play).
@@ -223,15 +217,15 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                   type="button"
                   data-testid="variant-select-uno-attack"
                   onClick={() => handleSelectVariant('uno_attack')}
-                  className={`p-3 rounded-2xl text-left border transition-all ${
+                  className={`p-3 rounded-xl text-left border transition-all ${
                     variant === 'uno_attack'
-                      ? 'bg-gradient-to-br from-rose-600/30 to-red-500/20 border-rose-400 text-white shadow-glow'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-white'
+                      ? 'bg-surface-elevated border-amber-400/90 text-white shadow-brass ring-1 ring-amber-400/30'
+                      : 'bg-surface-panel border-white/[0.06] text-slate-400 hover:border-white/[0.12] hover:text-white'
                   }`}
                 >
                   <div className="font-bold font-display text-sm text-white mb-0.5 flex items-center gap-1.5">
                     UNO Attack
-                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500/30 text-rose-300 font-mono">112C</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-rose-500/20 text-rose-300 font-mono border border-rose-500/30">112C</span>
                   </div>
                   <div className="text-[11px] text-slate-400 leading-tight">
                     Mattel GTX66 rules (112 cards, virtual launcher, Hit 2, Wild Hit 4, Discard All).
@@ -242,10 +236,9 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
 
             {/* UNO Attack Customizable Cards Option */}
             {variant === 'uno_attack' && (
-              <div className="space-y-2 p-3 rounded-2xl bg-slate-900/60 border border-slate-800">
+              <div className="space-y-2 p-3 rounded-xl bg-surface-panel border border-white/[0.06]">
                 <div className="flex justify-between items-center text-xs">
-                  <label className="font-medium text-slate-300 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <label className="font-medium text-slate-300">
                     Wild Customizable Cards (GTX66)
                   </label>
                   <span className="font-mono text-xs text-amber-400 font-bold">
@@ -261,8 +254,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                       onClick={() => setAttackCustomizableCount(count)}
                       className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                         attackCustomizableCount === count
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500 shadow-glow'
-                          : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-white'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-400/80 shadow-brass'
+                          : 'bg-surface-elevated text-slate-400 border-white/[0.06] hover:border-white/[0.12] hover:text-white'
                       }`}
                     >
                       {count === 1 ? '1 Card (110 Cards)' : '3 Cards (112 Cards)'}
@@ -276,18 +269,18 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
             )}
 
             {/* Max Players Selector */}
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               <div className="flex justify-between items-center text-xs">
                 <label className="font-medium text-slate-300 flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-uno-yellow" />
+                  <Users className="w-3.5 h-3.5 text-amber-400" />
                   Player Capacity
                 </label>
-                <span className="font-mono text-sm text-uno-yellow font-bold">
+                <span className="font-mono text-xs text-amber-400 font-bold">
                   {maxPlayers} Players
                 </span>
               </div>
 
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-1.5">
                 {(variant === 'uno_show_em_no_mercy'
                   ? [2, 3, 4, 5, 6]
                   : variant === 'uno_flex'
@@ -300,10 +293,10 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                     key={num}
                     type="button"
                     onClick={() => setMaxPlayers(num)}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold font-display border transition-all ${
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold font-display border transition-all ${
                       maxPlayers === num
-                        ? 'bg-uno-red text-white border-uno-red shadow-glow'
-                        : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-white'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-400/80 shadow-brass'
+                        : 'bg-surface-panel text-slate-400 border-white/[0.06] hover:border-white/[0.12] hover:text-white'
                     }`}
                   >
                     {num}
@@ -333,7 +326,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-900 border border-slate-800 hover:bg-slate-800 transition-colors"
+                className="flex-1 py-3 px-4 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-surface-elevated border border-white/[0.08] hover:bg-surface-highlight transition-colors"
               >
                 Cancel
               </button>
@@ -341,7 +334,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                 type="submit"
                 data-testid="confirm-create-room-btn"
                 disabled={isLoading}
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold font-display text-white bg-gradient-to-r from-uno-red to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-glow disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold font-display text-white bg-red-600 hover:bg-red-500 active:bg-red-700 border border-red-500/30 shadow-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isLoading ? (
                   <>
@@ -349,10 +342,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                     <span>Creating...</span>
                   </>
                 ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    <span>Create Room</span>
-                  </>
+                  <span>Create Room</span>
                 )}
               </button>
             </div>

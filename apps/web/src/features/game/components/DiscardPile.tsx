@@ -37,12 +37,12 @@ export const DiscardPile: React.FC<DiscardPileProps> = ({
       </div>
 
       {/* Active Color Badge */}
-      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-700/80 shadow-md">
-        <div className={`w-3 h-3 rounded-full ${activeColorBadge.bg} ring-2 ${activeColorBadge.ring}`} />
-        <span className="text-[11px] font-bold text-slate-200 capitalize tracking-wide">
+      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-card/95 border border-white/[0.08] shadow-card">
+        <div className={`w-2.5 h-2.5 rounded-full ${activeColorBadge.bg} ring-2 ${activeColorBadge.ring}`} />
+        <span className="text-[11px] font-bold text-slate-200 capitalize tracking-wide font-display">
           {activeColorBadge.text}
         </span>
-        <span className="text-[10px] text-slate-500 font-medium ml-1">
+        <span className="text-[10px] text-slate-400 font-mono ml-1">
           ({discardCount})
         </span>
       </div>

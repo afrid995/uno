@@ -27,139 +27,126 @@ export const DashboardView: React.FC = () => {
   });
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 py-8 space-y-8">
+    <div className="w-full max-w-4xl mx-auto px-4 py-8 space-y-6">
       {/* Welcome Hero Banner */}
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="glass-panel p-6 sm:p-8 rounded-3xl relative overflow-hidden"
+        transition={{ duration: 0.3 }}
+        className="bg-surface-card border border-white/[0.08] p-6 sm:p-8 rounded-2xl shadow-card"
       >
-        <div className="absolute top-0 right-0 -mt-12 -mr-12 w-48 h-48 bg-uno-red/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -mb-12 -ml-12 w-48 h-48 bg-uno-blue/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 Guest Session Active
               </span>
               <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" />
+                <Clock className="w-3.5 h-3.5 text-slate-500" />
                 Valid until {formattedExpiration}
               </span>
             </div>
 
-            <h1 className="font-display font-black text-3xl sm:text-4xl text-white tracking-tight">
-              Welcome, <span className="bg-gradient-to-r from-red-400 via-amber-300 to-blue-400 bg-clip-text text-transparent">{guest.username}</span>!
+            <h1 className="font-display font-extrabold text-3xl sm:text-4xl text-white tracking-tight">
+              Welcome, <span className="text-amber-400">{guest.username}</span>!
             </h1>
-            <p className="text-sm text-slate-400 mt-2 max-w-xl">
-              Your server-validated session is ready. Create a private room or enter a code to join your friends.
+            <p className="text-sm text-slate-400 mt-2 max-w-xl leading-relaxed">
+              Your session is active. Create a private room to host or enter a 6-character room code to join your friends.
             </p>
           </div>
 
           {/* Guest ID Box */}
-          <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-4 w-full sm:w-auto min-w-[240px]">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">
+          <div className="bg-surface-panel border border-white/[0.06] rounded-xl p-4 w-full sm:w-auto min-w-[220px]">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 block mb-1">
               Guest Identity ID
             </span>
             <div className="flex items-center justify-between gap-2">
-              <code className="text-xs font-mono text-uno-yellow truncate max-w-[170px]" title={guest.id}>
+              <code className="text-xs font-mono text-amber-300 truncate max-w-[160px]" title={guest.id}>
                 {guest.id}
               </code>
               <button
                 onClick={copyGuestId}
                 aria-label="Copy Guest ID"
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                className="p-1.5 rounded-lg bg-surface-elevated hover:bg-surface-highlight text-slate-300 hover:text-white transition-colors border border-white/[0.06]"
                 title="Copy full Guest ID"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">Server-generated identity key</p>
+            <p className="text-[10px] text-slate-500 mt-1">Temporary authentication key</p>
           </div>
         </div>
       </motion.div>
 
       {/* Main Room Actions Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Create Private Room Card */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="glass-panel rounded-3xl p-6 sm:p-8 flex flex-col justify-between border-slate-800 relative group hover:border-uno-red/40 transition-colors"
+          transition={{ duration: 0.3, delay: 0.05 }}
+          className="bg-surface-card border border-white/[0.08] rounded-2xl p-6 sm:p-7 flex flex-col justify-between shadow-card hover:border-red-500/30 transition-colors"
         >
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-uno-red/10 border border-uno-red/30 flex items-center justify-center text-uno-red">
-                <PlusCircle className="w-6 h-6" />
-              </div>
-              <span className="text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-uno-red/10 border border-uno-red/30 text-uno-red">
-                Phase 2 Ready
-              </span>
+            <div className="w-11 h-11 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-4">
+              <PlusCircle className="w-5 h-5" />
             </div>
 
-            <h3 className="font-display font-bold text-xl text-white mb-2 flex items-center gap-2">
+            <h3 className="font-display font-bold text-xl text-white mb-2">
               Create Private Room
             </h3>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Generate a secure 6-character room code or instant invitation link to host a match exclusively with your friends.
+              Host a match with your preferred UNO variant, customize player limits, and share an instant invite link with friends.
             </p>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-slate-800/80">
+          <div className="mt-8 pt-5 border-t border-white/[0.06]">
             <button
               data-testid="create-room-btn"
               onClick={() => setIsCreateModalOpen(true)}
-              className="w-full py-3.5 px-4 rounded-xl font-display font-bold text-sm tracking-wide text-white bg-gradient-to-r from-uno-red to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-glow transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3.5 px-4 rounded-xl font-display font-bold text-sm tracking-wide text-white bg-red-600 hover:bg-red-500 active:bg-red-700 shadow-sm border border-red-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
               <span>Create Room</span>
             </button>
             <p className="text-[11px] text-center text-slate-500 mt-2">
-              Instant link and code generated upon creation
+              6-character code generated automatically
             </p>
           </div>
         </motion.div>
 
         {/* Join Room Card */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="glass-panel rounded-3xl p-6 sm:p-8 flex flex-col justify-between border-slate-800 relative group hover:border-uno-blue/40 transition-colors"
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="bg-surface-card border border-white/[0.08] rounded-2xl p-6 sm:p-7 flex flex-col justify-between shadow-card hover:border-blue-500/30 transition-colors"
         >
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-uno-blue/10 border border-uno-blue/30 flex items-center justify-center text-uno-blue">
-                <LogIn className="w-6 h-6" />
-              </div>
-              <span className="text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-uno-blue/10 border border-uno-blue/30 text-uno-blue">
-                Phase 2 Ready
-              </span>
+            <div className="w-11 h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-4">
+              <LogIn className="w-5 h-5" />
             </div>
 
-            <h3 className="font-display font-bold text-xl text-white mb-2 flex items-center gap-2">
+            <h3 className="font-display font-bold text-xl text-white mb-2">
               Join Private Room
             </h3>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Enter a friend's 6-character code to enter the private lobby. Zero matchmaking, no strangers, just your group.
+              Enter a friend's room code or follow their direct invite link to enter the private waiting lobby.
             </p>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-slate-800/80">
+          <div className="mt-8 pt-5 border-t border-white/[0.06]">
             <button
               data-testid="join-room-btn"
               onClick={() => setIsJoinModalOpen(true)}
-              className="w-full py-3.5 px-4 rounded-xl font-display font-bold text-sm tracking-wide text-white bg-gradient-to-r from-uno-blue to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-glow-blue transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3.5 px-4 rounded-xl font-display font-bold text-sm tracking-wide text-white bg-surface-elevated hover:bg-surface-highlight text-slate-100 hover:text-white border border-white/[0.12] transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <LogIn className="w-4 h-4" />
+              <LogIn className="w-4 h-4 text-slate-300" />
               <span>Join Room</span>
             </button>
             <p className="text-[11px] text-center text-slate-500 mt-2">
-              Enter 6-character code or click an invite link
+              Paste code or accept invitation URL
             </p>
           </div>
         </motion.div>
@@ -169,8 +156,8 @@ export const DashboardView: React.FC = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.3 }}
-        className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400 space-y-2"
+        transition={{ duration: 0.3, delay: 0.15 }}
+        className="p-5 rounded-2xl bg-surface-panel border border-white/[0.06] text-xs text-slate-400 space-y-2"
       >
         <div className="flex items-center gap-2 text-slate-200 font-semibold">
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -179,10 +166,10 @@ export const DashboardView: React.FC = () => {
         <p className="leading-relaxed">
           UNO Ultimate runs an authoritative server architecture. The game state, deck shuffling, and card deal order remain strictly concealed on the server. Clients receive only their own private cards and public opponent card counts, rendering card-peeking and client-side manipulation impossible.
         </p>
-        <div className="pt-2 flex flex-wrap gap-4 text-[11px] text-slate-400">
-          <span>✓ Real-Time Socket.IO Lobby Presence</span>
-          <span>✓ 30-Second Reconnection Grace Period</span>
-          <span>✓ Deterministic Host Transfer</span>
+        <div className="pt-1 flex flex-wrap gap-4 text-[11px] text-slate-400">
+          <span className="text-emerald-400/90">✓ Real-Time Socket.IO Lobby Presence</span>
+          <span className="text-emerald-400/90">✓ 30-Second Reconnection Grace Period</span>
+          <span className="text-emerald-400/90">✓ Deterministic Host Transfer</span>
         </div>
       </motion.div>
 

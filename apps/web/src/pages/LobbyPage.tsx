@@ -6,7 +6,6 @@ import {
   LogOut,
   Play,
   CheckCircle2,
-  Sparkles,
   Info,
   Loader2,
 } from 'lucide-react';
@@ -172,16 +171,16 @@ export const LobbyPage: React.FC = () => {
         {isStarting && (
           <motion.div
             data-testid="starting-countdown-banner"
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="p-6 rounded-3xl bg-gradient-to-r from-red-600 via-amber-500 to-blue-600 text-white text-center shadow-glow mb-6"
+            className="p-6 rounded-2xl bg-surface-card border border-amber-500/40 text-white text-center shadow-brass mb-6"
           >
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Sparkles className="w-5 h-5 text-yellow-300" />
-              <h2 className="font-display font-black text-2xl tracking-tight">Starting Game Match</h2>
+            <div className="flex items-center justify-center gap-2 mb-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+              <h2 className="font-display font-bold text-xl sm:text-2xl text-amber-200 tracking-tight">Starting Game Match</h2>
             </div>
-            <p className="text-sm text-white/90">
+            <p className="text-sm text-slate-300 max-w-lg mx-auto">
               Match countdown initiated ({startingCountdown}s). Preparing the {roomVariant === 'uno_show_em_no_mercy' ? '168-card' : roomVariant === 'uno_all_wild' ? '112-card all-wild' : roomVariant === 'uno_flex' ? '112-card flex' : roomVariant === 'uno_teams' ? '112-card teams' : roomVariant === 'uno_attack' ? `${Number((room.settings as Record<string, unknown>)?.attackCustomizableCount) === 1 ? '110-card' : '112-card'} attack` : roomVariant === 'uno_flip' ? '112-card dual-sided' : '108-card'} deck and dealing hands...
             </p>
           </motion.div>
@@ -192,13 +191,13 @@ export const LobbyPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               Lobby Active
             </span>
-            <span className="text-xs text-slate-400 font-medium">Revision v{room.version}</span>
+            <span className="text-xs text-slate-500 font-mono">v{room.version}</span>
           </div>
-          <h1 className="font-display font-black text-2xl sm:text-3xl text-white tracking-tight mt-1">
+          <h1 className="font-display font-bold text-2xl sm:text-3xl text-slate-100 tracking-tight mt-1.5">
             Private Game Lobby
           </h1>
         </div>
@@ -208,39 +207,39 @@ export const LobbyPage: React.FC = () => {
           <ChatToggleButton />
 
           {/* Player count indicator */}
-          <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-xs text-slate-300">
-            <Users className="w-4 h-4 text-uno-blue" />
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-surface-card border border-white/[0.08] text-xs text-slate-300">
+            <Users className="w-4 h-4 text-slate-400" />
             <span className="font-bold font-mono text-white">
               {room.playerCount} / {room.maxPlayers}
             </span>
-            <span className="text-slate-500">Players</span>
+            <span className="text-slate-400">Players</span>
           </div>
         </div>
       </div>
 
       {/* Game Variant Banner / Selector */}
-      <div className="glass-panel p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div className="p-4 rounded-2xl bg-surface-card border border-white/[0.08] shadow-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs ${
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs tracking-wider ${
             roomVariant === 'uno_show_em_no_mercy'
-              ? 'bg-rose-950/60 text-rose-400 border border-rose-600/40'
+              ? 'bg-rose-950/70 text-rose-300 border border-rose-700/50'
               : roomVariant === 'uno_all_wild'
-              ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+              ? 'bg-purple-950/70 text-purple-300 border border-purple-700/50'
               : roomVariant === 'uno_flex'
-              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+              ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-700/50'
               : roomVariant === 'uno_teams'
-              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+              ? 'bg-cyan-950/70 text-cyan-300 border border-cyan-700/50'
               : roomVariant === 'uno_attack'
-              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+              ? 'bg-red-950/70 text-red-300 border border-red-700/50'
               : roomVariant === 'uno_flip'
-              ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-              : 'bg-uno-red/20 text-uno-red border border-uno-red/30'
+              ? 'bg-indigo-950/70 text-indigo-300 border border-indigo-700/50'
+              : 'bg-red-950/70 text-red-300 border border-red-700/50'
           }`}>
             {roomVariant === 'uno_show_em_no_mercy' ? 'MERCY' : roomVariant === 'uno_all_wild' ? 'WILD' : roomVariant === 'uno_flex' ? 'FLEX' : roomVariant === 'uno_teams' ? 'TEAMS' : roomVariant === 'uno_attack' ? 'ATTACK' : roomVariant === 'uno_flip' ? 'FLIP' : 'UNO'}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-white font-display">
+              <span className="font-bold text-sm text-slate-100 font-display">
                 {roomVariant === 'uno_show_em_no_mercy'
                   ? "UNO Show 'em No Mercy"
                   : roomVariant === 'uno_all_wild'
@@ -255,20 +254,20 @@ export const LobbyPage: React.FC = () => {
                   ? 'UNO Flip!'
                   : 'Classic UNO'}
               </span>
-              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${
                 roomVariant === 'uno_show_em_no_mercy'
                   ? 'bg-rose-950/80 text-rose-300 border border-rose-700/60'
                   : roomVariant === 'uno_all_wild'
-                  ? 'bg-indigo-900/60 text-indigo-300 border border-indigo-700/50'
+                  ? 'bg-purple-900/60 text-purple-300 border border-purple-700/50'
                   : roomVariant === 'uno_flex'
                   ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50'
                   : roomVariant === 'uno_teams'
                   ? 'bg-cyan-900/60 text-cyan-300 border border-cyan-700/50'
                   : roomVariant === 'uno_attack'
-                  ? 'bg-rose-900/60 text-rose-300 border border-rose-700/50'
+                  ? 'bg-red-900/60 text-red-300 border border-red-700/50'
                   : roomVariant === 'uno_flip'
-                  ? 'bg-purple-900/60 text-purple-300 border border-purple-700/50'
-                  : 'bg-red-950/60 text-rose-300 border border-rose-800/50'
+                  ? 'bg-indigo-900/60 text-indigo-300 border border-indigo-700/50'
+                  : 'bg-red-950/60 text-red-300 border border-red-800/50'
               }`}>
                 {roomVariant === 'uno_show_em_no_mercy'
                   ? '168 CARDS • MAX 6'
@@ -304,17 +303,17 @@ export const LobbyPage: React.FC = () => {
         </div>
 
         {isCurrentPlayerHost && (
-          <div className="flex items-center gap-2 self-stretch sm:self-auto flex-wrap">
+          <div className="flex items-center gap-1.5 self-stretch sm:self-auto flex-wrap">
             <span className="text-xs text-slate-400 mr-1 hidden sm:inline">Change:</span>
             <button
               type="button"
               data-testid="lobby-toggle-classic"
               disabled={roomVariant === 'classic'}
               onClick={() => updateSettings({ variant: 'classic' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 roomVariant === 'classic'
-                  ? 'bg-uno-red text-white shadow-glow'
-                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >
               Classic
@@ -324,10 +323,10 @@ export const LobbyPage: React.FC = () => {
               data-testid="lobby-toggle-flip"
               disabled={roomVariant === 'uno_flip'}
               onClick={() => updateSettings({ variant: 'uno_flip' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 roomVariant === 'uno_flip'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-glow'
-                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >
               UNO Flip!
@@ -337,10 +336,10 @@ export const LobbyPage: React.FC = () => {
               data-testid="lobby-toggle-no-mercy"
               disabled={roomVariant === 'uno_show_em_no_mercy'}
               onClick={() => updateSettings({ variant: 'uno_show_em_no_mercy' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 roomVariant === 'uno_show_em_no_mercy'
-                  ? 'bg-gradient-to-r from-rose-700 to-red-600 text-white shadow-glow'
-                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >
               No Mercy
@@ -350,10 +349,10 @@ export const LobbyPage: React.FC = () => {
               data-testid="lobby-toggle-all-wild"
               disabled={roomVariant === 'uno_all_wild'}
               onClick={() => updateSettings({ variant: 'uno_all_wild' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 roomVariant === 'uno_all_wild'
-                  ? 'bg-gradient-to-r from-indigo-700 to-fuchsia-600 text-white shadow-glow'
-                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >
               All Wild
@@ -363,10 +362,10 @@ export const LobbyPage: React.FC = () => {
               data-testid="lobby-toggle-flex"
               disabled={roomVariant === 'uno_flex'}
               onClick={() => updateSettings({ variant: 'uno_flex' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 roomVariant === 'uno_flex'
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-glow'
-                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >
               UNO Flex
@@ -376,10 +375,10 @@ export const LobbyPage: React.FC = () => {
               data-testid="lobby-toggle-teams"
               disabled={roomVariant === 'uno_teams'}
               onClick={() => updateSettings({ variant: 'uno_teams' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 roomVariant === 'uno_teams'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-glow'
-                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >
               UNO Teams
@@ -389,10 +388,10 @@ export const LobbyPage: React.FC = () => {
               data-testid="lobby-toggle-attack"
               disabled={roomVariant === 'uno_attack'}
               onClick={() => updateSettings({ variant: 'uno_attack' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 roomVariant === 'uno_attack'
-                  ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-glow'
-                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >
               UNO Attack
@@ -431,20 +430,20 @@ export const LobbyPage: React.FC = () => {
       </div>
 
       {/* Player Actions & Host Controls Bar */}
-      <div className="glass-panel p-5 sm:p-6 rounded-3xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="p-5 sm:p-6 rounded-2xl bg-surface-card border border-white/[0.08] shadow-card flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3 w-full sm:w-auto">
           {confirmLeave ? (
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <span className="text-xs text-rose-400 font-medium">Leave room?</span>
               <button
                 onClick={handleLeave}
-                className="py-2.5 px-4 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition-colors"
+                className="py-2.5 px-4 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition-colors shadow-card"
               >
                 Yes, Leave
               </button>
               <button
                 onClick={() => setConfirmLeave(false)}
-                className="py-2.5 px-3 rounded-xl text-xs bg-slate-800 text-slate-300 hover:text-white"
+                className="py-2.5 px-3 rounded-xl text-xs bg-surface-panel text-slate-300 hover:text-white border border-white/[0.06]"
               >
                 Cancel
               </button>
@@ -452,7 +451,7 @@ export const LobbyPage: React.FC = () => {
           ) : (
             <button
               onClick={() => setConfirmLeave(true)}
-              className="py-3 px-4 rounded-xl text-xs font-semibold text-slate-400 hover:text-rose-400 bg-slate-900/80 hover:bg-rose-500/10 border border-slate-800 hover:border-rose-500/30 transition-all flex items-center justify-center gap-2 w-full sm:w-auto"
+              className="py-3 px-4 rounded-xl text-xs font-semibold text-slate-400 hover:text-rose-400 bg-surface-panel hover:bg-rose-500/10 border border-white/[0.06] hover:border-rose-500/30 transition-all flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               <LogOut className="w-4 h-4" />
               <span>Leave Room</span>
@@ -466,10 +465,10 @@ export const LobbyPage: React.FC = () => {
             <button
               data-testid="ready-toggle-btn"
               onClick={handleReadyToggle}
-              className={`py-3.5 px-6 rounded-xl font-display font-bold text-xs tracking-wide transition-all shadow-lg flex items-center justify-center gap-2 w-full sm:w-auto ${
+              className={`py-3.5 px-6 rounded-xl font-display font-bold text-xs tracking-wide transition-all shadow-card flex items-center justify-center gap-2 w-full sm:w-auto ${
                 isCurrentPlayerReady
-                  ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-glow-green border border-emerald-400/40'
+                  ? 'bg-surface-panel text-slate-300 hover:bg-surface-elevated border border-white/[0.1]'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/30'
               }`}
             >
               <CheckCircle2 className="w-4 h-4" />
@@ -484,12 +483,12 @@ export const LobbyPage: React.FC = () => {
                 data-testid="start-game-btn"
                 onClick={handleStartGame}
                 disabled={!canStartMatch || isStarting}
-                className={`py-3.5 px-7 rounded-xl font-display font-bold text-xs tracking-wide transition-all shadow-xl flex items-center justify-center gap-2 w-full sm:w-auto select-none ${
+                className={`py-3.5 px-7 rounded-xl font-display font-bold text-xs tracking-wide transition-all shadow-card flex items-center justify-center gap-2 w-full sm:w-auto select-none ${
                   isStarting
-                    ? 'bg-slate-800 text-amber-400 border border-amber-500/40 cursor-wait'
+                    ? 'bg-surface-panel text-amber-400 border border-amber-500/40 cursor-wait'
                     : canStartMatch
-                    ? 'bg-gradient-to-r from-uno-red via-rose-600 to-uno-yellow text-white shadow-glow hover:scale-[1.02] cursor-pointer'
-                    : 'bg-slate-800/80 border border-slate-700 text-slate-500 cursor-not-allowed'
+                    ? 'bg-red-600 hover:bg-red-500 text-white border border-red-500/50 hover:border-red-400 cursor-pointer active:scale-[0.98]'
+                    : 'bg-surface-panel/80 border border-white/[0.06] text-slate-500 cursor-not-allowed'
                 }`}
               >
                 {isStarting ? (
@@ -518,13 +517,13 @@ export const LobbyPage: React.FC = () => {
       </div>
 
       {/* Fair Play & Official Rules Notice */}
-      <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 flex items-start gap-3 text-xs text-slate-400">
-        <Info className="w-4 h-4 text-uno-blue shrink-0 mt-0.5" />
+      <div className="p-4 rounded-2xl bg-surface-card border border-white/[0.06] flex items-start gap-3 text-xs text-slate-400">
+        <Info className="w-4 h-4 text-amber-400/80 shrink-0 mt-0.5" />
         <div className="space-y-1">
           <p className="font-semibold text-slate-200">
             {roomVariant === 'uno_flip' ? 'Server-Authoritative UNO Flip!' : 'Server-Authoritative Classic UNO'}
           </p>
-          <p className="text-[11px] leading-relaxed">
+          <p className="text-[11px] leading-relaxed text-slate-400">
             {roomVariant === 'uno_flip'
               ? 'Official Mattel GDR44 rules: 112 dual-sided cards, Light & Dark sides, Flip card, Draw 1 / Draw 5, Skip Everyone, Wild Draw Two / Wild Draw Color challenges, and 2-card missed UNO penalties.'
               : 'Official Mattel 42001 rules: 108-card deck, non-wild starting card enforcement, UNO declarations & 4-card challenge penalties, Wild Draw Four challenge/accept lifecycles, and multi-round scoring to 500 points.'}

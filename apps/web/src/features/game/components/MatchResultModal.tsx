@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../../stores/gameStore';
 import { useRoomStore } from '../../../stores/roomStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, Trophy } from 'lucide-react';
 
 export const MatchResultModal: React.FC = () => {
   const navigate = useNavigate();
@@ -47,25 +47,21 @@ export const MatchResultModal: React.FC = () => {
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
         <motion.div
           data-testid="match-result-modal"
-          initial={{ opacity: 0, scale: 0.85, y: 30 }}
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.85, y: 30 }}
-          className="w-full max-w-lg rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 p-6 sm:p-8 shadow-2xl text-center relative overflow-hidden"
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          className="w-full max-w-lg rounded-2xl border border-white/[0.08] bg-surface-card p-6 sm:p-8 shadow-modal text-center relative"
         >
-          {/* Decorative background glow */}
-          <div className="absolute -top-20 -left-20 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-20 -right-20 w-48 h-48 bg-rose-500/20 rounded-full blur-3xl pointer-events-none" />
-
           {/* Trophy Icon */}
-          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 flex items-center justify-center text-4xl shadow-xl shadow-amber-500/30 ring-4 ring-amber-400/30">
-            🏆
+          <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-amber-400 flex items-center justify-center shadow-brass">
+            <Trophy className="w-9 h-9 text-slate-950" />
           </div>
 
-          <div className="inline-block px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black uppercase tracking-widest mb-2">
+          <div className="inline-block px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-xs font-bold uppercase tracking-widest mb-2 font-display">
             Match Finished
           </div>
 
-          <h2 className="text-3xl font-black text-white tracking-tight mb-2">
+          <h2 className="text-3xl font-bold text-white tracking-tight mb-2 font-display">
             {winnerName} is the Champion!
           </h2>
 
@@ -74,27 +70,27 @@ export const MatchResultModal: React.FC = () => {
           </p>
 
           {/* Leaderboard */}
-          <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 mb-6 space-y-2">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left mb-3">
+          <div className="bg-surface-panel rounded-xl p-4 border border-white/[0.06] mb-6 space-y-2">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left mb-3 font-display">
               Final Standings
             </h4>
             {sortedPlayers.map((p, idx) => {
               const isWinner = idx === 0;
-              const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+              const rankLabel = `#${idx + 1}`;
 
               return (
                 <div
                   key={p.id}
                   className={`flex items-center justify-between p-2.5 rounded-xl text-sm ${
                     isWinner
-                      ? 'bg-amber-500/15 border border-amber-500/40 font-bold text-amber-300'
-                      : 'bg-slate-900/50 text-slate-300'
+                      ? 'bg-amber-400/15 border border-amber-400/40 font-bold text-amber-300 shadow-brass'
+                      : 'bg-surface-card text-slate-300 border border-white/[0.04]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-base font-bold min-w-6">{medal}</span>
+                    <span className="text-xs font-mono font-bold min-w-6 text-slate-400">{rankLabel}</span>
                     <span className="truncate">
-                      {p.username} {p.id === gameState.self.id && '(you)'}
+                      {p.username} {p.id === gameState.self.id && <span className="text-amber-400/90 font-mono font-normal">(you)</span>}
                     </span>
                   </div>
                   <div className="flex flex-col items-end">
@@ -127,7 +123,7 @@ export const MatchResultModal: React.FC = () => {
                 onClick={handlePlayAgain}
                 disabled={isStarting}
                 data-testid="match-result-play-again"
-                className="w-full py-3.5 px-6 rounded-xl font-black text-slate-950 bg-gradient-to-r from-emerald-400 via-green-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 active:scale-95 transition-all text-sm shadow-lg shadow-emerald-400/25 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                className="w-full py-3.5 px-6 rounded-xl font-bold font-display text-white bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all text-sm shadow-card border border-emerald-400/40 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
               >
                 {isStarting ? (
                   <>
@@ -141,7 +137,7 @@ export const MatchResultModal: React.FC = () => {
             ) : (
               <div
                 data-testid="match-result-waiting-host"
-                className="w-full py-2.5 px-4 rounded-xl bg-slate-800/50 border border-slate-700/60 text-xs text-slate-400 font-medium"
+                className="w-full py-2.5 px-4 rounded-xl bg-surface-panel border border-white/[0.06] text-xs text-slate-400 font-medium font-mono"
               >
                 Waiting for host to start Play Again...
               </div>
@@ -151,14 +147,14 @@ export const MatchResultModal: React.FC = () => {
               <button
                 onClick={handleExitToHome}
                 data-testid="match-result-back-home"
-                className="flex-1 py-3 px-6 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 active:scale-95 transition-all text-sm shadow-lg shadow-amber-400/20"
+                className="flex-1 py-3 px-6 rounded-xl font-bold font-display text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-95 transition-all text-sm shadow-card cursor-pointer"
               >
                 Back to Home
               </button>
               <button
                 onClick={handleExitToHome}
                 data-testid="match-result-main-menu"
-                className="py-3 px-6 rounded-xl font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all text-sm"
+                className="py-3 px-6 rounded-xl font-semibold text-slate-300 hover:text-white bg-surface-panel hover:bg-surface-elevated border border-white/[0.06] active:scale-95 transition-all text-sm cursor-pointer"
               >
                 Main Menu
               </button>

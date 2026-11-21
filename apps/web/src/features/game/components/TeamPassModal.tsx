@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@uno-ultimate/game-protocol';
-import { ArrowLeftRight, Users, Sparkles } from 'lucide-react';
+import { ArrowLeftRight, Users, Share2 } from 'lucide-react';
 import { PlayingCard } from './PlayingCard';
 
 export interface TeamPassModalProps {
@@ -70,25 +70,22 @@ export const TeamPassModal: React.FC<TeamPassModalProps> = ({
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md"
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="glass-panel w-full max-w-lg p-6 rounded-3xl border border-cyan-500/50 shadow-2xl relative overflow-hidden"
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          className="w-full max-w-lg p-6 rounded-2xl bg-surface-card border border-white/[0.08] shadow-modal relative"
         >
-          {/* Top highlight bar */}
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500" />
-
           <div className="text-center space-y-2 mb-5">
-            <div className="inline-flex p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 mb-1">
+            <div className="inline-flex p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 mb-1">
               {mode === 'INITIAL_PASS' ? (
-                <Users className="w-8 h-8" />
+                <Users className="w-7 h-7" />
               ) : mode === 'PASSING_SYMBOL' ? (
-                <ArrowLeftRight className="w-8 h-8" />
+                <ArrowLeftRight className="w-7 h-7" />
               ) : (
-                <Sparkles className="w-8 h-8" />
+                <Share2 className="w-7 h-7" />
               )}
             </div>
-            <h3 className="font-display font-black text-2xl text-white tracking-tight">
+            <h3 className="font-display font-bold text-xl text-white tracking-tight">
               {title}
             </h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
@@ -101,7 +98,7 @@ export const TeamPassModal: React.FC<TeamPassModalProps> = ({
           </div>
 
           {/* Cards to choose from */}
-          <div className="flex flex-wrap justify-center gap-2 max-h-60 overflow-y-auto p-2 bg-slate-900/60 rounded-2xl border border-slate-800">
+          <div className="flex flex-wrap justify-center gap-2 max-h-60 overflow-y-auto p-2 bg-surface-panel rounded-xl border border-white/[0.06]">
             {hand.map((card) => {
               const isSelected = selectedCardIds.includes(card.id);
               return (
@@ -111,7 +108,7 @@ export const TeamPassModal: React.FC<TeamPassModalProps> = ({
                   onClick={() => toggleSelectCard(card.id)}
                   className={`cursor-pointer transition-all rounded-xl transform ${
                     isSelected
-                      ? 'ring-3 ring-cyan-400 scale-105 shadow-glow-cyan'
+                      ? 'ring-2 ring-cyan-400 scale-105 shadow-card'
                       : 'hover:scale-102 opacity-90 hover:opacity-100'
                   }`}
                 >
@@ -128,7 +125,7 @@ export const TeamPassModal: React.FC<TeamPassModalProps> = ({
               data-testid="confirm-team-pass-btn"
               disabled={isSubmitDisabled}
               onClick={handleConfirm}
-              className="w-full py-3 px-4 rounded-xl text-xs font-bold font-display text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 shadow-glow disabled:opacity-40 transition-all cursor-pointer"
+              className="w-full py-3 px-4 rounded-xl text-xs font-bold font-display text-white bg-blue-600 hover:bg-blue-500 shadow-card disabled:opacity-40 transition-all cursor-pointer"
             >
               {isLoading
                 ? 'Passing...'

@@ -49,10 +49,10 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         data-is-eliminated={isEliminated}
         className={`flex items-center gap-2 p-1.5 sm:p-2 rounded-xl transition-all duration-300 border select-none shrink-0 ${
           isEliminated
-            ? 'bg-slate-950/70 border-rose-950/60 opacity-60'
+            ? 'bg-surface-canvas/80 border-rose-950/60 opacity-60'
             : isCurrentTurn
-            ? 'border-amber-400/90 ring-2 ring-amber-400/40 shadow-glow-amber bg-slate-800/95'
-            : 'bg-slate-900/85 border-slate-800 hover:border-slate-700'
+            ? 'border-amber-400/90 ring-1 ring-amber-400/40 shadow-brass bg-surface-elevated'
+            : 'bg-surface-card border-white/[0.08] hover:border-white/[0.15]'
         } ${className}`}
       >
         {/* Avatar & Turn Indicator */}
@@ -62,8 +62,8 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
               isEliminated
                 ? 'bg-rose-950/60 text-rose-400/60 border border-rose-900/40'
                 : isCurrentTurn
-                ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 shadow-sm'
-                : 'bg-slate-800 text-slate-300 border border-slate-700'
+                ? 'bg-amber-400 text-slate-950 font-bold shadow-card'
+                : 'bg-surface-panel text-slate-300 border border-white/[0.08]'
             }`}
           >
             <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -151,7 +151,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
             <button
               data-testid="catch-uno-btn"
               onClick={onCatchUno}
-              className="px-1.5 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-black text-[9px] flex items-center gap-0.5 shadow-glow-red animate-bounce cursor-pointer border border-rose-400"
+              className="px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-[9px] flex items-center gap-0.5 shadow-card animate-bounce cursor-pointer border border-red-400/50"
             >
               <ShieldAlert className="w-2.5 h-2.5" />
               <span>CATCH</span>
@@ -179,21 +179,21 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
       data-is-eliminated={isEliminated}
       className={`flex flex-col items-center p-2.5 rounded-2xl transition-all duration-300 ${
         isEliminated
-          ? 'bg-slate-950/70 border-rose-950/60 opacity-60'
+          ? 'bg-surface-canvas/80 border-rose-950/60 opacity-60'
           : isCurrentTurn
-          ? 'border-amber-400/80 ring-2 ring-amber-400/50 shadow-glow-amber bg-slate-800/90 scale-105'
-          : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+          ? 'border-amber-400/80 ring-1 ring-amber-400/40 shadow-brass bg-surface-elevated scale-105'
+          : 'bg-surface-card border-white/[0.08] hover:border-white/[0.15]'
       } border ${className}`}
     >
       {/* Avatar & Turn Indicator */}
       <div className="relative mb-1.5">
         <div
-          className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-display font-black text-sm sm:text-base ${
+          className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-display font-bold text-sm sm:text-base ${
             isEliminated
               ? 'bg-rose-950/60 text-rose-400/60 border border-rose-900/40'
               : isCurrentTurn
-              ? 'bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 shadow-md'
-              : 'bg-slate-800 text-slate-300 border border-slate-700'
+              ? 'bg-amber-400 text-slate-950 font-bold shadow-card'
+              : 'bg-surface-panel text-slate-300 border border-white/[0.08]'
           }`}
         >
           <User className="w-5 h-5" />
@@ -213,14 +213,14 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         <p className="text-xs font-bold text-slate-200 truncate max-w-[100px] sm:max-w-[120px]">
           {player.username}
         </p>
-        <p className="text-[10px] text-slate-400 font-medium flex items-center justify-center gap-1">
+        <p className="text-[10px] text-slate-400 font-medium flex items-center justify-center gap-1 font-mono">
           <Award className="w-3 h-3 text-amber-400/80" />
           <span>{player.score} pts</span>
         </p>
         {isCurrentTurn && !isEliminated && (
           <div
             data-testid="playing-badge"
-            className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-display font-black text-[9px] uppercase tracking-wider shadow-md animate-pulse"
+            className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-display font-bold text-[9px] uppercase tracking-wider shadow-card animate-pulse"
           >
             PLAYING
           </div>
@@ -310,7 +310,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
           <button
             data-testid="catch-uno-btn"
             onClick={onCatchUno}
-            className="mt-1 px-2.5 py-1 rounded-lg text-[10px] font-black bg-rose-600 hover:bg-rose-500 text-white flex items-center gap-1 shadow-glow-red animate-bounce cursor-pointer border border-rose-400/40"
+            className="mt-1 px-3 py-1 rounded-lg text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white flex items-center gap-1 shadow-card animate-bounce cursor-pointer border border-red-400/50"
           >
             <ShieldAlert className="w-3 h-3" />
             <span>CATCH UNO!</span>

@@ -29,7 +29,7 @@ export const AttackLauncher: React.FC<AttackLauncherProps> = ({
   return (
     <div
       data-testid="attack-launcher"
-      className="relative flex flex-col items-center justify-center p-3 rounded-3xl bg-gradient-to-b from-slate-900 via-zinc-950 to-neutral-950 border-2 border-red-500/40 shadow-2xl shadow-red-950/50 w-52 sm:w-56 select-none"
+      className="relative flex flex-col items-center justify-center p-3 rounded-2xl bg-surface-card border border-red-500/30 shadow-modal w-52 sm:w-56 select-none"
     >
       {/* Top Header & Tension LEDs */}
       <div className="w-full flex items-center justify-between px-2 mb-2">
@@ -106,16 +106,16 @@ export const AttackLauncher: React.FC<AttackLauncherProps> = ({
         <motion.button
           data-testid="launcher-press-button"
           disabled={!canPress || isLoading}
-          whileHover={canPress && !isLoading ? { scale: 1.05 } : {}}
-          whileTap={canPress && !isLoading ? { scale: 0.92, y: 3 } : {}}
+          whileHover={canPress && !isLoading ? { scale: 1.03 } : {}}
+          whileTap={canPress && !isLoading ? { scale: 0.95, y: 2 } : {}}
           onClick={canPress && !isLoading ? onPress : undefined}
-          className={`relative z-10 w-24 h-16 rounded-2xl font-display font-black text-sm tracking-wider uppercase transition-all duration-200 border-2 shadow-2xl flex flex-col items-center justify-center cursor-pointer ${
+          className={`relative z-10 w-24 h-16 rounded-xl font-display font-bold text-sm tracking-wider uppercase transition-all duration-200 border shadow-card flex flex-col items-center justify-center cursor-pointer ${
             canPress && !isLoading
-              ? 'bg-gradient-to-b from-red-500 via-rose-600 to-red-700 hover:from-red-400 hover:to-red-600 border-red-300 text-white shadow-red-600/60 animate-pulse'
-              : 'bg-neutral-800 border-neutral-700 text-neutral-500 cursor-not-allowed opacity-60 shadow-none'
+              ? 'bg-red-600 hover:bg-red-500 border-red-400 text-white shadow-card animate-pulse'
+              : 'bg-surface-panel border-white/[0.08] text-slate-500 cursor-not-allowed opacity-60 shadow-none'
           }`}
         >
-          <span className="drop-shadow-md">
+          <span className="drop-shadow-sm font-display">
             {canPress ? 'PRESS' : 'STANDBY'}
           </span>
           <span className="text-[9px] tracking-normal font-mono opacity-80">

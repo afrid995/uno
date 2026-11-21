@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../../../stores/gameStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Trophy, ChevronDown } from 'lucide-react';
 
 export const GameScoreboard: React.FC = () => {
   const { gameState } = useGameStore();
@@ -23,28 +24,18 @@ export const GameScoreboard: React.FC = () => {
       {/* Toggle button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors shadow-sm backdrop-blur-xs"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card hover:bg-surface-elevated border border-white/[0.08] text-xs font-semibold text-slate-200 transition-colors shadow-card backdrop-blur-xs cursor-pointer"
         aria-label="Toggle Scoreboard"
       >
-        <span className="text-amber-400">🏆</span>
+        <Trophy className="w-3.5 h-3.5 text-amber-400" />
         <span>Round {roundNumber}</span>
-        <span className="text-slate-500">|</span>
+        <span className="text-slate-600">|</span>
         <span className="text-slate-400">Target {targetScore}</span>
-        <svg
+        <ChevronDown
           className={`w-3.5 h-3.5 text-slate-400 transition-transform ${
             isOpen ? 'rotate-180' : ''
           }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
+        />
       </button>
 
       {/* Dropdown / Popover scoreboard */}
@@ -55,18 +46,18 @@ export const GameScoreboard: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 mt-2 w-72 sm:w-80 rounded-xl bg-slate-900/95 border border-slate-700/80 shadow-2xl p-4 backdrop-blur-md"
+            className="absolute right-0 mt-2 w-72 sm:w-80 rounded-xl bg-surface-card border border-white/[0.08] shadow-modal p-4 backdrop-blur-md"
           >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-3">
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 font-display">
                   Match Standings
                 </h4>
-                <div className="text-[11px] text-slate-500">
+                <div className="text-[11px] text-slate-400 font-mono">
                   Target: {targetScore} pts • Direction: {turnDirection}
                 </div>
               </div>
-              <div className="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+              <div className="text-xs font-mono font-bold text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
                 R{roundNumber}
               </div>
             </div>
@@ -82,10 +73,10 @@ export const GameScoreboard: React.FC = () => {
                     key={player.id}
                     className={`flex items-center justify-between p-2 rounded-lg text-xs ${
                       isCurrentTurn
-                        ? 'bg-amber-500/15 border border-amber-500/30 text-white'
+                        ? 'bg-amber-400/15 border border-amber-400/40 text-white shadow-brass'
                         : isSelf
-                        ? 'bg-slate-800/60 border border-slate-700/60 text-slate-200'
-                        : 'bg-slate-950/40 text-slate-300'
+                        ? 'bg-surface-panel border border-white/[0.08] text-slate-200'
+                        : 'bg-surface-canvas text-slate-300 border border-white/[0.04]'
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
@@ -95,22 +86,22 @@ export const GameScoreboard: React.FC = () => {
                       <div className="truncate font-semibold flex items-center gap-1.5">
                         <span className="truncate">{player.username}</span>
                         {isSelf && (
-                          <span className="text-[10px] text-slate-400 font-normal">
+                          <span className="text-[10px] text-amber-400/90 font-mono">
                             (you)
                           </span>
                         )}
                         {isDealer && (
-                          <span className="text-[9px] px-1 py-0.2 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">
+                          <span className="text-[9px] px-1 py-0.2 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30 font-mono">
                             D
                           </span>
                         )}
                         {player.hasDeclaredUno && !player.isEliminated && (
-                          <span className="text-[9px] px-1 py-0.2 bg-rose-500/20 text-rose-300 rounded border border-rose-500/30 font-black">
+                          <span className="text-[9px] px-1 py-0.2 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30 font-mono font-bold">
                             UNO
                           </span>
                         )}
                         {player.isEliminated && (
-                          <span className="text-[9px] px-1 py-0.2 bg-rose-950 text-rose-300 rounded border border-rose-700/60 font-black">
+                          <span className="text-[9px] px-1 py-0.2 bg-rose-950 text-rose-300 rounded border border-rose-700/60 font-mono font-bold">
                             ELIMINATED
                           </span>
                         )}

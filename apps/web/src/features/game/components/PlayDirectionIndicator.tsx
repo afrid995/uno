@@ -17,8 +17,8 @@ export const PlayDirectionIndicator: React.FC<PlayDirectionIndicatorProps> = ({
   const shouldReduceMotion = useReducedMotion();
 
   // Colors
-  const strokeColor = isClockwise ? '#06b6d4' : '#f43f5e'; // cyan vs rose
-  const glowColor = isClockwise ? 'rgba(6, 182, 212, 0.35)' : 'rgba(244, 63, 94, 0.35)';
+  const strokeColor = isClockwise ? '#10b981' : '#f43f5e'; // emerald vs rose
+  const glowColor = isClockwise ? 'rgba(16, 185, 129, 0.25)' : 'rgba(244, 63, 94, 0.25)';
 
   return (
     <div
@@ -164,15 +164,15 @@ export const PlayDirectionIndicator: React.FC<PlayDirectionIndicatorProps> = ({
       {showBadge && (
         <div
           data-testid="direction-badge"
-          className={`absolute top-2 sm:top-4 px-3 py-1 rounded-full text-[10px] sm:text-xs font-display font-bold uppercase tracking-wider flex items-center gap-1.5 border shadow-lg backdrop-blur-md transition-all duration-300 ${
+          className={`absolute top-2 sm:top-4 px-3 py-1 rounded-full text-[10px] sm:text-xs font-display font-bold uppercase tracking-wider flex items-center gap-1.5 border shadow-card backdrop-blur-md transition-all duration-300 ${
             isClockwise
-              ? 'bg-slate-900/90 text-cyan-300 border-cyan-500/40 shadow-cyan-950/40'
-              : 'bg-slate-900/90 text-rose-300 border-rose-500/40 shadow-rose-950/40'
+              ? 'bg-surface-card/95 text-emerald-300 border-emerald-500/40'
+              : 'bg-surface-card/95 text-rose-300 border-rose-500/40'
           }`}
         >
           {isClockwise ? (
             <>
-              <RotateCw className="w-3.5 h-3.5 text-cyan-400 animate-spin-slow" />
+              <RotateCw className="w-3.5 h-3.5 text-emerald-400 animate-spin-slow" />
               <span>Clockwise</span>
             </>
           ) : (

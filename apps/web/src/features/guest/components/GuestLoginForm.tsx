@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Play, AlertCircle, Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Play, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { USERNAME_RULES } from '@uno-ultimate/shared';
 import { useGuestStore } from '../../../stores/guestStore';
 
@@ -55,17 +55,13 @@ export const GuestLoginForm: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-md mx-auto" noValidate>
-      <div className="glass-panel p-6 sm:p-8 rounded-2xl shadow-2xl relative overflow-hidden">
-        {/* Glowing border accent */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-uno-red via-uno-yellow to-uno-blue" />
-
+      <div className="p-6 sm:p-8 rounded-2xl bg-surface-card border border-white/[0.08] shadow-modal relative">
         <div className="text-center mb-6">
-          <h2 className="font-display font-bold text-2xl text-white tracking-tight flex items-center justify-center gap-2">
+          <h2 className="font-display font-bold text-2xl text-white tracking-tight">
             Enter Game Lobby
-            <Sparkles className="w-5 h-5 text-uno-yellow" />
           </h2>
-          <p className="text-sm text-slate-400 mt-1">
-            Choose a display name. No signup or password needed.
+          <p className="text-sm text-slate-400 mt-1.5">
+            Choose a display name. No registration or password required.
           </p>
         </div>
 
@@ -102,7 +98,7 @@ export const GuestLoginForm: React.FC = () => {
                   ? 'border-rose-500 focus:ring-2 focus:ring-rose-500/50'
                   : isInputValidLength
                   ? 'border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/40'
-                  : 'border-slate-700 focus:ring-2 focus:ring-uno-yellow/40 focus:border-uno-yellow/60'
+                  : 'border-white/[0.08] focus:ring-1 focus:ring-amber-400/50 focus:border-amber-400'
               }`}
             />
             {isInputValidLength && !displayError && (
@@ -134,7 +130,7 @@ export const GuestLoginForm: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full relative group overflow-hidden rounded-xl font-display font-bold text-base tracking-wide py-4 px-6 text-white shadow-xl transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed bg-gradient-to-r from-red-600 via-rose-600 to-red-500 hover:from-red-500 hover:to-rose-500 hover:shadow-glow hover:scale-[1.01] active:scale-[0.99]"
+          className="w-full relative group overflow-hidden rounded-xl font-display font-bold text-base tracking-wide py-4 px-6 text-white shadow-card transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed bg-red-600 hover:bg-red-500 hover:scale-[1.01] active:scale-[0.99] border border-red-500/50"
         >
           <div className="flex items-center justify-center gap-2">
             {isLoading ? (

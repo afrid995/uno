@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Users, Shield, Zap, Sparkles } from 'lucide-react';
+import { Users, Shield, Zap } from 'lucide-react';
 import { GuestLoginForm } from '../features/guest/components/GuestLoginForm';
 import { UnoCardVisual } from '../components/common/UnoCardVisual';
 
@@ -8,27 +8,24 @@ export const LandingPage: React.FC = () => {
   return (
     <div className="w-full flex flex-col items-center justify-center py-8 sm:py-16 px-4">
       {/* Hero Visual Section */}
-      <div className="relative mb-10 sm:mb-12 flex items-center justify-center">
-        {/* Animated Background Glow */}
-        <div className="absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-gradient-to-tr from-uno-red/20 via-uno-yellow/15 to-uno-blue/20 blur-3xl pointer-events-none" />
-
+      <div className="relative mb-8 sm:mb-10 flex items-center justify-center">
         {/* Fanned Out Original Uno Cards */}
-        <div className="relative flex items-center justify-center h-44 sm:h-56 w-72 sm:w-80">
-          <UnoCardVisual color="blue" value="4" rotation={-18} className="-mr-12 sm:-mr-16 z-10" />
-          <UnoCardVisual color="yellow" value="7" rotation={-7} className="-mr-12 sm:-mr-16 z-20" />
-          <UnoCardVisual color="red" value="U" rotation={6} className="-mr-12 sm:-mr-16 z-30 ring-2 ring-white/20" />
-          <UnoCardVisual color="green" value="2" rotation={19} className="z-20" />
+        <div className="relative flex items-center justify-center h-44 sm:h-52 w-72 sm:w-80">
+          <UnoCardVisual color="blue" value="4" rotation={-16} className="-mr-12 sm:-mr-16 z-10" />
+          <UnoCardVisual color="yellow" value="7" rotation={-6} className="-mr-12 sm:-mr-16 z-20" />
+          <UnoCardVisual color="red" value="U" rotation={6} className="-mr-12 sm:-mr-16 z-30 ring-1 ring-white/20" />
+          <UnoCardVisual color="green" value="2" rotation={18} className="z-20" />
         </div>
       </div>
 
       {/* Main Title & Pitch */}
-      <div className="text-center max-w-2xl mx-auto mb-10 space-y-3">
+      <div className="text-center max-w-2xl mx-auto mb-8 space-y-3">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/80 text-xs text-slate-300 mb-2 shadow-sm"
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-card border border-white/[0.08] text-xs text-slate-300 mb-1 shadow-sm"
         >
-          <Sparkles className="w-3.5 h-3.5 text-uno-yellow" />
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
           <span>Private Online Card Game for Friends</span>
         </motion.div>
 
@@ -38,7 +35,7 @@ export const LandingPage: React.FC = () => {
           transition={{ delay: 0.1 }}
           className="font-display font-black text-4xl sm:text-6xl text-white tracking-tight leading-tight"
         >
-          UNO <span className="bg-gradient-to-r from-red-500 via-amber-400 to-blue-500 bg-clip-text text-transparent">ULTIMATE</span>
+          UNO <span className="text-amber-400">ULTIMATE</span>
         </motion.h1>
 
         <motion.p
@@ -47,7 +44,7 @@ export const LandingPage: React.FC = () => {
           transition={{ delay: 0.2 }}
           className="text-base sm:text-lg text-slate-400 max-w-xl mx-auto leading-relaxed"
         >
-          No accounts, no matchmaking, no spam. Just enter your name, get a private room link, and play official UNO variants with your friends.
+          No accounts, no matchmaking, no spam. Choose your name, create a private room link, and play official UNO variants with your friends.
         </motion.p>
       </div>
 
@@ -61,34 +58,34 @@ export const LandingPage: React.FC = () => {
         <GuestLoginForm />
       </motion.div>
 
-      {/* Features Overview */}
-      <div className="mt-16 sm:mt-24 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl w-full text-center">
-        <div className="p-5 rounded-2xl glass-panel text-slate-300">
-          <div className="w-10 h-10 rounded-xl bg-uno-red/10 border border-uno-red/30 mx-auto flex items-center justify-center text-uno-red mb-3">
+      {/* Pillars Overview */}
+      <div className="mt-14 sm:mt-20 grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-4xl w-full text-center">
+        <div className="p-5 rounded-2xl bg-surface-card border border-white/[0.07] text-slate-300 shadow-card">
+          <div className="w-10 h-10 rounded-xl bg-surface-elevated border border-white/[0.08] mx-auto flex items-center justify-center text-amber-400 mb-3">
             <Users className="w-5 h-5" />
           </div>
           <h3 className="font-display font-bold text-white text-base mb-1">Friends Only</h3>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 leading-relaxed">
             Private rooms with custom codes. No random matchmaking or intrusive public lobbies.
           </p>
         </div>
 
-        <div className="p-5 rounded-2xl glass-panel text-slate-300">
-          <div className="w-10 h-10 rounded-xl bg-uno-yellow/10 border border-uno-yellow/30 mx-auto flex items-center justify-center text-uno-yellow mb-3">
+        <div className="p-5 rounded-2xl bg-surface-card border border-white/[0.07] text-slate-300 shadow-card">
+          <div className="w-10 h-10 rounded-xl bg-surface-elevated border border-white/[0.08] mx-auto flex items-center justify-center text-emerald-400 mb-3">
             <Zap className="w-5 h-5" />
           </div>
           <h3 className="font-display font-bold text-white text-base mb-1">Instant Guest Play</h3>
-          <p className="text-xs text-slate-400">
-            Zero sign-up required. Secure temporary session tokens let you resume seamlessly across tab reloads.
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Zero sign-up required. Secure temporary session tokens let you resume seamlessly across reloads.
           </p>
         </div>
 
-        <div className="p-5 rounded-2xl glass-panel text-slate-300">
-          <div className="w-10 h-10 rounded-xl bg-uno-blue/10 border border-uno-blue/30 mx-auto flex items-center justify-center text-uno-blue mb-3">
+        <div className="p-5 rounded-2xl bg-surface-card border border-white/[0.07] text-slate-300 shadow-card">
+          <div className="w-10 h-10 rounded-xl bg-surface-elevated border border-white/[0.08] mx-auto flex items-center justify-center text-sky-400 mb-3">
             <Shield className="w-5 h-5" />
           </div>
           <h3 className="font-display font-bold text-white text-base mb-1">Server Authoritative</h3>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 leading-relaxed">
             Card deck and opponent hands are calculated purely on the server. Zero client cheating possible.
           </p>
         </div>

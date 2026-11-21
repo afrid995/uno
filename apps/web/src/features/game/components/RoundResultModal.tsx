@@ -1,6 +1,7 @@
 import React from 'react';
 import { useGameStore } from '../../../stores/gameStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Trophy } from 'lucide-react';
 
 export const RoundResultModal: React.FC = () => {
   const {
@@ -27,39 +28,39 @@ export const RoundResultModal: React.FC = () => {
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
         <motion.div
           data-testid="round-result-modal"
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 p-6 shadow-2xl text-center"
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-surface-card p-6 shadow-modal text-center"
         >
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-3xl shadow-lg shadow-amber-500/20">
-            🎉
+          <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-amber-400 flex items-center justify-center shadow-brass">
+            <Trophy className="w-7 h-7 text-slate-950" />
           </div>
 
-          <h2 className="text-xs font-bold uppercase tracking-widest text-amber-400 mb-1">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-amber-300 mb-1 font-display">
             Round {gameState.roundNumber} Complete
           </h2>
-          <h3 className="text-2xl font-black text-white mb-2">
+          <h3 className="text-2xl font-bold text-white mb-2 font-display">
             {winnerName} Wins the Round!
           </h3>
           <p className="text-sm text-slate-300 mb-6">
-            Scored <span className="font-bold text-amber-400 font-mono">+{winnerScore}</span> points from opponents&apos; remaining cards (target: {gameState.targetScore} pts).
+            Scored <span className="font-bold text-amber-300 font-mono">+{winnerScore}</span> points from opponents&apos; remaining cards (target: {gameState.targetScore} pts).
           </p>
 
           {/* Standings table */}
-          <div className="bg-slate-950/70 rounded-xl p-3 border border-slate-800 mb-6 space-y-2">
-            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-left mb-2">
+          <div className="bg-surface-panel rounded-xl p-3.5 border border-white/[0.06] mb-6 space-y-2">
+            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-left mb-2 font-display">
               Cumulative Match Standings
             </h4>
             {gameState.players.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg bg-slate-900/60"
+                className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-lg bg-surface-card border border-white/[0.04]"
               >
                 <span className="font-semibold text-slate-200 truncate">
-                  {p.username} {p.id === gameState.self.id && '(you)'}
+                  {p.username} {p.id === gameState.self.id && <span className="text-amber-400/90 font-mono font-normal">(you)</span>}
                 </span>
-                <span className="font-mono font-bold text-amber-400">
+                <span className="font-mono font-bold text-amber-300">
                   {p.score} / {gameState.targetScore} pts
                 </span>
               </div>
@@ -72,13 +73,13 @@ export const RoundResultModal: React.FC = () => {
               data-testid="start-next-round-btn"
               onClick={() => startNextRound()}
               disabled={isActionLoading}
-              className="flex-1 py-3 px-4 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 active:scale-95 transition-all text-sm shadow-lg shadow-amber-400/20 disabled:opacity-50"
+              className="flex-1 py-3 px-4 rounded-xl font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-95 transition-all text-sm shadow-card disabled:opacity-50 font-display cursor-pointer"
             >
               {isActionLoading ? 'Dealing Next Round...' : 'Start Next Round'}
             </button>
             <button
               onClick={() => dismissRoundModal()}
-              className="py-3 px-4 rounded-xl font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all text-sm"
+              className="py-3 px-4 rounded-xl font-semibold text-slate-300 hover:text-white bg-surface-panel hover:bg-surface-elevated border border-white/[0.06] active:scale-95 transition-all text-sm cursor-pointer"
             >
               View Table
             </button>

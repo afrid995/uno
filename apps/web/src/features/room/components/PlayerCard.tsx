@@ -13,21 +13,21 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, isCurrentPlayer,
 
   return (
     <div
-      className={`relative p-4 sm:p-5 rounded-2xl border transition-all duration-300 flex items-center justify-between gap-4 ${
+      className={`relative p-4 sm:p-4.5 rounded-xl border transition-all duration-200 flex items-center justify-between gap-4 ${
         isCurrentPlayer
-          ? 'bg-slate-900/90 border-slate-700 shadow-lg ring-1 ring-uno-blue/30'
-          : 'bg-slate-900/50 border-slate-800/80 hover:border-slate-700/60'
-      } ${isDisconnected ? 'opacity-60 border-rose-900/50' : ''}`}
+          ? 'bg-surface-card border-white/[0.15] shadow-card'
+          : 'bg-surface-panel border-white/[0.06] hover:border-white/[0.1]'
+      } ${isDisconnected ? 'opacity-50 border-rose-900/40' : ''}`}
     >
       <div className="flex items-center gap-3 min-w-0">
         {/* Avatar initial badge */}
         <div
-          className={`w-11 h-11 rounded-xl flex items-center justify-center font-display font-black text-base select-none shrink-0 ${
+          className={`w-10 h-10 rounded-lg flex items-center justify-center font-display font-black text-sm select-none shrink-0 ${
             isHost
-              ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 shadow-glow-yellow'
+              ? 'bg-surface-elevated text-amber-300 border border-amber-400/40 shadow-brass'
               : isCurrentPlayer
-              ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-glow-blue'
-              : 'bg-slate-800 text-slate-300'
+              ? 'bg-surface-elevated text-white border border-white/[0.15]'
+              : 'bg-surface-panel text-slate-300 border border-white/[0.06]'
           }`}
         >
           {member.username.charAt(0).toUpperCase()}
@@ -41,7 +41,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, isCurrentPlayer,
             </span>
 
             {isCurrentPlayer && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-uno-blue/20 text-uno-blue border border-uno-blue/30 shrink-0">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/[0.08] text-slate-200 border border-white/[0.1] shrink-0">
                 You
               </span>
             )}
@@ -73,17 +73,17 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, isCurrentPlayer,
       {/* Ready Status Indicator */}
       <div className="shrink-0 flex items-center">
         {isHost ? (
-          <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20">
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/20">
             Room Leader
           </span>
         ) : member.readyStatus ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-glow-green">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             Ready
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl bg-slate-800/80 text-slate-400 border border-slate-700/60">
-            <CircleDashed className="w-3.5 h-3.5 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg bg-surface-panel text-slate-400 border border-white/[0.06]">
+            <CircleDashed className="w-3.5 h-3.5 animate-pulse text-slate-500" />
             Not Ready
           </span>
         )}

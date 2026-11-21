@@ -25,7 +25,7 @@ export const UnoButton: React.FC<UnoButtonProps> = ({
     return (
       <div
         data-testid="uno-button"
-        className={`px-4 py-2.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-display font-black text-xs tracking-wider flex items-center gap-1.5 shadow-sm ${className}`}
+        className={`px-4 py-2.5 rounded-xl bg-emerald-950/70 border border-emerald-500/50 text-emerald-300 font-display font-bold text-xs tracking-wider flex items-center gap-1.5 shadow-card ${className}`}
       >
         <Check className="w-3.5 h-3.5 text-emerald-400" />
         <span>UNO CALLED!</span>
@@ -37,7 +37,7 @@ export const UnoButton: React.FC<UnoButtonProps> = ({
     return (
       <div
         data-testid="uno-button-vulnerable"
-        className={`px-4 py-2.5 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-300 font-display font-black text-xs tracking-wider flex items-center gap-1.5 shadow-sm animate-pulse ${className}`}
+        className={`px-4 py-2.5 rounded-xl bg-rose-950/70 border border-rose-500/50 text-rose-300 font-display font-bold text-xs tracking-wider flex items-center gap-1.5 shadow-card animate-pulse ${className}`}
         title="You forgot to declare UNO! Opponents can catch you until the next player starts their turn."
       >
         <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
@@ -50,14 +50,14 @@ export const UnoButton: React.FC<UnoButtonProps> = ({
     return (
       <motion.button
         data-testid="uno-button"
-        whileHover={!isLoading ? { scale: 1.05 } : {}}
-        whileTap={!isLoading ? { scale: 0.95 } : {}}
+        whileHover={!isLoading ? { scale: 1.03 } : {}}
+        whileTap={!isLoading ? { scale: 0.97 } : {}}
         disabled={isLoading}
         onClick={onCallUno}
         title="UNO is armed! Click to toggle off or play your card to declare UNO."
-        className={`px-5 py-2.5 rounded-2xl font-display font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 select-none bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white shadow-glow hover:shadow-glow-red cursor-pointer border-2 border-amber-300 ${className}`}
+        className={`px-5 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 select-none bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-brass cursor-pointer border-2 border-amber-300 active:scale-[0.98] ${className}`}
       >
-        <Flame className="w-4 h-4 fill-current text-yellow-200 animate-bounce" />
+        <Flame className="w-4 h-4 fill-current text-slate-950" />
         <span>UNO ARMED</span>
       </motion.button>
     );
@@ -66,8 +66,8 @@ export const UnoButton: React.FC<UnoButtonProps> = ({
   return (
     <motion.button
       data-testid="uno-button"
-      whileHover={canCallUno && !isLoading ? { scale: 1.05 } : {}}
-      whileTap={canCallUno && !isLoading ? { scale: 0.95 } : {}}
+      whileHover={canCallUno && !isLoading ? { scale: 1.03 } : {}}
+      whileTap={canCallUno && !isLoading ? { scale: 0.97 } : {}}
       disabled={!canCallUno || isLoading}
       onClick={onCallUno}
       title={
@@ -75,10 +75,10 @@ export const UnoButton: React.FC<UnoButtonProps> = ({
           ? 'Shout UNO before playing down to 1 card!'
           : 'UNO shout is only available on your turn when you hold 2 cards.'
       }
-      className={`px-5 py-2.5 rounded-2xl font-display font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 select-none ${
+      className={`px-5 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 select-none ${
         canCallUno && !isLoading
-          ? 'bg-gradient-to-r from-uno-red via-rose-600 to-amber-500 text-white shadow-glow-red hover:shadow-glow cursor-pointer animate-pulse border border-rose-300/40'
-          : 'bg-slate-900/60 border border-slate-800 text-slate-500 cursor-not-allowed opacity-60'
+          ? 'bg-red-600 hover:bg-red-500 text-white shadow-card border border-red-400/50 cursor-pointer animate-pulse active:scale-[0.98]'
+          : 'bg-surface-panel border border-white/[0.06] text-slate-500 cursor-not-allowed opacity-50'
       } ${className}`}
     >
       <Flame className="w-4 h-4 fill-current text-amber-300" />

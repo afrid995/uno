@@ -1,4 +1,5 @@
 import React from 'react';
+import { Zap, Palette } from 'lucide-react';
 import {
   PlayerGameState,
   PublicPlayer,
@@ -163,9 +164,9 @@ export const RoundTable: React.FC<RoundTableProps> = ({
       {turnRecoveryNotification && (
         <div
           data-testid="turn-recovery-banner"
-          className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/90 to-yellow-400/90 text-slate-950 font-bold text-xs sm:text-sm tracking-wide shadow-glow-amber animate-bounce flex items-center gap-2"
+          className="px-3.5 py-1 rounded-full bg-amber-400/20 border border-amber-400/70 text-amber-200 font-bold text-xs sm:text-sm tracking-wide shadow-brass flex items-center gap-2 backdrop-blur-md"
         >
-          <span>⚡</span>
+          <Zap className="w-3.5 h-3.5 text-amber-400" />
           <span>{turnRecoveryNotification}</span>
         </div>
       )}
@@ -174,9 +175,10 @@ export const RoundTable: React.FC<RoundTableProps> = ({
       {self.isAwaitingStartingColor && !self.canChooseStartingColor && (
         <div
           data-testid="starting-wild-waiting-banner"
-          className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-400/40 text-amber-300 text-[10px] sm:text-xs font-semibold animate-pulse shadow-md backdrop-blur-xs text-center"
+          className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-surface-card border border-amber-400/40 text-amber-300 text-[10px] sm:text-xs font-semibold animate-pulse shadow-card backdrop-blur-xs text-center"
         >
-          <span>🎨 Starting Wild: Waiting for {currentTurnPlayer?.username} to choose color...</span>
+          <Palette className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <span>Starting Wild: Waiting for {currentTurnPlayer?.username} to choose color...</span>
         </div>
       )}
 
@@ -262,12 +264,12 @@ export const RoundTable: React.FC<RoundTableProps> = ({
         </div>
 
         {/* Center: Compact Arena Table Felt */}
-        <div className="relative w-full h-[210px] xs:h-[230px] sm:h-[270px] rounded-[32px] sm:rounded-[44px] bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border-3 sm:border-4 border-slate-700/70 shadow-[0_8px_30px_rgba(0,0,0,0.8),inset_0_0_50px_rgba(0,0,0,0.8)] overflow-hidden flex items-center justify-center my-1">
+        <div className="relative w-full h-[210px] xs:h-[230px] sm:h-[270px] rounded-[32px] sm:rounded-[44px] bg-[#0d2319] border-3 sm:border-4 border-[#1c2434] shadow-table overflow-hidden flex items-center justify-center my-1">
           {/* Felt Texture / Glow */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-950/20 via-slate-900/60 to-slate-950/95 pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#133827]/50 via-[#0d2319]/85 to-[#07130d] pointer-events-none" />
 
           {/* Inner Rail Seam */}
-          <div className="absolute inset-2 sm:inset-3 rounded-[24px] sm:rounded-[36px] border border-emerald-500/15 pointer-events-none" />
+          <div className="absolute inset-2 sm:inset-3 rounded-[24px] sm:rounded-[36px] border border-amber-400/20 pointer-events-none" />
 
           {/* Central Play Direction Orbit */}
           <PlayDirectionIndicator
@@ -301,12 +303,12 @@ export const RoundTable: React.FC<RoundTableProps> = ({
       className={`relative w-full max-w-5xl mx-auto my-1 sm:my-2 select-none ${className}`}
     >
       {/* Table Felt & Rail Surface */}
-      <div className="relative w-full h-[230px] xs:h-[270px] sm:h-[380px] md:h-[460px] lg:h-[500px] max-h-[55vh] sm:max-h-[62vh] md:max-h-none rounded-[50px] sm:rounded-[80px] md:rounded-[120px] bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border-4 border-slate-700/70 shadow-[0_12px_45px_rgba(0,0,0,0.85),inset_0_0_60px_rgba(0,0,0,0.8)] overflow-hidden">
+      <div className="relative w-full h-[230px] xs:h-[270px] sm:h-[380px] md:h-[460px] lg:h-[500px] max-h-[55vh] sm:max-h-[62vh] md:max-h-none rounded-[50px] sm:rounded-[80px] md:rounded-[120px] bg-[#0d2319] border-4 border-[#1c2434] shadow-table overflow-hidden">
         {/* Felt Texture / Radial Glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-950/20 via-slate-900/60 to-slate-950/95 pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#133827]/50 via-[#0d2319]/85 to-[#07130d] pointer-events-none" />
 
         {/* Felt Seam / Inner Rail Line */}
-        <div className="absolute inset-2 sm:inset-5 md:inset-7 rounded-[38px] sm:rounded-[65px] md:rounded-[100px] border border-emerald-500/15 pointer-events-none" />
+        <div className="absolute inset-2 sm:inset-5 md:inset-7 rounded-[38px] sm:rounded-[65px] md:rounded-[100px] border border-amber-400/20 pointer-events-none" />
 
         {/* Central Play Direction Indicator Track */}
         <PlayDirectionIndicator

@@ -38,7 +38,7 @@ export const DrawPile: React.FC<DrawPileProps> = ({
           size="md"
           className={`relative z-10 transition-shadow ${
             canDraw && !isLoading
-              ? 'group-hover:ring-3 group-hover:ring-uno-blue ring-offset-2 ring-offset-slate-950 shadow-glow-blue'
+              ? 'group-hover:ring-2 group-hover:ring-blue-400 ring-offset-2 ring-offset-slate-950 shadow-card'
               : ''
           }`}
         />
@@ -46,7 +46,7 @@ export const DrawPile: React.FC<DrawPileProps> = ({
         {/* Playable draw indicator overlay */}
         {canDraw && !isLoading && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/40 rounded-xl backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity">
-            <span className="text-xs font-black text-white bg-uno-blue/90 px-2 py-1 rounded-md shadow-lg">
+            <span className="text-xs font-bold text-white bg-blue-600 px-2.5 py-1 rounded-md shadow-card font-display">
               DRAW
             </span>
           </div>
@@ -54,10 +54,10 @@ export const DrawPile: React.FC<DrawPileProps> = ({
       </motion.div>
 
       {/* Counter badge */}
-      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-700/80 shadow-md">
+      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-card/95 border border-white/[0.08] shadow-card">
         <Layers className="w-3 h-3 text-slate-400" />
-        <span className="text-[11px] font-bold text-slate-300">
-          Deck ({drawCount})
+        <span className="text-[11px] font-bold text-slate-300 font-display">
+          Deck <span className="font-mono text-slate-400">({drawCount})</span>
         </span>
       </div>
     </div>

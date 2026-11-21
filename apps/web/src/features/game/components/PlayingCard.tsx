@@ -277,11 +277,11 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
       whileTap={isPlayable && onClick ? { scale: 0.95 } : {}}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       onClick={isPlayable ? onClick : undefined}
-      className={`relative select-none border-2 bg-gradient-to-br shadow-xl flex flex-col justify-between p-1.5 sm:p-2.5 overflow-hidden transition-all duration-200 ${colorClasses} ${sizeClasses} ${
+      className={`relative select-none border-2 bg-gradient-to-br shadow-card flex flex-col justify-between p-1.5 sm:p-2.5 overflow-hidden transition-all duration-200 ${colorClasses} ${sizeClasses} ${
         isDarkSide ? 'border-slate-950/80 shadow-2xl ring-1 ring-white/20' : ''
       } ${
         isPlayable
-          ? 'cursor-pointer ring-3 ring-amber-400 ring-offset-2 ring-offset-slate-950 shadow-glow-amber'
+          ? 'cursor-pointer ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-950 shadow-brass'
           : 'opacity-85'
       } ${className}`}
     >

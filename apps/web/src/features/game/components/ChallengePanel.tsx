@@ -138,15 +138,15 @@ export const ChallengePanel: React.FC = () => {
           data-testid="challenge-result-banner"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`mb-4 p-4 rounded-xl border shadow-xl text-center ${
+          className={`mb-4 p-4 rounded-2xl border shadow-modal text-center ${
             lastChallengeResult.challengeWon
-              ? 'border-emerald-500/60 bg-gradient-to-b from-emerald-950/90 to-slate-900/95'
-              : 'border-rose-500/60 bg-gradient-to-b from-rose-950/90 to-slate-900/95'
+              ? 'border-emerald-500/50 bg-surface-card'
+              : 'border-rose-500/50 bg-surface-card'
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <h4
-              className={`text-sm font-bold uppercase tracking-wider flex items-center gap-2 ${
+              className={`text-sm font-bold uppercase tracking-wider flex items-center gap-2 font-display ${
                 lastChallengeResult.challengeWon ? 'text-emerald-400' : 'text-rose-400'
               }`}
             >
@@ -156,13 +156,13 @@ export const ChallengePanel: React.FC = () => {
                 }`}
               />
               {lastChallengeResult.challengeWon
-                ? '⚔️ Challenge Succeeded!'
-                : '❌ Challenge Failed!'}
+                ? 'Challenge Succeeded!'
+                : 'Challenge Failed!'}
             </h4>
             <button
               data-testid="dismiss-challenge-result-btn"
               onClick={clearChallengeResult}
-              className="px-2 py-0.5 rounded text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold cursor-pointer"
+              className="px-2 py-0.5 rounded text-xs bg-surface-panel hover:bg-surface-elevated text-slate-300 font-bold border border-white/[0.06] cursor-pointer"
             >
               ✕ Close
             </button>
@@ -185,12 +185,12 @@ export const ChallengePanel: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-5 rounded-2xl border-2 border-rose-500/80 bg-gradient-to-b from-rose-950/90 via-slate-900/95 to-slate-950 shadow-2xl text-center backdrop-blur-md"
+          className="p-5 rounded-2xl border border-rose-500/60 bg-surface-card shadow-modal text-center"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold uppercase tracking-wider mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 text-xs font-bold uppercase tracking-wider mb-2 font-display">
             {getActionTitle()}
           </div>
-          <h3 className="text-lg sm:text-xl font-black text-white mb-2">
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-2 font-display">
             {getActionHeading()}
           </h3>
           <p className="text-xs sm:text-sm text-slate-300 mb-4 max-w-md mx-auto leading-relaxed">
@@ -202,7 +202,7 @@ export const ChallengePanel: React.FC = () => {
               data-testid="accept-wild-draw-btn"
               onClick={handleAccept}
               disabled={isActionLoading}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-white bg-slate-700 hover:bg-slate-600 active:scale-95 transition-all text-sm shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-white bg-surface-panel hover:bg-surface-elevated active:scale-95 transition-all text-sm shadow-card border border-white/[0.08] disabled:opacity-50 flex items-center justify-center gap-2 font-display"
             >
               {isActionLoading && actionType === 'accept' ? (
                 <>
@@ -217,7 +217,7 @@ export const ChallengePanel: React.FC = () => {
               data-testid="challenge-wild-draw-btn"
               onClick={handleChallenge}
               disabled={isActionLoading}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl font-black text-white bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 active:scale-95 transition-all text-sm shadow-lg shadow-rose-900/40 ring-2 ring-rose-400 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-500 active:scale-95 transition-all text-sm shadow-card border border-red-400/50 disabled:opacity-50 flex items-center justify-center gap-2 font-display"
             >
               {isActionLoading && actionType === 'challenge' ? (
                 <>
@@ -225,7 +225,7 @@ export const ChallengePanel: React.FC = () => {
                   <span>Challenging...</span>
                 </>
               ) : (
-                '⚔️ Challenge Legality'
+                'Challenge Legality'
               )}
             </button>
           </div>
@@ -234,7 +234,7 @@ export const ChallengePanel: React.FC = () => {
 
       {/* Waiting Indicator for Other Players */}
       {!isTargeted && isChallengeResolution && (
-        <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-950/30 text-center text-xs text-amber-200 animate-pulse">
+        <div className="p-3 rounded-xl border border-amber-400/30 bg-surface-card text-center text-xs text-amber-200 animate-pulse shadow-card">
           Waiting for victim to accept or challenge {offenderName}&apos;s action...
         </div>
       )}

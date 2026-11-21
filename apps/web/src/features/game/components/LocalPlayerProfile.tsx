@@ -33,23 +33,23 @@ export const LocalPlayerProfile: React.FC<LocalPlayerProfileProps> = ({
       data-testid="local-player-profile"
       data-player-id={self.id}
       data-is-turn={isMyTurn}
-      className={`relative flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl border transition-all duration-300 shadow-xl select-none ${
+      className={`relative flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl border transition-all duration-300 shadow-modal select-none ${
         isEliminated
-          ? 'bg-slate-950/80 border-rose-950/70 opacity-60'
+          ? 'bg-surface-canvas/80 border-rose-950/70 opacity-60'
           : isMyTurn
-          ? 'bg-slate-900/95 border-amber-400 ring-2 ring-amber-400/50 shadow-glow-amber scale-102 sm:scale-105'
-          : 'bg-slate-900/90 border-slate-700/80 hover:border-slate-600'
+          ? 'bg-surface-elevated border-amber-400/80 ring-1 ring-amber-400/40 shadow-brass scale-102 sm:scale-105'
+          : 'bg-surface-card border-white/[0.08] hover:border-white/[0.15]'
       } ${className}`}
     >
       {/* Avatar with Turn Ring */}
       <div className="relative shrink-0">
         <div
-          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-display font-black text-xs sm:text-sm ${
+          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-display font-bold text-xs sm:text-sm ${
             isEliminated
               ? 'bg-rose-950/60 text-rose-400 border border-rose-900/40'
               : isMyTurn
-              ? 'bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 text-slate-950 shadow-md animate-pulse'
-              : 'bg-gradient-to-tr from-uno-blue to-cyan-500 text-white shadow-sm'
+              ? 'bg-amber-400 text-slate-950 shadow-card animate-pulse'
+              : 'bg-surface-panel text-slate-300 border border-white/[0.08]'
           }`}
         >
           <User className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -70,11 +70,11 @@ export const LocalPlayerProfile: React.FC<LocalPlayerProfileProps> = ({
           <span className="text-xs sm:text-sm font-bold text-white truncate max-w-[80px] sm:max-w-[120px]">
             {username}
           </span>
-          <span className="text-[10px] text-cyan-400 font-mono font-semibold">(You)</span>
+          <span className="text-[10px] text-amber-400/90 font-mono font-semibold">(You)</span>
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] text-slate-400 font-medium">
-          <span className="flex items-center gap-0.5">
+          <span className="flex items-center gap-0.5 font-mono">
             <Award className="w-3 h-3 text-amber-400/90" />
             <span>{score} pts</span>
           </span>
@@ -92,13 +92,13 @@ export const LocalPlayerProfile: React.FC<LocalPlayerProfileProps> = ({
         {isMyTurn && !isEliminated ? (
           <div
             data-testid="local-turn-badge"
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-display font-black text-[10px] sm:text-xs uppercase tracking-wider shadow-md animate-pulse"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-400 text-slate-950 font-display font-bold text-[10px] sm:text-xs uppercase tracking-wider shadow-card animate-pulse"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />
             <span>YOUR TURN</span>
           </div>
         ) : (
-          <div className="px-2 py-0.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-400 text-[10px] font-mono">
+          <div className="px-2 py-0.5 rounded-lg bg-surface-panel border border-white/[0.06] text-slate-400 text-[10px] font-mono">
             WAITING
           </div>
         )}

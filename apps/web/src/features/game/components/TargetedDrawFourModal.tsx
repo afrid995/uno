@@ -30,19 +30,16 @@ export const TargetedDrawFourModal: React.FC<TargetedDrawFourModalProps> = ({
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="glass-panel w-full max-w-md p-6 rounded-3xl border border-purple-500/50 shadow-2xl relative overflow-hidden"
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          className="w-full max-w-md p-6 rounded-2xl bg-surface-card border border-white/[0.08] shadow-modal relative"
         >
-          {/* Top highlight bar */}
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-purple-400 via-fuchsia-500 to-indigo-500" />
-
           <div className="text-center space-y-2 mb-6">
-            <div className="inline-flex p-3 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-400 mb-1">
-              <Target className="w-8 h-8" />
+            <div className="inline-flex p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 mb-1">
+              <Target className="w-7 h-7" />
             </div>
-            <h3 className="font-display font-black text-2xl text-white tracking-tight">
+            <h3 className="font-display font-bold text-xl text-white tracking-tight">
               Flex Wild Draw Four!
             </h3>
             <p className="text-xs text-slate-400 max-w-xs mx-auto">
@@ -52,7 +49,7 @@ export const TargetedDrawFourModal: React.FC<TargetedDrawFourModalProps> = ({
 
           <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
             {eligiblePlayers.length === 0 ? (
-              <div className="p-4 text-center text-xs text-slate-400 bg-slate-900/50 rounded-2xl border border-slate-800">
+              <div className="p-4 text-center text-xs text-slate-400 bg-surface-panel rounded-xl border border-white/[0.06]">
                 No eligible opponents available to target.
               </div>
             ) : (
@@ -62,10 +59,10 @@ export const TargetedDrawFourModal: React.FC<TargetedDrawFourModalProps> = ({
                   data-testid={`targeted-draw-four-target-${player.id}`}
                   disabled={isLoading}
                   onClick={() => handleSelect(player.id)}
-                  className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/80 hover:bg-slate-800/90 border border-slate-700/80 hover:border-purple-400/80 transition-all text-left group cursor-pointer disabled:opacity-50"
+                  className="w-full flex items-center justify-between p-3.5 rounded-xl bg-surface-panel hover:bg-surface-elevated border border-white/[0.08] hover:border-purple-400/60 transition-all text-left group cursor-pointer disabled:opacity-50"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 group-hover:bg-purple-500/20 text-slate-300 group-hover:text-purple-400 flex items-center justify-center font-bold transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-surface-card text-slate-300 group-hover:text-purple-400 flex items-center justify-center font-bold transition-colors border border-white/[0.06]">
                       <User className="w-5 h-5" />
                     </div>
                     <div>
@@ -78,7 +75,7 @@ export const TargetedDrawFourModal: React.FC<TargetedDrawFourModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="px-3 py-1.5 rounded-xl bg-purple-500/10 group-hover:bg-purple-500 text-purple-400 group-hover:text-white font-display font-bold text-xs transition-colors flex items-center gap-1.5">
+                  <div className="px-3 py-1.5 rounded-xl bg-purple-500/15 group-hover:bg-purple-500 text-purple-300 group-hover:text-white font-display font-bold text-xs transition-colors flex items-center gap-1.5">
                     {isLoading && activeTargetId === player.id ? (
                       <>
                         <span className="w-3.5 h-3.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
