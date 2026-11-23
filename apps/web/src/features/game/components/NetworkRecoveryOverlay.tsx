@@ -2,6 +2,8 @@ import React from 'react';
 import { useGameStore } from '../../../stores/gameStore';
 import { socketManager } from '../../../services/socketClient';
 import { Wifi, WifiOff, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 
 export const NetworkRecoveryOverlay: React.FC = () => {
   const connectionStatus = useGameStore((state) => state.connectionStatus);
@@ -25,7 +27,7 @@ export const NetworkRecoveryOverlay: React.FC = () => {
       {connectionStatus === 'reconnecting' && (
         <div
           data-testid="reconnecting-overlay"
-          className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-surface-card/95 border border-amber-400/50 text-slate-200 shadow-modal backdrop-blur-md transition-all duration-300"
+          className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#141924]/95 border border-amber-400/50 text-slate-200 shadow-modal backdrop-blur-md transition-all duration-300"
         >
           <div className="relative flex items-center justify-center shrink-0">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
@@ -45,7 +47,7 @@ export const NetworkRecoveryOverlay: React.FC = () => {
       {connectionStatus === 'disconnected' && (
         <div
           data-testid="connection-lost-overlay"
-          className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-surface-card/95 border border-rose-500/50 text-slate-200 shadow-modal backdrop-blur-md transition-all duration-300"
+          className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#141924]/95 border border-rose-500/50 text-slate-200 shadow-modal backdrop-blur-md transition-all duration-300"
         >
           <div className="flex items-center justify-center shrink-0 text-rose-400">
             <WifiOff className="w-4 h-4" />
@@ -58,20 +60,22 @@ export const NetworkRecoveryOverlay: React.FC = () => {
               Network dropped. Reconnecting automatically...
             </span>
           </div>
-          <button
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={handleManualRetry}
             data-testid="reconnect-retry-button"
-            className="ml-1 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-surface-elevated hover:bg-white/[0.08] text-white border border-white/[0.12] transition-colors cursor-pointer shrink-0"
+            className="ml-1 h-7 px-2.5 text-[11px] font-bold rounded-lg bg-[#1a202d] hover:bg-white/[0.08] text-white border-white/[0.12] shrink-0"
           >
             Retry Now
-          </button>
+          </Button>
         </div>
       )}
 
       {connectionStatus === 'reconnected' && (
         <div
           data-testid="reconnected-banner"
-          className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-surface-card/95 border border-emerald-500/50 text-slate-200 shadow-modal backdrop-blur-md transition-all duration-300"
+          className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-[#141924]/95 border border-emerald-500/50 text-slate-200 shadow-modal backdrop-blur-md transition-all duration-300"
         >
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <div className="flex flex-col min-w-0">

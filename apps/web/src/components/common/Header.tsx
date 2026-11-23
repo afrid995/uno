@@ -1,6 +1,16 @@
 import React from 'react';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Shield, ChevronDown } from 'lucide-react';
 import { useGuestStore } from '../../stores/guestStore';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export const Header: React.FC = () => {
   const { guest, logout } = useGuestStore();
@@ -29,21 +39,50 @@ export const Header: React.FC = () => {
         <div className="flex items-center gap-3">
           {guest ? (
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-card border border-white/[0.08] text-xs text-slate-200">
-                <User className="w-3.5 h-3.5 text-amber-400" />
-                <span className="font-medium text-white">{guest.username}</span>
-                <span className="text-[10px] text-slate-400 font-mono hidden md:inline">
-                  #{guest.id.substring(0, 6)}
-                </span>
-              </div>
-              <button
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#141924] border-white/[0.08] text-xs text-slate-200 hover:bg-[#1a202d]"
+                  >
+                    <Avatar className="h-5 w-5 rounded-full border border-amber-400/40">
+                      <AvatarFallback className="text-[10px] bg-slate-800 text-amber-300 font-bold">
+                        {guest.username.slice(0, 1).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium text-white">{guest.username}</span>
+                    <span className="text-[10px] text-slate-400 font-mono hidden md:inline">
+                      #{guest.id.substring(0, 6)}
+                    </span>
+                    <ChevronDown className="w-3 h-3 text-slate-400" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-[#121620] border-white/10">
+                  <DropdownMenuLabel className="font-mono text-[11px] text-slate-400">
+                    ID: {guest.id}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={logout}
+                    className="text-rose-400 focus:text-rose-300 focus:bg-rose-950/40 gap-2 cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Switch Guest / Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={logout}
-                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg border border-transparent hover:border-white/[0.08] hover:bg-surface-elevated transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg border border-transparent hover:border-white/[0.08] hover:bg-[#1a202d]"
                 title="Switch Guest or Logout"
               >
                 <LogOut className="w-3.5 h-3.5 text-slate-400" />
                 <span className="hidden sm:inline">Logout</span>
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">

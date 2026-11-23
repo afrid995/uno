@@ -3,7 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../../../stores/gameStore';
 import { useRoomStore } from '../../../stores/roomStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, AlertCircle, Trophy } from 'lucide-react';
+import { AlertCircle, Trophy } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Spinner } from '@/components/ui/spinner';
+import { cn } from '@/lib/utils';
 
 export const MatchResultModal: React.FC = () => {
   const navigate = useNavigate();
@@ -50,116 +56,127 @@ export const MatchResultModal: React.FC = () => {
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          className="w-full max-w-lg rounded-2xl border border-white/[0.08] bg-surface-card p-6 sm:p-8 shadow-modal text-center relative"
+          className="w-full max-w-lg"
         >
-          {/* Trophy Icon */}
-          <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-amber-400 flex items-center justify-center shadow-brass">
-            <Trophy className="w-9 h-9 text-slate-950" />
-          </div>
-
-          <div className="inline-block px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-amber-300 text-xs font-bold uppercase tracking-widest mb-2 font-display">
-            Match Finished
-          </div>
-
-          <h2 className="text-3xl font-bold text-white tracking-tight mb-2 font-display">
-            {winnerName} is the Champion!
-          </h2>
-
-          <p className="text-sm text-slate-300 mb-6 max-w-sm mx-auto">
-            Surpassed the target of {gameState.targetScore} points across {gameState.roundNumber} rounds!
-          </p>
-
-          {/* Leaderboard */}
-          <div className="bg-surface-panel rounded-xl p-4 border border-white/[0.06] mb-6 space-y-2">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left mb-3 font-display">
-              Final Standings
-            </h4>
-            {sortedPlayers.map((p, idx) => {
-              const isWinner = idx === 0;
-              const rankLabel = `#${idx + 1}`;
-
-              return (
-                <div
-                  key={p.id}
-                  className={`flex items-center justify-between p-2.5 rounded-xl text-sm ${
-                    isWinner
-                      ? 'bg-amber-400/15 border border-amber-400/40 font-bold text-amber-300 shadow-brass'
-                      : 'bg-surface-card text-slate-300 border border-white/[0.04]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono font-bold min-w-6 text-slate-400">{rankLabel}</span>
-                    <span className="truncate">
-                      {p.username} {p.id === gameState.self.id && <span className="text-amber-400/90 font-mono font-normal">(you)</span>}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="font-mono font-bold text-white">
-                      {p.cumulativeScore !== undefined ? `${p.cumulativeScore} pts total` : `${p.score} pts`}
-                    </span>
-                    {p.cumulativeScore !== undefined && (
-                      <span className="text-[11px] text-slate-400 font-mono">
-                        Match: {p.score} pts
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Error Message if Rematch Fails */}
-          {roomError && (
-            <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{roomError}</span>
+          <Card className="rounded-2xl border-white/[0.08] bg-[#141924] p-6 sm:p-8 shadow-modal text-center relative">
+            {/* Trophy Icon */}
+            <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-amber-400 flex items-center justify-center shadow-brass">
+              <Trophy className="w-9 h-9 text-slate-950" />
             </div>
-          )}
 
-          {/* Action buttons */}
-          <div className="space-y-3">
-            {isHost ? (
-              <button
-                onClick={handlePlayAgain}
-                disabled={isStarting}
-                data-testid="match-result-play-again"
-                className="w-full py-3.5 px-6 rounded-xl font-bold font-display text-white bg-emerald-600 hover:bg-emerald-500 active:scale-95 transition-all text-sm shadow-card border border-emerald-400/40 flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
-              >
-                {isStarting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Starting Rematch...</span>
-                  </>
-                ) : (
-                  <span>PLAY AGAIN</span>
-                )}
-              </button>
-            ) : (
-              <div
-                data-testid="match-result-waiting-host"
-                className="w-full py-2.5 px-4 rounded-xl bg-surface-panel border border-white/[0.06] text-xs text-slate-400 font-medium font-mono"
-              >
-                Waiting for host to start Play Again...
-              </div>
+            <Badge variant="brass" className="px-3 py-1 text-xs font-bold uppercase tracking-widest mb-2 font-display">
+              Match Finished
+            </Badge>
+
+            <h2 className="text-3xl font-bold text-white tracking-tight mb-2 font-display">
+              {winnerName} is the Champion!
+            </h2>
+
+            <p className="text-sm text-slate-300 mb-6 max-w-sm mx-auto">
+              Surpassed the target of {gameState.targetScore} points across {gameState.roundNumber} rounds!
+            </p>
+
+            {/* Leaderboard */}
+            <div className="bg-[#10141d] rounded-xl p-4 border border-white/[0.06] mb-6 space-y-2">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left mb-3 font-display">
+                Final Standings
+              </h4>
+              {sortedPlayers.map((p, idx) => {
+                const isWinner = idx === 0;
+                const rankLabel = `#${idx + 1}`;
+
+                return (
+                  <div
+                    key={p.id}
+                    className={cn(
+                      'flex items-center justify-between p-2.5 rounded-xl text-sm',
+                      isWinner
+                        ? 'bg-amber-400/15 border border-amber-400/40 font-bold text-amber-300 shadow-brass'
+                        : 'bg-[#141924] text-slate-300 border border-white/[0.04]'
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-mono font-bold min-w-6 text-slate-400">{rankLabel}</span>
+                      <span className="truncate">
+                        {p.username} {p.id === gameState.self.id && <span className="text-amber-400/90 font-mono font-normal">(you)</span>}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="font-mono font-bold text-white">
+                        {p.cumulativeScore !== undefined ? `${p.cumulativeScore} pts total` : `${p.score} pts`}
+                      </span>
+                      {p.cumulativeScore !== undefined && (
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          Match: {p.score} pts
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Error Message if Rematch Fails */}
+            {roomError && (
+              <Alert variant="destructive" className="mb-4 py-2 px-3 rounded-xl border-rose-500/30 bg-rose-950/40">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <AlertDescription className="text-xs text-rose-300">
+                  {roomError}
+                </AlertDescription>
+              </Alert>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={handleExitToHome}
-                data-testid="match-result-back-home"
-                className="flex-1 py-3 px-6 rounded-xl font-bold font-display text-slate-950 bg-amber-400 hover:bg-amber-300 active:scale-95 transition-all text-sm shadow-card cursor-pointer"
-              >
-                Back to Home
-              </button>
-              <button
-                onClick={handleExitToHome}
-                data-testid="match-result-main-menu"
-                className="py-3 px-6 rounded-xl font-semibold text-slate-300 hover:text-white bg-surface-panel hover:bg-surface-elevated border border-white/[0.06] active:scale-95 transition-all text-sm cursor-pointer"
-              >
-                Main Menu
-              </button>
+            {/* Action buttons */}
+            <div className="space-y-3">
+              {isHost ? (
+                <Button
+                  onClick={handlePlayAgain}
+                  disabled={isStarting}
+                  data-testid="match-result-play-again"
+                  variant="default"
+                  size="lg"
+                  className="w-full rounded-xl font-bold font-display text-white bg-emerald-600 hover:bg-emerald-500 text-sm shadow-card border border-emerald-400/40 gap-2"
+                >
+                  {isStarting ? (
+                    <>
+                      <Spinner size="sm" className="text-white" />
+                      <span>Starting Rematch...</span>
+                    </>
+                  ) : (
+                    <span>PLAY AGAIN</span>
+                  )}
+                </Button>
+              ) : (
+                <div
+                  data-testid="match-result-waiting-host"
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#10141d] border border-white/[0.06] text-xs text-slate-400 font-medium font-mono"
+                >
+                  Waiting for host to start Play Again...
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  onClick={handleExitToHome}
+                  data-testid="match-result-back-home"
+                  variant="brass"
+                  size="lg"
+                  className="flex-1 rounded-xl font-bold font-display text-slate-950 bg-amber-400 hover:bg-amber-300 text-sm shadow-card"
+                >
+                  Back to Home
+                </Button>
+                <Button
+                  onClick={handleExitToHome}
+                  data-testid="match-result-main-menu"
+                  variant="secondary"
+                  size="lg"
+                  className="rounded-xl font-semibold text-slate-300 hover:text-white bg-[#10141d] hover:bg-[#1a202d] border-white/[0.06] text-sm"
+                >
+                  Main Menu
+                </Button>
+              </div>
             </div>
-          </div>
+          </Card>
         </motion.div>
       </div>
     </AnimatePresence>

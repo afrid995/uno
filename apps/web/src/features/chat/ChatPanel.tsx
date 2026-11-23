@@ -3,6 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useChatStore } from '../../stores/chatStore';
 import { useGuestStore } from '../../stores/guestStore';
 import { MessageSquare, X, Send, AlertCircle } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 
 export const ChatPanel: React.FC = () => {
   const { messages, isOpen, isSending, error, setIsOpen, sendMessage, clearError } = useChatStore();
@@ -60,12 +66,12 @@ export const ChatPanel: React.FC = () => {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           transition={{ duration: 0.2 }}
-          className="fixed bottom-16 sm:bottom-20 right-2 sm:right-6 w-[calc(100vw-1rem)] sm:w-96 h-[460px] max-h-[75vh] flex flex-col bg-surface-card border border-white/[0.08] rounded-2xl shadow-modal backdrop-blur-md z-50 overflow-hidden"
+          className="fixed bottom-16 sm:bottom-20 right-2 sm:right-6 w-[calc(100vw-1rem)] sm:w-96 h-[460px] max-h-[75vh] flex flex-col bg-[#141924] border border-white/[0.08] rounded-2xl shadow-modal backdrop-blur-md z-50 overflow-hidden"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-surface-panel/80">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-[#10141d]/80">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-surface-elevated border border-white/[0.08] flex items-center justify-center text-amber-400">
+              <div className="w-7 h-7 rounded-lg bg-[#1a202d] border border-white/[0.08] flex items-center justify-center text-amber-400">
                 <MessageSquare className="w-3.5 h-3.5" />
               </div>
               <div>
@@ -75,20 +81,22 @@ export const ChatPanel: React.FC = () => {
                 <p className="text-[10px] text-slate-400">All players in this match</p>
               </div>
             </div>
-            <button
+            <Button
               data-testid="chat-close-btn"
+              variant="ghost"
+              size="icon"
               onClick={() => setIsOpen(false)}
-              className="p-1 rounded-lg text-slate-400 hover:text-white bg-surface-panel hover:bg-surface-elevated border border-white/[0.06] transition-colors cursor-pointer"
+              className="h-7 w-7 rounded-lg text-slate-400 hover:text-white bg-[#10141d] hover:bg-[#1a202d] border border-white/[0.06]"
               aria-label="Close Chat"
             >
               <X className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
 
           {/* Error Banner */}
           {error && (
             <div className="flex items-center justify-between px-3 py-1.5 bg-rose-950/80 border-b border-rose-500/40 text-rose-300 text-[11px]">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 truncate">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-400" />
                 <span className="truncate">{error}</span>
               </div>
@@ -102,57 +110,60 @@ export const ChatPanel: React.FC = () => {
           )}
 
           {/* Messages Area */}
-          <div
+          <ScrollArea
             data-testid="chat-messages-container"
-            className="flex-1 overflow-y-auto p-3 space-y-2.5 no-scrollbar"
+            className="flex-1 p-3"
           >
-            {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-500 space-y-1">
-                <MessageSquare className="w-8 h-8 opacity-40 mb-1" />
-                <p className="text-xs font-semibold text-slate-400">No messages yet</p>
-                <p className="text-[10px]">Send a greeting or chat with your table.</p>
-              </div>
-            ) : (
-              messages.map((msg) => {
-                const isSelf = currentGuest?.id === msg.senderGuestId;
+            <div className="space-y-2.5">
+              {messages.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center text-center p-4 text-slate-500 space-y-1">
+                  <MessageSquare className="w-8 h-8 opacity-40 mb-1" />
+                  <p className="text-xs font-semibold text-slate-400">No messages yet</p>
+                  <p className="text-[10px]">Send a greeting or chat with your table.</p>
+                </div>
+              ) : (
+                messages.map((msg) => {
+                  const isSelf = currentGuest?.id === msg.senderGuestId;
 
-                return (
-                  <div
-                    key={msg.id}
-                    data-testid="chat-message-item"
-                    className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}
-                  >
-                    {/* Sender & Timestamp */}
-                    <div className="flex items-center gap-1.5 mb-0.5 px-1">
-                      <span className="text-[10px] font-bold text-slate-400">
-                        {isSelf ? 'You' : msg.senderUsername}
-                      </span>
-                      <span className="text-[9px] text-slate-500 font-mono">
-                        {formatTime(msg.createdAt)}
-                      </span>
-                    </div>
-
-                    {/* Speech Bubble */}
+                  return (
                     <div
-                      className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs break-words shadow-card ${
-                        isSelf
-                          ? 'bg-red-600 text-white rounded-tr-xs'
-                          : 'bg-surface-panel border border-white/[0.08] text-slate-200 rounded-tl-xs'
-                      }`}
+                      key={msg.id}
+                      data-testid="chat-message-item"
+                      className={cn('flex flex-col', isSelf ? 'items-end' : 'items-start')}
                     >
-                      {msg.message}
+                      {/* Sender & Timestamp */}
+                      <div className="flex items-center gap-1.5 mb-0.5 px-1">
+                        <span className="text-[10px] font-bold text-slate-400">
+                          {isSelf ? 'You' : msg.senderUsername}
+                        </span>
+                        <span className="text-[9px] text-slate-500 font-mono">
+                          {formatTime(msg.createdAt)}
+                        </span>
+                      </div>
+
+                      {/* Speech Bubble */}
+                      <div
+                        className={cn(
+                          'max-w-[85%] px-3 py-2 rounded-2xl text-xs break-words shadow-card',
+                          isSelf
+                            ? 'bg-red-600 text-white rounded-tr-xs'
+                            : 'bg-[#10141d] border border-white/[0.08] text-slate-200 rounded-tl-xs'
+                        )}
+                      >
+                        {msg.message}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
 
           {/* Input Footer */}
-          <div className="p-2.5 border-t border-white/[0.06] bg-surface-panel/50">
+          <div className="p-2.5 border-t border-white/[0.06] bg-[#10141d]/50">
             <div className="relative flex items-center gap-2">
-              <textarea
+              <Textarea
                 ref={inputRef}
                 data-testid="chat-input"
                 rows={1}
@@ -161,17 +172,18 @@ export const ChatPanel: React.FC = () => {
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Type a message... (Enter to send)"
-                className="w-full resize-none py-2 pl-3 pr-10 rounded-xl bg-surface-panel border border-white/[0.08] focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 text-xs text-white placeholder-slate-500 outline-none transition-all max-h-24 no-scrollbar"
+                className="w-full min-h-[38px] max-h-24 py-2 pl-3 pr-10 rounded-xl bg-[#10141d] border-white/[0.08] focus-visible:ring-amber-400/80 text-xs text-white placeholder:text-slate-500"
               />
-              <button
+              <Button
                 data-testid="chat-send-btn"
+                size="icon"
                 disabled={!inputText.trim() || isSending}
                 onClick={handleSend}
-                className="absolute right-1.5 p-1.5 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all cursor-pointer shadow-sm"
+                className="absolute right-1.5 h-7 w-7 rounded-lg bg-red-600 hover:bg-red-500 text-white shadow-sm"
                 aria-label="Send message"
               >
                 <Send className="w-3.5 h-3.5" />
-              </button>
+              </Button>
             </div>
             <div className="flex items-center justify-between mt-1 px-1 text-[9px] text-slate-500 font-mono">
               <span>Shift + Enter for newline</span>

@@ -1,9 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, LogIn, Loader2, ArrowRight } from 'lucide-react';
+import { LogIn, ArrowRight } from 'lucide-react';
 import { ROOM_RULES } from '@uno-ultimate/shared';
 import { useRoomStore } from '../../../stores/roomStore';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Spinner } from '@/components/ui/spinner';
+import { cn } from '@/lib/utils';
 
 interface JoinRoomModalProps {
   isOpen: boolean;
@@ -44,95 +56,91 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({ isOpen, onClose })
   const displayError = localError || storeError;
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 8 }}
-          transition={{ duration: 0.2 }}
-          className="bg-surface-card w-full max-w-md p-6 sm:p-7 rounded-2xl border border-white/[0.08] shadow-modal relative overflow-hidden"
-        >
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-surface-elevated border border-white/[0.1] flex items-center justify-center text-slate-300">
-                <LogIn className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-display font-bold text-xl text-white">Join Private Room</h3>
-                <p className="text-xs text-slate-400">Enter a 6-character room code</p>
-              </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="bg-[#141924] w-full max-w-md p-6 sm:p-7 rounded-2xl border-white/[0.08] shadow-modal overflow-hidden">
+        <DialogHeader className="mb-2 text-left">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/[0.1] flex items-center justify-center text-slate-300 shrink-0">
+              <LogIn className="w-5 h-5" />
             </div>
-            <button
-              onClick={onClose}
-              aria-label="Close modal"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-surface-elevated transition-colors border border-transparent hover:border-white/[0.06] cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div>
+              <DialogTitle className="font-display font-bold text-xl text-white">
+                Join Private Room
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400 mt-0.5">
+                Enter a 6-character room code
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <form onSubmit={handleJoin} className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="room-code-input" className="block text-xs font-medium text-slate-300 normal-case tracking-normal">
+              Room Code
+            </Label>
+
+            <div className="relative">
+              <Input
+                id="room-code-input"
+                type="text"
+                value={roomCode}
+                onChange={handleInputChange}
+                placeholder="e.g. 7X8K2M"
+                maxLength={ROOM_RULES.CODE_LENGTH}
+                autoComplete="off"
+                autoFocus
+                className={cn(
+                  'h-14 text-center text-2xl font-mono uppercase tracking-[0.25em] font-extrabold px-4 rounded-xl bg-[#10141d] border border-white/[0.12] text-amber-300 placeholder:text-slate-600 focus-visible:ring-amber-400/80 focus-visible:border-amber-400 transition-all',
+                  displayError && 'border-rose-500/80 focus-visible:ring-rose-500'
+                )}
+              />
+            </div>
+
+            {displayError && (
+              <Alert variant="destructive" className="py-2 px-3 rounded-xl border-rose-500/30 bg-rose-950/40">
+                <AlertDescription className="text-xs text-rose-300">
+                  {displayError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <p className="text-[11px] text-slate-500">
+              Codes are 6 uppercase letters and numbers (excluding 0, O, 1, I).
+            </p>
           </div>
 
-          <form onSubmit={handleJoin} className="space-y-5">
-            <div className="space-y-2">
-              <label htmlFor="room-code-input" className="block text-xs font-medium text-slate-300">
-                Room Code
-              </label>
-
-              <div className="relative">
-                <input
-                  id="room-code-input"
-                  type="text"
-                  value={roomCode}
-                  onChange={handleInputChange}
-                  placeholder="e.g. 7X8K2M"
-                  maxLength={ROOM_RULES.CODE_LENGTH}
-                  autoComplete="off"
-                  autoFocus
-                  className="w-full text-center text-2xl font-mono uppercase tracking-[0.25em] font-extrabold py-3.5 px-4 rounded-xl bg-surface-panel border border-white/[0.12] text-amber-300 placeholder-slate-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 focus:outline-none transition-all"
-                />
-              </div>
-
-              {displayError && (
-                <p className="text-xs text-rose-300 pt-1 flex items-center gap-1.5">
-                  <span>{displayError}</span>
-                </p>
+          <div className="flex items-center gap-3 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-[#1a202d] border-white/[0.08]"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              data-testid="confirm-join-room-btn"
+              disabled={isLoading || roomCode.length !== ROOM_RULES.CODE_LENGTH}
+              variant="default"
+              className="flex-1 py-3 rounded-xl text-xs font-bold font-display text-white bg-red-600 hover:bg-red-500 active:bg-red-700 border-red-500/30 shadow-sm disabled:opacity-50 gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <Spinner size="sm" className="text-white" />
+                  <span>Joining...</span>
+                </>
+              ) : (
+                <>
+                  <span>Enter Room</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
               )}
-
-              <p className="text-[11px] text-slate-500">
-                Codes are 6 uppercase letters and numbers (excluding 0, O, 1, I).
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-surface-elevated border border-white/[0.08] hover:bg-surface-highlight transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                data-testid="confirm-join-room-btn"
-                disabled={isLoading || roomCode.length !== ROOM_RULES.CODE_LENGTH}
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold font-display text-white bg-red-600 hover:bg-red-500 active:bg-red-700 border border-red-500/30 shadow-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Joining...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Enter Room</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };

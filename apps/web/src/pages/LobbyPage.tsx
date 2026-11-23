@@ -7,7 +7,6 @@ import {
   Play,
   CheckCircle2,
   Info,
-  Loader2,
 } from 'lucide-react';
 import { RoomMemberPublicDto } from '@uno-ultimate/shared';
 import { SOCKET_EVENTS } from '@uno-ultimate/game-protocol';
@@ -20,6 +19,23 @@ import { InviteLinkCard } from '../features/room/components/InviteLinkCard';
 import { useChatStore } from '../stores/chatStore';
 import { ChatPanel } from '../features/chat/ChatPanel';
 import { ChatToggleButton } from '../features/chat/ChatToggleButton';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Spinner } from '@/components/ui/spinner';
+import { cn } from '@/lib/utils';
 
 export const LobbyPage: React.FC = () => {
   const { roomCode } = useParams<{ roomCode: string }>();
@@ -137,7 +153,7 @@ export const LobbyPage: React.FC = () => {
   if (isLoading && !room) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
-        <div className="w-10 h-10 border-3 border-uno-red border-t-transparent rounded-full animate-spin" />
+        <Spinner size="lg" className="text-amber-400" />
         <p className="text-slate-400 text-sm font-medium">Entering lobby {roomCode}...</p>
       </div>
     );
@@ -146,15 +162,18 @@ export const LobbyPage: React.FC = () => {
   if (!room) {
     return (
       <div className="max-w-md mx-auto py-16 px-4 text-center space-y-4">
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">
-          {error || 'Room not found or no longer available.'}
-        </div>
-        <button
+        <Alert variant="destructive" className="p-4 rounded-2xl bg-rose-500/10 border-rose-500/20 text-rose-400 text-sm">
+          <AlertDescription>
+            {error || 'Room not found or no longer available.'}
+          </AlertDescription>
+        </Alert>
+        <Button
+          variant="secondary"
           onClick={() => navigate('/dashboard')}
-          className="px-6 py-2.5 rounded-xl text-xs font-bold bg-slate-800 text-white hover:bg-slate-700 transition-colors"
+          className="px-6 py-2.5 rounded-xl text-xs font-bold bg-slate-800 text-white hover:bg-slate-700"
         >
           Return to Dashboard
-        </button>
+        </Button>
       </div>
     );
   }
@@ -174,7 +193,7 @@ export const LobbyPage: React.FC = () => {
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="p-5 sm:p-6 rounded-2xl bg-surface-card border border-amber-400/40 text-white text-center shadow-brass mb-6"
+            className="p-5 sm:p-6 rounded-2xl bg-[#141924] border border-amber-400/40 text-white text-center shadow-brass mb-6"
           >
             <div className="flex items-center justify-center gap-2 mb-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-400" />
@@ -191,10 +210,10 @@ export const LobbyPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <Badge variant="emerald" className="gap-1.5 py-0.5 px-2.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               Lobby Active
-            </span>
+            </Badge>
             <span className="text-xs text-slate-500 font-mono">v{room.version}</span>
           </div>
           <h1 className="font-display font-bold text-2xl sm:text-3xl text-slate-100 tracking-tight mt-1">
@@ -207,7 +226,7 @@ export const LobbyPage: React.FC = () => {
           <ChatToggleButton />
 
           {/* Player count indicator */}
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-surface-card border border-white/[0.08] text-xs text-slate-300">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#141924] border border-white/[0.08] text-xs text-slate-300">
             <Users className="w-4 h-4 text-slate-400" />
             <span className="font-bold font-mono text-white">
               {room.playerCount} / {room.maxPlayers}
@@ -218,9 +237,10 @@ export const LobbyPage: React.FC = () => {
       </div>
 
       {/* Game Variant Banner / Selector */}
-      <div className="p-4 rounded-2xl bg-surface-card border border-white/[0.08] shadow-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <Card className="p-4 rounded-2xl bg-[#141924] border-white/[0.08] shadow-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs tracking-wider ${
+          <div className={cn(
+            'w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs tracking-wider shrink-0',
             roomVariant === 'uno_show_em_no_mercy'
               ? 'bg-rose-950/70 text-rose-300 border border-rose-700/50'
               : roomVariant === 'uno_all_wild'
@@ -234,7 +254,7 @@ export const LobbyPage: React.FC = () => {
               : roomVariant === 'uno_flip'
               ? 'bg-indigo-950/70 text-indigo-300 border border-indigo-700/50'
               : 'bg-red-950/70 text-red-300 border border-red-700/50'
-          }`}>
+          )}>
             {roomVariant === 'uno_show_em_no_mercy' ? 'MERCY' : roomVariant === 'uno_all_wild' ? 'WILD' : roomVariant === 'uno_flex' ? 'FLEX' : roomVariant === 'uno_teams' ? 'TEAMS' : roomVariant === 'uno_attack' ? 'ATTACK' : roomVariant === 'uno_flip' ? 'FLIP' : 'UNO'}
           </div>
           <div>
@@ -254,21 +274,22 @@ export const LobbyPage: React.FC = () => {
                   ? 'UNO Flip!'
                   : 'Classic UNO'}
               </span>
-              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${
+              <Badge variant="secondary" className={cn(
+                'text-[10px] font-mono font-bold px-2 py-0.5 rounded-md',
                 roomVariant === 'uno_show_em_no_mercy'
-                  ? 'bg-rose-950/80 text-rose-300 border border-rose-700/60'
+                  ? 'bg-rose-950/80 text-rose-300 border-rose-700/60'
                   : roomVariant === 'uno_all_wild'
-                  ? 'bg-purple-900/60 text-purple-300 border border-purple-700/50'
+                  ? 'bg-purple-900/60 text-purple-300 border-purple-700/50'
                   : roomVariant === 'uno_flex'
-                  ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50'
+                  ? 'bg-emerald-900/60 text-emerald-300 border-emerald-700/50'
                   : roomVariant === 'uno_teams'
-                  ? 'bg-cyan-900/60 text-cyan-300 border border-cyan-700/50'
+                  ? 'bg-cyan-900/60 text-cyan-300 border-cyan-700/50'
                   : roomVariant === 'uno_attack'
-                  ? 'bg-red-900/60 text-red-300 border border-red-700/50'
+                  ? 'bg-red-900/60 text-red-300 border-red-700/50'
                   : roomVariant === 'uno_flip'
-                  ? 'bg-indigo-900/60 text-indigo-300 border border-indigo-700/50'
-                  : 'bg-red-950/60 text-red-300 border border-red-800/50'
-              }`}>
+                  ? 'bg-indigo-900/60 text-indigo-300 border-indigo-700/50'
+                  : 'bg-red-950/60 text-red-300 border-red-800/50'
+              )}>
                 {roomVariant === 'uno_show_em_no_mercy'
                   ? '168 CARDS • MAX 6'
                   : roomVariant === 'uno_all_wild'
@@ -282,7 +303,7 @@ export const LobbyPage: React.FC = () => {
                   : roomVariant === 'uno_flip'
                   ? '112 DUAL-SIDED CARDS'
                   : '108 CARDS'}
-              </span>
+              </Badge>
             </div>
             <p className="text-[11px] text-slate-400">
               {roomVariant === 'uno_show_em_no_mercy'
@@ -305,100 +326,86 @@ export const LobbyPage: React.FC = () => {
         {isCurrentPlayerHost && (
           <div className="flex items-center gap-1.5 self-stretch sm:self-auto flex-wrap">
             <span className="text-xs text-slate-400 mr-1 hidden sm:inline">Change:</span>
-            <button
+            <Button
               type="button"
+              variant={roomVariant === 'classic' ? 'brass' : 'secondary'}
+              size="sm"
               data-testid="lobby-toggle-classic"
               disabled={roomVariant === 'classic'}
               onClick={() => updateSettings({ variant: 'classic' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                roomVariant === 'classic'
-                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
-                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
-              }`}
+              className="flex-1 sm:flex-none text-xs"
             >
               Classic
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant={roomVariant === 'uno_flip' ? 'brass' : 'secondary'}
+              size="sm"
               data-testid="lobby-toggle-flip"
               disabled={roomVariant === 'uno_flip'}
               onClick={() => updateSettings({ variant: 'uno_flip' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                roomVariant === 'uno_flip'
-                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
-                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
-              }`}
+              className="flex-1 sm:flex-none text-xs"
             >
               UNO Flip!
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant={roomVariant === 'uno_show_em_no_mercy' ? 'brass' : 'secondary'}
+              size="sm"
               data-testid="lobby-toggle-no-mercy"
               disabled={roomVariant === 'uno_show_em_no_mercy'}
               onClick={() => updateSettings({ variant: 'uno_show_em_no_mercy' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                roomVariant === 'uno_show_em_no_mercy'
-                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
-                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
-              }`}
+              className="flex-1 sm:flex-none text-xs"
             >
               No Mercy
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant={roomVariant === 'uno_all_wild' ? 'brass' : 'secondary'}
+              size="sm"
               data-testid="lobby-toggle-all-wild"
               disabled={roomVariant === 'uno_all_wild'}
               onClick={() => updateSettings({ variant: 'uno_all_wild' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                roomVariant === 'uno_all_wild'
-                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
-                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
-              }`}
+              className="flex-1 sm:flex-none text-xs"
             >
               All Wild
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant={roomVariant === 'uno_flex' ? 'brass' : 'secondary'}
+              size="sm"
               data-testid="lobby-toggle-flex"
               disabled={roomVariant === 'uno_flex'}
               onClick={() => updateSettings({ variant: 'uno_flex' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                roomVariant === 'uno_flex'
-                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
-                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
-              }`}
+              className="flex-1 sm:flex-none text-xs"
             >
               UNO Flex
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant={roomVariant === 'uno_teams' ? 'brass' : 'secondary'}
+              size="sm"
               data-testid="lobby-toggle-teams"
               disabled={roomVariant === 'uno_teams'}
               onClick={() => updateSettings({ variant: 'uno_teams' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                roomVariant === 'uno_teams'
-                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
-                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
-              }`}
+              className="flex-1 sm:flex-none text-xs"
             >
               UNO Teams
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant={roomVariant === 'uno_attack' ? 'brass' : 'secondary'}
+              size="sm"
               data-testid="lobby-toggle-attack"
               disabled={roomVariant === 'uno_attack'}
               onClick={() => updateSettings({ variant: 'uno_attack' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                roomVariant === 'uno_attack'
-                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
-                  : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
-              }`}
+              className="flex-1 sm:flex-none text-xs"
             >
               UNO Attack
-            </button>
+            </Button>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Invite Link & Code Card */}
       <InviteLinkCard roomCode={room.roomCode} />
@@ -430,70 +437,81 @@ export const LobbyPage: React.FC = () => {
       </div>
 
       {/* Player Actions & Host Controls Bar */}
-      <div className="p-5 sm:p-6 rounded-2xl bg-surface-card border border-white/[0.08] shadow-card flex flex-col sm:flex-row items-center justify-between gap-4">
+      <Card className="p-5 sm:p-6 rounded-2xl bg-[#141924] border-white/[0.08] shadow-card flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3 w-full sm:w-auto">
           {confirmLeave ? (
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <span className="text-xs text-rose-400 font-medium">Leave room?</span>
-              <button
+              <Button
+                variant="destructive"
+                size="sm"
                 onClick={handleLeave}
-                className="py-2.5 px-4 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition-colors shadow-card"
+                className="py-2.5 px-4 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-card"
               >
                 Yes, Leave
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setConfirmLeave(false)}
-                className="py-2.5 px-3 rounded-xl text-xs bg-surface-panel text-slate-300 hover:text-white border border-white/[0.06]"
+                className="py-2.5 px-3 rounded-xl text-xs bg-[#10141d] text-slate-300 hover:text-white border-white/[0.06]"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           ) : (
-            <button
+            <Button
+              variant="secondary"
               onClick={() => setConfirmLeave(true)}
-              className="py-3 px-4 rounded-xl text-xs font-semibold text-slate-400 hover:text-rose-400 bg-surface-panel hover:bg-rose-500/10 border border-white/[0.06] hover:border-rose-500/30 transition-all flex items-center justify-center gap-2 w-full sm:w-auto"
+              className="py-3 px-4 rounded-xl text-xs font-semibold text-slate-400 hover:text-rose-400 bg-[#10141d] hover:bg-rose-500/10 border-white/[0.06] hover:border-rose-500/30 gap-2 w-full sm:w-auto"
             >
               <LogOut className="w-4 h-4" />
               <span>Leave Room</span>
-            </button>
+            </Button>
           )}
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
           {/* Non-host Ready Toggle */}
           {!isCurrentPlayerHost && (
-            <button
+            <Button
               data-testid="ready-toggle-btn"
+              variant={isCurrentPlayerReady ? 'secondary' : 'default'}
+              size="lg"
               onClick={handleReadyToggle}
-              className={`py-3.5 px-6 rounded-xl font-display font-bold text-xs tracking-wide transition-all shadow-card flex items-center justify-center gap-2 w-full sm:w-auto ${
+              className={cn(
+                'rounded-xl font-display font-bold text-xs tracking-wide shadow-card gap-2 w-full sm:w-auto',
                 isCurrentPlayerReady
-                  ? 'bg-surface-panel text-slate-300 hover:bg-surface-elevated border border-white/[0.1]'
+                  ? 'bg-[#10141d] text-slate-300 hover:bg-[#1a202d] border border-white/[0.1]'
                   : 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/30'
-              }`}
+              )}
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>{isCurrentPlayerReady ? 'Mark as Not Ready' : "I'm Ready!"}</span>
-            </button>
+            </Button>
           )}
 
           {/* Host Start Game Button */}
           {isCurrentPlayerHost && (
             <div className="relative group w-full sm:w-auto">
-              <button
+              <Button
                 data-testid="start-game-btn"
+                variant="default"
+                size="lg"
                 onClick={handleStartGame}
                 disabled={!canStartMatch || isStarting}
-                className={`py-3.5 px-7 rounded-xl font-display font-bold text-xs tracking-wide transition-all shadow-card flex items-center justify-center gap-2 w-full sm:w-auto select-none ${
+                className={cn(
+                  'rounded-xl font-display font-bold text-xs tracking-wide shadow-card gap-2 w-full sm:w-auto select-none',
                   isStarting
-                    ? 'bg-surface-panel text-amber-400 border border-amber-500/40 cursor-wait'
+                    ? 'bg-[#10141d] text-amber-400 border border-amber-500/40 cursor-wait'
                     : canStartMatch
-                    ? 'bg-red-600 hover:bg-red-500 text-white border border-red-500/50 hover:border-red-400 cursor-pointer active:scale-[0.98]'
-                    : 'bg-surface-panel/80 border border-white/[0.06] text-slate-500 cursor-not-allowed'
-                }`}
+                    ? 'bg-red-600 hover:bg-red-500 text-white border border-red-500/50 hover:border-red-400 active:scale-[0.98]'
+                    : 'bg-[#10141d]/80 border border-white/[0.06] text-slate-500 cursor-not-allowed'
+                )}
               >
                 {isStarting ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                    <Spinner size="sm" className="text-amber-400" />
                     <span>Starting Game...</span>
                   </>
                 ) : (
@@ -502,7 +520,7 @@ export const LobbyPage: React.FC = () => {
                     <span>Start Game</span>
                   </>
                 )}
-              </button>
+              </Button>
 
               {!canStartMatch && !isStarting && (
                 <div className="text-[10px] text-center text-slate-500 mt-1">
@@ -514,10 +532,10 @@ export const LobbyPage: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* Fair Play & Official Rules Notice */}
-      <div className="p-4 rounded-2xl bg-surface-card border border-white/[0.06] flex items-start gap-3 text-xs text-slate-400">
+      <Card className="p-4 rounded-2xl bg-[#141924] border-white/[0.06] flex items-start gap-3 text-xs text-slate-400">
         <Info className="w-4 h-4 text-amber-400/80 shrink-0 mt-0.5" />
         <div className="space-y-1">
           <p className="font-semibold text-slate-200">
@@ -529,7 +547,7 @@ export const LobbyPage: React.FC = () => {
               : 'Official Mattel 42001 rules: 108-card deck, non-wild starting card enforcement, UNO declarations & 4-card challenge penalties, Wild Draw Four challenge/accept lifecycles, and multi-round scoring to 500 points.'}
           </p>
         </div>
-      </div>
+      </Card>
 
       {/* Floating Chat Panel */}
       <ChatPanel />

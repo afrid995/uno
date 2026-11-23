@@ -1,6 +1,10 @@
 import React from 'react';
 import { PublicPlayer } from '@uno-ultimate/game-protocol';
 import { User, ShieldAlert, Award, WifiOff } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export interface PlayerSeatProps {
   player: PublicPlayer;
@@ -47,27 +51,32 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         data-testid="player-seat"
         data-player-id={player.id}
         data-is-eliminated={isEliminated}
-        className={`flex items-center gap-2 p-1.5 sm:p-2 rounded-xl transition-all duration-300 border select-none shrink-0 ${
+        className={cn(
+          'flex items-center gap-2 p-1.5 sm:p-2 rounded-xl transition-all duration-300 border select-none shrink-0',
           isEliminated
-            ? 'bg-surface-canvas/80 border-rose-950/60 opacity-60'
+            ? 'bg-[#090c11]/80 border-rose-950/60 opacity-60'
             : isCurrentTurn
-            ? 'border-amber-400/90 ring-1 ring-amber-400/40 shadow-brass bg-surface-elevated'
-            : 'bg-surface-card border-white/[0.08] hover:border-white/[0.15]'
-        } ${className}`}
+            ? 'border-amber-400/90 ring-1 ring-amber-400/40 shadow-brass bg-[#1a202d]'
+            : 'bg-[#141924] border-white/[0.08] hover:border-white/[0.15]',
+          className
+        )}
       >
         {/* Avatar & Turn Indicator */}
         <div className="relative shrink-0">
-          <div
-            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-display font-black text-xs ${
+          <Avatar
+            className={cn(
+              'w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-display font-black text-xs border-0',
               isEliminated
                 ? 'bg-rose-950/60 text-rose-400/60 border border-rose-900/40'
                 : isCurrentTurn
                 ? 'bg-amber-400 text-slate-950 font-bold shadow-card'
-                : 'bg-surface-panel text-slate-300 border border-white/[0.08]'
-            }`}
+                : 'bg-[#10141d] text-slate-300 border border-white/[0.08]'
+            )}
           >
-            <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </div>
+            <AvatarFallback className="bg-transparent font-display font-bold">
+              <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </AvatarFallback>
+          </Avatar>
 
           {/* Current turn dot */}
           {isCurrentTurn && !isEliminated && (
@@ -84,12 +93,13 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
               {player.username}
             </p>
             {isCurrentTurn && !isEliminated && (
-              <span
+              <Badge
                 data-testid="playing-badge"
-                className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-display font-black text-[8px] uppercase tracking-wider"
+                variant="brass"
+                className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-display font-black text-[8px] uppercase tracking-wider border-0"
               >
                 TURN
-              </span>
+              </Badge>
             )}
           </div>
 
@@ -114,57 +124,63 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         <div className="flex items-center gap-1 ml-auto shrink-0">
           {/* UNO Flex Power Card Badge */}
           {!isEliminated && player.powerCardStatus && (
-            <span
+            <Badge
               data-testid="power-card-badge"
               data-power-status={player.powerCardStatus}
-              className={`px-1 py-0.5 rounded text-[8px] font-black border ${
+              variant="secondary"
+              className={cn(
+                'px-1 py-0.5 rounded text-[8px] font-black border',
                 player.powerCardStatus === 'green_check'
                   ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
                   : 'bg-rose-500/20 text-rose-400 border-rose-500/50'
-              }`}
+              )}
             >
               {player.powerCardStatus === 'green_check' ? '⚡' : '✗'}
-            </span>
+            </Badge>
           )}
 
           {/* UNO Teams Team Badge */}
           {player.teamId && (
-            <span
+            <Badge
               data-testid="player-team-badge"
               data-team-id={player.teamId}
-              className="px-1 py-0.5 rounded text-[8px] font-mono bg-blue-500/20 text-blue-300 border border-blue-400/40"
+              variant="secondary"
+              className="px-1 py-0.5 rounded text-[8px] font-mono bg-blue-500/20 text-blue-300 border-blue-400/40"
             >
               {player.teamId.toUpperCase().replace('TEAM_', 'T')}
-            </span>
+            </Badge>
           )}
 
           {/* UNO declared pill */}
           {!isEliminated && player.hasDeclaredUno && (
-            <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-emerald-500 text-slate-950">
+            <Badge variant="emerald" className="px-1.5 py-0.5 rounded text-[8px] font-black bg-emerald-500 text-slate-950 border-0">
               UNO!
-            </span>
+            </Badge>
           )}
 
           {/* Catch UNO button */}
           {!isEliminated && isVulnerableToUno && onCatchUno && (
-            <button
+            <Button
               data-testid="catch-uno-btn"
+              size="sm"
+              variant="destructive"
               onClick={onCatchUno}
-              className="px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-[9px] flex items-center gap-0.5 shadow-card cursor-pointer border border-red-400/50"
+              className="h-6 px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-[9px] flex items-center gap-0.5 shadow-card border-red-400/50"
             >
               <ShieldAlert className="w-2.5 h-2.5" />
               <span>CATCH</span>
-            </button>
+            </Button>
           )}
 
           {disconnectInfo && (
-            <span
+            <Badge
               data-testid="disconnected-badge"
-              className="px-1 py-0.5 rounded bg-rose-500/20 border border-rose-500/60 text-rose-300 font-bold text-[8px] flex items-center gap-0.5 font-mono"
+              variant="destructive"
+              className="px-1 py-0.5 rounded bg-rose-500/20 border-rose-500/60 text-rose-300 font-bold text-[8px] flex items-center gap-0.5 font-mono"
             >
               <WifiOff className="w-2 h-2" />
               <span>{secondsRemaining}s</span>
-            </span>
+            </Badge>
           )}
         </div>
       </div>
@@ -176,27 +192,32 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
       data-testid="player-seat"
       data-player-id={player.id}
       data-is-eliminated={isEliminated}
-      className={`flex flex-col items-center p-2.5 rounded-2xl transition-all duration-300 ${
+      className={cn(
+        'flex flex-col items-center p-2.5 rounded-2xl transition-all duration-300 border',
         isEliminated
-          ? 'bg-surface-canvas/80 border-rose-950/60 opacity-60'
+          ? 'bg-[#090c11]/80 border-rose-950/60 opacity-60'
           : isCurrentTurn
-          ? 'border-amber-400/80 ring-1 ring-amber-400/40 shadow-brass bg-surface-elevated scale-105'
-          : 'bg-surface-card border-white/[0.08] hover:border-white/[0.15]'
-      } border ${className}`}
+          ? 'border-amber-400/80 ring-1 ring-amber-400/40 shadow-brass bg-[#1a202d] scale-105'
+          : 'bg-[#141924] border-white/[0.08] hover:border-white/[0.15]',
+        className
+      )}
     >
       {/* Avatar & Turn Indicator */}
       <div className="relative mb-1.5">
-        <div
-          className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-display font-bold text-sm sm:text-base ${
+        <Avatar
+          className={cn(
+            'w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-display font-bold text-sm sm:text-base border-0',
             isEliminated
               ? 'bg-rose-950/60 text-rose-400/60 border border-rose-900/40'
               : isCurrentTurn
               ? 'bg-amber-400 text-slate-950 font-bold shadow-card'
-              : 'bg-surface-panel text-slate-300 border border-white/[0.08]'
-          }`}
+              : 'bg-[#10141d] text-slate-300 border border-white/[0.08]'
+          )}
         >
-          <User className="w-5 h-5" />
-        </div>
+          <AvatarFallback className="bg-transparent font-display font-bold">
+            <User className="w-5 h-5" />
+          </AvatarFallback>
+        </Avatar>
 
         {/* Current turn dot */}
         {isCurrentTurn && !isEliminated && (
@@ -216,31 +237,33 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
           <span>{player.score} pts</span>
         </p>
         {isCurrentTurn && !isEliminated && (
-          <div
+          <Badge
             data-testid="playing-badge"
-            className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-display font-bold text-[9px] uppercase tracking-wider shadow-sm"
+            variant="brass"
+            className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-display font-bold text-[9px] uppercase tracking-wider shadow-sm border-0"
           >
             PLAYING
-          </div>
+          </Badge>
         )}
         {disconnectInfo && (
-          <div
+          <Badge
             data-testid="disconnected-badge"
-            className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/60 text-rose-300 font-bold text-[9px] uppercase tracking-wider font-mono"
+            variant="destructive"
+            className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-rose-500/20 border-rose-500/60 text-rose-300 font-bold text-[9px] uppercase tracking-wider font-mono"
           >
             <WifiOff className="w-2.5 h-2.5" />
             <span>DISCONNECTED ({secondsRemaining}s)</span>
-          </div>
+          </Badge>
         )}
       </div>
 
       {/* Cards Remaining Fan / Count or Eliminated Badge */}
       {isEliminated ? (
-        <div className="mt-2 px-2.5 py-0.5 rounded-full bg-rose-950/90 border border-rose-700 text-[10px] font-black text-rose-300 tracking-wider">
+        <Badge variant="destructive" className="mt-2 px-2.5 py-0.5 rounded-full bg-rose-950/90 border border-rose-700 text-[10px] font-black text-rose-300 tracking-wider">
           ELIMINATED
-        </div>
+        </Badge>
       ) : (
-        <div className="mt-2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 shadow-inner">
+        <div className="mt-2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#090c11]/80 border border-slate-800 shadow-inner">
           <div className="w-3 h-4 rounded-xs bg-red-600 border border-red-300 rotate-[-10deg]" />
           <div className="w-3 h-4 rounded-xs bg-blue-600 border border-blue-300 rotate-[10deg] -ml-2" />
           <span className="text-xs font-black text-white ml-1.5 font-mono">
@@ -253,10 +276,12 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
       <div className="mt-1.5 flex flex-col gap-1 items-center">
         {/* UNO Teams Team Badge */}
         {player.teamId && (
-          <div
+          <Badge
             data-testid="player-team-badge"
             data-team-id={player.teamId}
-            className={`px-2 py-0.5 rounded-full text-[9px] font-black border tracking-wider ${
+            variant="secondary"
+            className={cn(
+              'px-2 py-0.5 rounded-full text-[9px] font-black border tracking-wider',
               player.teamId === 'team_1'
                 ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
                 : player.teamId === 'team_2'
@@ -264,55 +289,60 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
                 : player.teamId === 'team_3'
                 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                 : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-            }`}
+            )}
           >
             {player.teamId.toUpperCase().replace('_', ' ')}
-          </div>
+          </Badge>
         )}
 
         {/* UNO Teams Out of Cards / Waiting Badge */}
         {player.isOut && (
-          <div
+          <Badge
             data-testid="player-out-badge"
-            className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-[9px] font-black text-amber-300 tracking-wider"
+            variant="brass"
+            className="px-2 py-0.5 rounded-full bg-amber-500/20 border-amber-500/40 text-[9px] font-black text-amber-300 tracking-wider"
           >
             WAITING FOR PARTNER
-          </div>
+          </Badge>
         )}
 
         {/* UNO Flex Power Card Badge */}
         {!isEliminated && player.powerCardStatus && (
-          <div
+          <Badge
             data-testid="power-card-badge"
             data-power-status={player.powerCardStatus}
-            className={`px-2 py-0.5 rounded-full text-[9px] font-black border flex items-center gap-1 shadow-sm ${
+            variant="secondary"
+            className={cn(
+              'px-2 py-0.5 rounded-full text-[9px] font-black border flex items-center gap-1 shadow-sm',
               player.powerCardStatus === 'green_check'
                 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
                 : 'bg-rose-500/20 text-rose-400 border-rose-500/50'
-            }`}
+            )}
             title={`Power Card: ${player.powerCardStatus === 'green_check' ? 'Green Side (Active)' : 'Red Side (Inactive)'}`}
           >
             <span>{player.powerCardStatus === 'green_check' ? '✓' : '✗'}</span>
             <span>POWER</span>
-          </div>
+          </Badge>
         )}
 
         {!isEliminated && player.hasDeclaredUno && (
-          <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-slate-950 tracking-wider shadow-sm">
+          <Badge variant="emerald" className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-slate-950 tracking-wider shadow-sm border-0">
             UNO!
-          </span>
+          </Badge>
         )}
 
         {/* Catch Missed UNO Button */}
         {!isEliminated && isVulnerableToUno && onCatchUno && (
-          <button
+          <Button
             data-testid="catch-uno-btn"
+            size="sm"
+            variant="destructive"
             onClick={onCatchUno}
-            className="mt-1 px-3 py-1 rounded-lg text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white flex items-center gap-1 shadow-card cursor-pointer border border-red-400/50"
+            className="mt-1 h-7 px-3 py-1 rounded-lg text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white flex items-center gap-1 shadow-card border border-red-400/50"
           >
             <ShieldAlert className="w-3 h-3" />
             <span>CATCH UNO!</span>
-          </button>
+          </Button>
         )}
       </div>
     </div>

@@ -1,8 +1,21 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Play, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import { Play, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { USERNAME_RULES } from '@uno-ultimate/shared';
 import { useGuestStore } from '../../../stores/guestStore';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Spinner } from '@/components/ui/spinner';
+import { cn } from '@/lib/utils';
 
 export const GuestLoginForm: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -57,98 +70,106 @@ export const GuestLoginForm: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-md mx-auto" noValidate>
-      <div className="p-6 sm:p-7 rounded-2xl bg-surface-card border border-white/[0.08] shadow-card relative">
-        <div className="text-center mb-6">
-          <h2 className="font-display font-bold text-xl sm:text-2xl text-white tracking-tight">
+      <Card className="p-6 sm:p-7 bg-[#141924] border-white/[0.08] shadow-card relative">
+        <CardHeader className="p-0 text-center mb-6">
+          <CardTitle className="font-display font-bold text-xl sm:text-2xl text-white tracking-tight">
             Join the Table
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          </CardTitle>
+          <CardDescription className="text-xs sm:text-sm text-slate-400 mt-1">
             Enter a display name. No registration or password required.
-          </p>
-        </div>
+          </CardDescription>
+        </CardHeader>
 
-        {/* Input Field */}
-        <div className="space-y-2 mb-6">
-          <div className="flex justify-between items-center text-xs">
-            <label htmlFor="username-input" className="font-medium text-slate-300">
-              Player name
-            </label>
-            <span
-              className={`font-mono text-[11px] tabular-nums ${
-                username.length > USERNAME_RULES.MAX_LENGTH ? 'text-rose-400 font-semibold' : 'text-slate-400'
-              }`}
-            >
-              {username.length}/{USERNAME_RULES.MAX_LENGTH}
-            </span>
-          </div>
+        <CardContent className="p-0">
+          {/* Input Field */}
+          <div className="space-y-2 mb-6">
+            <div className="flex justify-between items-center text-xs">
+              <Label htmlFor="username-input" className="font-medium text-slate-300 normal-case tracking-normal">
+                Player name
+              </Label>
+              <span
+                className={cn(
+                  'font-mono text-[11px] tabular-nums',
+                  username.length > USERNAME_RULES.MAX_LENGTH ? 'text-rose-400 font-semibold' : 'text-slate-400'
+                )}
+              >
+                {username.length}/{USERNAME_RULES.MAX_LENGTH}
+              </span>
+            </div>
 
-          <div className="relative">
-            <input
-              id="username-input"
-              type="text"
-              value={username}
-              onChange={handleInputChange}
-              maxLength={USERNAME_RULES.MAX_LENGTH}
-              placeholder="e.g. CardMaster, Alex, Player 1"
-              autoComplete="off"
-              autoFocus
-              disabled={isLoading}
-              aria-invalid={!!displayError}
-              aria-describedby={displayError ? 'username-error' : undefined}
-              className={`w-full px-4 py-3 rounded-xl bg-surface-panel border text-slate-100 placeholder-slate-500 focus:outline-none transition-colors text-sm sm:text-base ${
-                displayError
-                  ? 'border-rose-500/80 focus:border-rose-500'
-                  : isInputValidLength
-                  ? 'border-emerald-500/60 focus:border-emerald-400'
-                  : 'border-white/[0.08] focus:border-amber-400/80'
-              }`}
-            />
-            {isInputValidLength && !displayError && (
-              <CheckCircle2 className="absolute right-3.5 top-3.5 w-4 h-4 text-emerald-400 pointer-events-none" />
+            <div className="relative">
+              <Input
+                id="username-input"
+                type="text"
+                value={username}
+                onChange={handleInputChange}
+                maxLength={USERNAME_RULES.MAX_LENGTH}
+                placeholder="e.g. CardMaster, Alex, Player 1"
+                autoComplete="off"
+                autoFocus
+                disabled={isLoading}
+                aria-invalid={!!displayError}
+                aria-describedby={displayError ? 'username-error' : undefined}
+                className={cn(
+                  'h-12 px-4 rounded-xl bg-[#10141d] border text-slate-100 placeholder:text-slate-500 text-sm sm:text-base',
+                  displayError
+                    ? 'border-rose-500/80 focus-visible:ring-rose-500 focus-visible:border-rose-500'
+                    : isInputValidLength
+                    ? 'border-emerald-500/60 focus-visible:ring-emerald-400'
+                    : 'border-white/[0.08] focus-visible:ring-amber-400/80'
+                )}
+              />
+              {isInputValidLength && !displayError && (
+                <CheckCircle2 className="absolute right-3.5 top-3.5 w-4 h-4 text-emerald-400 pointer-events-none" />
+              )}
+            </div>
+
+            {/* Error Alert */}
+            {displayError && (
+              <motion.div
+                id="username-error"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Alert variant="destructive" className="py-2.5 px-3 rounded-xl border-rose-500/30 bg-rose-950/40">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <AlertDescription className="text-xs text-rose-300">
+                    {displayError}
+                  </AlertDescription>
+                </Alert>
+              </motion.div>
             )}
+
+            <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
+              <span>Duplicate names supported</span>
+              <span>Cryptographic session key</span>
+            </div>
           </div>
 
-          {/* Error Alert */}
-          {displayError && (
-            <motion.div
-              id="username-error"
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-start gap-1.5 text-xs text-rose-400 pt-1"
-              role="alert"
-            >
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{displayError}</span>
-            </motion.div>
-          )}
-
-          <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
-            <span>Duplicate names supported</span>
-            <span>Cryptographic session key</span>
-          </div>
-        </div>
-
-        {/* Submit Play Button */}
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full relative rounded-xl font-display font-semibold text-sm sm:text-base tracking-wide py-3.5 px-5 text-white shadow-card transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-[#d9383a] hover:bg-[#c6282a] active:bg-[#b02224] border border-white/10 cursor-pointer"
-        >
-          <div className="flex items-center justify-center gap-2">
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-white" />
-                <span>Creating guest session...</span>
-              </>
-            ) : (
-              <>
-                <span>Play Now</span>
-                <Play className="w-3.5 h-3.5 fill-current" />
-              </>
-            )}
-          </div>
-        </button>
-      </div>
+          {/* Submit Play Button */}
+          <Button
+            type="submit"
+            disabled={isLoading}
+            variant="default"
+            size="lg"
+            className="w-full relative rounded-xl font-display font-semibold text-sm sm:text-base tracking-wide py-3.5 text-white shadow-card bg-[#d9383a] hover:bg-[#c6282a] active:bg-[#b02224] border border-white/10"
+          >
+            <div className="flex items-center justify-center gap-2">
+              {isLoading ? (
+                <>
+                  <Spinner size="sm" className="text-white" />
+                  <span>Creating guest session...</span>
+                </>
+              ) : (
+                <>
+                  <span>Play Now</span>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                </>
+              )}
+            </div>
+          </Button>
+        </CardContent>
+      </Card>
     </form>
   );
 };
