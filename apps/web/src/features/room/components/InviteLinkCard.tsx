@@ -38,7 +38,7 @@ export const InviteLinkCard: React.FC<InviteLinkCardProps> = ({ roomCode }) => {
             <button
               onClick={handleCopyCode}
               aria-label="Copy room code"
-              className="p-2 rounded-xl bg-surface-panel border border-white/[0.08] hover:bg-surface-elevated text-slate-300 hover:text-white transition-colors"
+              className="p-2 rounded-xl bg-surface-panel border border-white/[0.08] hover:bg-surface-elevated text-slate-300 hover:text-white transition-colors cursor-pointer"
               title="Copy code"
             >
               {copiedCode ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
@@ -50,7 +50,7 @@ export const InviteLinkCard: React.FC<InviteLinkCardProps> = ({ roomCode }) => {
         <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
           <button
             onClick={handleCopyLink}
-            className="py-2.5 px-4 rounded-xl text-xs font-bold font-display bg-surface-elevated hover:bg-surface-highlight border border-white/[0.08] text-slate-200 hover:text-white transition-all flex items-center justify-center gap-2"
+            className="py-2.5 px-4 rounded-xl text-xs font-bold font-display bg-surface-elevated hover:bg-surface-highlight border border-white/[0.08] text-slate-200 hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             {copiedLink ? (
               <>
@@ -59,7 +59,7 @@ export const InviteLinkCard: React.FC<InviteLinkCardProps> = ({ roomCode }) => {
               </>
             ) : (
               <>
-                <Link className="w-4 h-4 text-amber-400/90" />
+                <Link className="w-4 h-4 text-amber-400" />
                 <span>Copy Invite Link</span>
               </>
             )}
@@ -74,7 +74,7 @@ export const InviteLinkCard: React.FC<InviteLinkCardProps> = ({ roomCode }) => {
                   url: inviteUrl,
                 }).catch(() => {});
               }}
-              className="py-2.5 px-3 rounded-xl text-xs font-bold bg-surface-panel border border-white/[0.08] hover:bg-surface-elevated text-slate-300 hover:text-white transition-colors flex items-center justify-center"
+              className="py-2.5 px-3 rounded-xl text-xs font-bold bg-surface-panel border border-white/[0.08] hover:bg-surface-elevated text-slate-300 hover:text-white transition-colors flex items-center justify-center cursor-pointer"
               title="Share Invite"
             >
               <Share2 className="w-4 h-4" />

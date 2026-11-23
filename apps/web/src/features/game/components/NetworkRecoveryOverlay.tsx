@@ -25,10 +25,9 @@ export const NetworkRecoveryOverlay: React.FC = () => {
       {connectionStatus === 'reconnecting' && (
         <div
           data-testid="reconnecting-overlay"
-          className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-surface-card/95 border border-amber-500/40 text-slate-200 shadow-modal backdrop-blur-md transition-all duration-300"
+          className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-surface-card/95 border border-amber-400/50 text-slate-200 shadow-modal backdrop-blur-md transition-all duration-300"
         >
           <div className="relative flex items-center justify-center shrink-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping absolute" />
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
           </div>
           <div className="flex flex-col min-w-0">

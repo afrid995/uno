@@ -48,7 +48,7 @@ export const LocalPlayerProfile: React.FC<LocalPlayerProfileProps> = ({
             isEliminated
               ? 'bg-rose-950/60 text-rose-400 border border-rose-900/40'
               : isMyTurn
-              ? 'bg-amber-400 text-slate-950 shadow-card animate-pulse'
+              ? 'bg-amber-400 text-slate-950 shadow-card'
               : 'bg-surface-panel text-slate-300 border border-white/[0.08]'
           }`}
         >
@@ -57,9 +57,8 @@ export const LocalPlayerProfile: React.FC<LocalPlayerProfileProps> = ({
 
         {/* Turn Dot indicator */}
         {isMyTurn && !isEliminated && (
-          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-400 border border-slate-950" />
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-400 border border-slate-950 shadow-sm" />
           </span>
         )}
       </div>
@@ -70,7 +69,7 @@ export const LocalPlayerProfile: React.FC<LocalPlayerProfileProps> = ({
           <span className="text-xs sm:text-sm font-bold text-white truncate max-w-[80px] sm:max-w-[120px]">
             {username}
           </span>
-          <span className="text-[10px] text-amber-400/90 font-mono font-semibold">(You)</span>
+          <span className="text-[10px] text-amber-400 font-mono font-semibold">(You)</span>
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] text-slate-400 font-medium">
@@ -92,7 +91,7 @@ export const LocalPlayerProfile: React.FC<LocalPlayerProfileProps> = ({
         {isMyTurn && !isEliminated ? (
           <div
             data-testid="local-turn-badge"
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-400 text-slate-950 font-display font-bold text-[10px] sm:text-xs uppercase tracking-wider shadow-card animate-pulse"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-400 text-slate-950 font-display font-bold text-[10px] sm:text-xs uppercase tracking-wider shadow-sm"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />
             <span>YOUR TURN</span>
@@ -107,7 +106,7 @@ export const LocalPlayerProfile: React.FC<LocalPlayerProfileProps> = ({
       {/* Badges: UNO, Team, Power */}
       <div className="hidden sm:flex items-center gap-1.5 ml-1">
         {selfPublic?.hasDeclaredUno && !isEliminated && (
-          <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-slate-950 tracking-wider shadow-sm animate-pulse">
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-slate-950 tracking-wider shadow-sm">
             UNO!
           </span>
         )}

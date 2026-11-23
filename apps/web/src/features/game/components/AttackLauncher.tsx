@@ -49,17 +49,17 @@ export const AttackLauncher: React.FC<AttackLauncherProps> = ({
           {[0, 1, 2, 3, 4].map((level) => {
             const isActive = tension >= level;
             const getColor = () => {
-              if (level <= 1) return 'bg-emerald-400 shadow-emerald-500/50';
-              if (level <= 2) return 'bg-amber-400 shadow-amber-500/50';
-              if (level <= 3) return 'bg-orange-500 shadow-orange-500/50';
-              return 'bg-red-500 shadow-red-500/70 animate-ping';
+              if (level <= 1) return 'bg-emerald-400';
+              if (level <= 2) return 'bg-amber-400';
+              if (level <= 3) return 'bg-orange-500';
+              return 'bg-red-500';
             };
 
             return (
               <span
                 key={level}
                 className={`w-1.5 h-3 rounded-full transition-all duration-300 ${
-                  isActive ? getColor() + ' shadow-sm' : 'bg-slate-800'
+                  isActive ? getColor() : 'bg-slate-800'
                 }`}
               />
             );
@@ -78,13 +78,13 @@ export const AttackLauncher: React.FC<AttackLauncherProps> = ({
             <motion.div
               key={recentLaunch.timestamp}
               data-testid="launcher-ejection-animation"
-              initial={{ scale: 0.8, opacity: 0, y: 10 }}
+              initial={{ scale: 0.9, opacity: 0, y: 6 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className={`absolute inset-x-2 top-4 z-20 py-1.5 px-2 rounded-xl text-center font-display font-black text-xs shadow-lg backdrop-blur-md border ${
+              className={`absolute inset-x-2 top-4 z-20 py-1.5 px-2 rounded-xl text-center font-display font-black text-xs shadow-modal backdrop-blur-md border ${
                 hasDispensed
-                  ? 'bg-red-950/95 border-red-500 text-red-200 shadow-red-500/40 animate-bounce'
-                  : 'bg-emerald-950/90 border-emerald-500 text-emerald-200 shadow-emerald-500/30'
+                  ? 'bg-red-950/95 border-red-500 text-red-200'
+                  : 'bg-emerald-950/90 border-emerald-500 text-emerald-200'
               }`}
             >
               {hasDispensed ? (
@@ -106,12 +106,12 @@ export const AttackLauncher: React.FC<AttackLauncherProps> = ({
         <motion.button
           data-testid="launcher-press-button"
           disabled={!canPress || isLoading}
-          whileHover={canPress && !isLoading ? { scale: 1.03 } : {}}
-          whileTap={canPress && !isLoading ? { scale: 0.95, y: 2 } : {}}
+          whileHover={canPress && !isLoading ? { scale: 1.02 } : {}}
+          whileTap={canPress && !isLoading ? { scale: 0.96, y: 1 } : {}}
           onClick={canPress && !isLoading ? onPress : undefined}
           className={`relative z-10 w-24 h-16 rounded-xl font-display font-bold text-sm tracking-wider uppercase transition-all duration-200 border shadow-card flex flex-col items-center justify-center cursor-pointer ${
             canPress && !isLoading
-              ? 'bg-red-600 hover:bg-red-500 border-red-400 text-white shadow-card animate-pulse'
+              ? 'bg-red-600 hover:bg-red-500 border-red-400 text-white shadow-card'
               : 'bg-surface-panel border-white/[0.08] text-slate-500 cursor-not-allowed opacity-60 shadow-none'
           }`}
         >

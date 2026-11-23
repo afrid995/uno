@@ -25,17 +25,17 @@ export const WildColorPicker: React.FC<WildColorPickerProps> = ({
   const isDarkSide = activeSide === 'DARK';
 
   const lightColors: Array<{ color: CardColor; label: string; bgClass: string; shadowClass: string }> = [
-    { color: 'red', label: 'Red', bgClass: 'bg-rose-600 hover:bg-rose-500 text-white', shadowClass: 'shadow-card' },
+    { color: 'red', label: 'Red', bgClass: 'bg-red-600 hover:bg-red-500 text-white', shadowClass: 'shadow-card' },
     { color: 'yellow', label: 'Yellow', bgClass: 'bg-amber-400 hover:bg-amber-300 text-slate-950', shadowClass: 'shadow-card' },
     { color: 'green', label: 'Green', bgClass: 'bg-emerald-600 hover:bg-emerald-500 text-white', shadowClass: 'shadow-card' },
-    { color: 'blue', label: 'Blue', bgClass: 'bg-sky-600 hover:bg-sky-500 text-white', shadowClass: 'shadow-card' },
+    { color: 'blue', label: 'Blue', bgClass: 'bg-blue-600 hover:bg-blue-500 text-white', shadowClass: 'shadow-card' },
   ];
 
   const darkColors: Array<{ color: CardColor; label: string; bgClass: string; shadowClass: string }> = [
     { color: 'pink', label: 'Pink', bgClass: 'bg-pink-600 hover:bg-pink-500 text-white', shadowClass: 'shadow-card' },
-    { color: 'teal', label: 'Teal', bgClass: 'bg-teal-500 hover:bg-teal-400 text-white', shadowClass: 'shadow-card' },
-    { color: 'orange', label: 'Orange', bgClass: 'bg-orange-500 hover:bg-orange-400 text-white', shadowClass: 'shadow-card' },
-    { color: 'purple', label: 'Purple', bgClass: 'bg-purple-600 hover:bg-purple-500 text-white', shadowClass: 'shadow-card' },
+    { color: 'teal', label: 'Teal', bgClass: 'bg-teal-600 hover:bg-teal-500 text-white', shadowClass: 'shadow-card' },
+    { color: 'orange', label: 'Orange', bgClass: 'bg-orange-600 hover:bg-orange-500 text-white', shadowClass: 'shadow-card' },
+    { color: 'purple', label: 'Purple', bgClass: 'bg-purple-700 hover:bg-purple-600 text-white', shadowClass: 'shadow-card' },
   ];
 
   const colors = isDarkSide ? darkColors : lightColors;
@@ -52,7 +52,8 @@ export const WildColorPicker: React.FC<WildColorPickerProps> = ({
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-lg bg-surface-panel text-slate-400 hover:text-white border border-white/[0.06] transition-colors"
+            aria-label="Close color picker"
+            className="absolute top-4 right-4 p-1.5 rounded-lg bg-surface-panel text-slate-400 hover:text-white border border-white/[0.06] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>

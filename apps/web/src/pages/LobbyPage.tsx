@@ -171,33 +171,33 @@ export const LobbyPage: React.FC = () => {
         {isStarting && (
           <motion.div
             data-testid="starting-countdown-banner"
-            initial={{ opacity: 0, scale: 0.96 }}
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            className="p-6 rounded-2xl bg-surface-card border border-amber-500/40 text-white text-center shadow-brass mb-6"
+            className="p-5 sm:p-6 rounded-2xl bg-surface-card border border-amber-400/40 text-white text-center shadow-brass mb-6"
           >
             <div className="flex items-center justify-center gap-2 mb-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
-              <h2 className="font-display font-bold text-xl sm:text-2xl text-amber-200 tracking-tight">Starting Game Match</h2>
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <h2 className="font-display font-bold text-lg sm:text-xl text-amber-200 tracking-tight">Starting Game Match</h2>
             </div>
-            <p className="text-sm text-slate-300 max-w-lg mx-auto">
+            <p className="text-xs sm:text-sm text-slate-300 max-w-lg mx-auto">
               Match countdown initiated ({startingCountdown}s). Preparing the {roomVariant === 'uno_show_em_no_mercy' ? '168-card' : roomVariant === 'uno_all_wild' ? '112-card all-wild' : roomVariant === 'uno_flex' ? '112-card flex' : roomVariant === 'uno_teams' ? '112-card teams' : roomVariant === 'uno_attack' ? `${Number((room.settings as Record<string, unknown>)?.attackCustomizableCount) === 1 ? '110-card' : '112-card'} attack` : roomVariant === 'uno_flip' ? '112-card dual-sided' : '108-card'} deck and dealing hands...
             </p>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Top Banner & Room Code Card */}
+      {/* Top Banner & Room Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               Lobby Active
             </span>
             <span className="text-xs text-slate-500 font-mono">v{room.version}</span>
           </div>
-          <h1 className="font-display font-bold text-2xl sm:text-3xl text-slate-100 tracking-tight mt-1.5">
+          <h1 className="font-display font-bold text-2xl sm:text-3xl text-slate-100 tracking-tight mt-1">
             Private Game Lobby
           </h1>
         </div>
@@ -310,9 +310,9 @@ export const LobbyPage: React.FC = () => {
               data-testid="lobby-toggle-classic"
               disabled={roomVariant === 'classic'}
               onClick={() => updateSettings({ variant: 'classic' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 roomVariant === 'classic'
-                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
                   : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >
@@ -323,9 +323,9 @@ export const LobbyPage: React.FC = () => {
               data-testid="lobby-toggle-flip"
               disabled={roomVariant === 'uno_flip'}
               onClick={() => updateSettings({ variant: 'uno_flip' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 roomVariant === 'uno_flip'
-                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
                   : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >
@@ -336,9 +336,9 @@ export const LobbyPage: React.FC = () => {
               data-testid="lobby-toggle-no-mercy"
               disabled={roomVariant === 'uno_show_em_no_mercy'}
               onClick={() => updateSettings({ variant: 'uno_show_em_no_mercy' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 roomVariant === 'uno_show_em_no_mercy'
-                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
                   : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >
@@ -349,9 +349,9 @@ export const LobbyPage: React.FC = () => {
               data-testid="lobby-toggle-all-wild"
               disabled={roomVariant === 'uno_all_wild'}
               onClick={() => updateSettings({ variant: 'uno_all_wild' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 roomVariant === 'uno_all_wild'
-                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
                   : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >
@@ -362,9 +362,9 @@ export const LobbyPage: React.FC = () => {
               data-testid="lobby-toggle-flex"
               disabled={roomVariant === 'uno_flex'}
               onClick={() => updateSettings({ variant: 'uno_flex' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 roomVariant === 'uno_flex'
-                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
                   : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >
@@ -375,9 +375,9 @@ export const LobbyPage: React.FC = () => {
               data-testid="lobby-toggle-teams"
               disabled={roomVariant === 'uno_teams'}
               onClick={() => updateSettings({ variant: 'uno_teams' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 roomVariant === 'uno_teams'
-                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
                   : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >
@@ -388,9 +388,9 @@ export const LobbyPage: React.FC = () => {
               data-testid="lobby-toggle-attack"
               disabled={roomVariant === 'uno_attack'}
               onClick={() => updateSettings({ variant: 'uno_attack' })}
-              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 roomVariant === 'uno_attack'
-                  ? 'bg-amber-400/15 border border-amber-400/80 text-amber-300 shadow-brass'
+                  ? 'bg-surface-elevated border border-amber-400 text-amber-300 shadow-brass'
                   : 'bg-surface-panel text-slate-400 hover:text-white hover:bg-surface-elevated border border-white/[0.06]'
               }`}
             >

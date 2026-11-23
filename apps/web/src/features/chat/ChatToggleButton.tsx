@@ -23,7 +23,7 @@ export const ChatToggleButton: React.FC = () => {
       {unreadCount > 0 && !isOpen && (
         <span
           data-testid="chat-unread-badge"
-          className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-rose-500 text-white font-mono text-[10px] font-black border-2 border-slate-950 animate-pulse shadow-md"
+          className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-600 text-white font-mono text-[10px] font-bold border-2 border-slate-950 shadow-sm"
         >
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>

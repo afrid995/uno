@@ -69,11 +69,10 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
             <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </div>
 
-          {/* Current turn pulsing dot */}
+          {/* Current turn dot */}
           {isCurrentTurn && !isEliminated && (
             <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 border border-slate-950" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 border border-slate-950 shadow-sm" />
             </span>
           )}
         </div>
@@ -87,7 +86,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
             {isCurrentTurn && !isEliminated && (
               <span
                 data-testid="playing-badge"
-                className="px-1 py-0.2 rounded-full bg-amber-400 text-slate-950 font-display font-black text-[8px] uppercase tracking-wider animate-pulse"
+                className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-display font-black text-[8px] uppercase tracking-wider"
               >
                 TURN
               </span>
@@ -95,7 +94,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px]">
-            <span className="text-slate-400 flex items-center gap-0.5">
+            <span className="text-slate-400 flex items-center gap-0.5 font-mono">
               <Award className="w-2.5 h-2.5 text-amber-400/80" />
               <span>{player.score}</span>
             </span>
@@ -104,7 +103,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
               <span className="text-rose-400 font-bold">OUT</span>
             ) : (
               <span className="font-mono font-bold text-amber-300 flex items-center gap-0.5">
-                <span className="w-2 h-2.5 rounded-xs bg-uno-red inline-block rotate-[-5deg]" />
+                <span className="w-2 h-2.5 rounded-xs bg-red-600 inline-block rotate-[-5deg]" />
                 <span>{player.cardCount}</span>
               </span>
             )}
@@ -141,7 +140,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
 
           {/* UNO declared pill */}
           {!isEliminated && player.hasDeclaredUno && (
-            <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-emerald-500 text-slate-950 animate-pulse">
+            <span className="px-1.5 py-0.5 rounded text-[8px] font-black bg-emerald-500 text-slate-950">
               UNO!
             </span>
           )}
@@ -151,7 +150,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
             <button
               data-testid="catch-uno-btn"
               onClick={onCatchUno}
-              className="px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-[9px] flex items-center gap-0.5 shadow-card animate-bounce cursor-pointer border border-red-400/50"
+              className="px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white font-bold text-[9px] flex items-center gap-0.5 shadow-card cursor-pointer border border-red-400/50"
             >
               <ShieldAlert className="w-2.5 h-2.5" />
               <span>CATCH</span>
@@ -161,7 +160,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
           {disconnectInfo && (
             <span
               data-testid="disconnected-badge"
-              className="px-1 py-0.5 rounded bg-rose-500/20 border border-rose-500/60 text-rose-300 font-bold text-[8px] animate-pulse flex items-center gap-0.5"
+              className="px-1 py-0.5 rounded bg-rose-500/20 border border-rose-500/60 text-rose-300 font-bold text-[8px] flex items-center gap-0.5 font-mono"
             >
               <WifiOff className="w-2 h-2" />
               <span>{secondsRemaining}s</span>
@@ -199,11 +198,10 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
           <User className="w-5 h-5" />
         </div>
 
-        {/* Current turn pulsing dot */}
+        {/* Current turn dot */}
         {isCurrentTurn && !isEliminated && (
-          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-400 border border-slate-950" />
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-400 border border-slate-950 shadow-sm" />
           </span>
         )}
       </div>
@@ -220,7 +218,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         {isCurrentTurn && !isEliminated && (
           <div
             data-testid="playing-badge"
-            className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-display font-bold text-[9px] uppercase tracking-wider shadow-card animate-pulse"
+            className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-display font-bold text-[9px] uppercase tracking-wider shadow-sm"
           >
             PLAYING
           </div>
@@ -228,7 +226,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         {disconnectInfo && (
           <div
             data-testid="disconnected-badge"
-            className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/60 text-rose-300 font-bold text-[9px] uppercase tracking-wider animate-pulse"
+            className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/60 text-rose-300 font-bold text-[9px] uppercase tracking-wider font-mono"
           >
             <WifiOff className="w-2.5 h-2.5" />
             <span>DISCONNECTED ({secondsRemaining}s)</span>
@@ -243,9 +241,9 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         </div>
       ) : (
         <div className="mt-2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 shadow-inner">
-          <div className="w-3 h-4 rounded-xs bg-uno-red border border-red-300 rotate-[-10deg]" />
-          <div className="w-3 h-4 rounded-xs bg-uno-blue border border-blue-300 rotate-[10deg] -ml-2" />
-          <span className="text-xs font-black text-white ml-1.5">
+          <div className="w-3 h-4 rounded-xs bg-red-600 border border-red-300 rotate-[-10deg]" />
+          <div className="w-3 h-4 rounded-xs bg-blue-600 border border-blue-300 rotate-[10deg] -ml-2" />
+          <span className="text-xs font-black text-white ml-1.5 font-mono">
             {player.cardCount}
           </span>
         </div>
@@ -289,8 +287,8 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
             data-power-status={player.powerCardStatus}
             className={`px-2 py-0.5 rounded-full text-[9px] font-black border flex items-center gap-1 shadow-sm ${
               player.powerCardStatus === 'green_check'
-                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-emerald-500/20'
-                : 'bg-rose-500/20 text-rose-400 border-rose-500/50 shadow-rose-500/20'
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+                : 'bg-rose-500/20 text-rose-400 border-rose-500/50'
             }`}
             title={`Power Card: ${player.powerCardStatus === 'green_check' ? 'Green Side (Active)' : 'Red Side (Inactive)'}`}
           >
@@ -300,7 +298,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         )}
 
         {!isEliminated && player.hasDeclaredUno && (
-          <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-slate-950 tracking-wider shadow-sm animate-pulse">
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-slate-950 tracking-wider shadow-sm">
             UNO!
           </span>
         )}
@@ -310,7 +308,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
           <button
             data-testid="catch-uno-btn"
             onClick={onCatchUno}
-            className="mt-1 px-3 py-1 rounded-lg text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white flex items-center gap-1 shadow-card animate-bounce cursor-pointer border border-red-400/50"
+            className="mt-1 px-3 py-1 rounded-lg text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white flex items-center gap-1 shadow-card cursor-pointer border border-red-400/50"
           >
             <ShieldAlert className="w-3 h-3" />
             <span>CATCH UNO!</span>

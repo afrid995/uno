@@ -30,11 +30,11 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
     return (
       <div
         data-testid="playing-card-facedown"
-        className={`relative select-none border-2 border-slate-700 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 shadow-xl flex items-center justify-center overflow-hidden ${sizeClasses} ${className}`}
+        className={`relative select-none border border-white/15 bg-gradient-to-br from-[#151a24] via-[#1a2130] to-[#0d1117] shadow-card flex items-center justify-center overflow-hidden ${sizeClasses} ${className}`}
       >
-        <div className="absolute inset-1.5 rounded-lg border border-slate-700/60 bg-slate-900/90 flex items-center justify-center">
-          <div className="w-8 h-12 sm:w-12 sm:h-16 rounded-full bg-gradient-to-tr from-uno-red via-rose-600 to-uno-yellow rotate-45 flex items-center justify-center shadow-md">
-            <span className="font-display font-black text-white text-[10px] sm:text-xs tracking-tighter drop-shadow-md">
+        <div className="absolute inset-1 sm:inset-1.5 rounded-lg border border-white/[0.08] bg-[#0f141d] flex items-center justify-center">
+          <div className="w-8 h-12 sm:w-12 sm:h-16 rounded-full bg-gradient-to-tr from-red-700 via-red-600 to-amber-500 rotate-45 flex items-center justify-center shadow-sm border border-white/20">
+            <span className="font-display font-black text-white text-[10px] sm:text-xs tracking-tighter drop-shadow-sm">
               UNO
             </span>
           </div>
@@ -47,77 +47,77 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
 
   const getColorClasses = (color?: CardColor | null) => {
     switch (color) {
-      // Light Side Colors
+      // Light Side Colors - Authentic Matte Pigments
       case 'red':
-        return 'from-rose-500 via-red-600 to-rose-700 border-red-300/60 text-white';
+        return 'from-red-600 via-red-600 to-red-700 border-red-400/40 text-white';
       case 'yellow':
-        return 'from-amber-400 via-yellow-400 to-amber-500 border-yellow-200 text-slate-950';
+        return 'from-amber-400 via-amber-400 to-amber-500 border-amber-300/50 text-slate-950';
       case 'green':
-        return 'from-emerald-500 via-green-600 to-emerald-700 border-green-300/60 text-white';
+        return 'from-emerald-600 via-emerald-600 to-emerald-700 border-emerald-400/40 text-white';
       case 'blue':
-        return 'from-sky-500 via-blue-600 to-sky-700 border-blue-300/60 text-white';
+        return 'from-blue-600 via-blue-600 to-blue-700 border-blue-400/40 text-white';
 
-      // Dark Side Colors (UNO Flip)
+      // Dark Side Colors (UNO Flip) - Authentic Deep Pigments
       case 'pink':
-        return 'from-pink-500 via-fuchsia-600 to-pink-700 border-pink-300/80 text-white shadow-pink-500/20';
+        return 'from-pink-600 via-pink-600 to-pink-700 border-pink-400/50 text-white';
       case 'teal':
-        return 'from-teal-400 via-teal-600 to-emerald-800 border-teal-200/80 text-white shadow-teal-500/20';
+        return 'from-teal-600 via-teal-600 to-teal-700 border-teal-400/50 text-white';
       case 'orange':
-        return 'from-orange-500 via-amber-600 to-orange-700 border-orange-200/80 text-white shadow-orange-500/20';
+        return 'from-orange-600 via-orange-600 to-orange-700 border-orange-400/50 text-white';
       case 'purple':
-        return 'from-purple-600 via-violet-700 to-purple-900 border-purple-300/80 text-white shadow-purple-500/20';
+        return 'from-purple-700 via-purple-700 to-purple-800 border-purple-400/50 text-white';
 
       default:
-        // Wild cards
+        // Wild cards - High-craft Dark Cardstock with Subtle Accent Borders
         if (isDarkSide || card.value === 'wild_draw_color') {
-          return 'from-slate-950 via-purple-950 to-slate-900 border-fuchsia-400 text-white shadow-fuchsia-500/30';
+          return 'from-surface-canvas via-[#141224] to-surface-canvas border-fuchsia-400/80 text-white';
         }
         if (card.value === 'wild_draw_ten' || card.value === 'wild_draw_six' || card.value === 'wild_reverse_draw_four') {
-          return 'from-slate-950 via-rose-950 to-slate-900 border-rose-500 text-white shadow-rose-500/30';
+          return 'from-surface-canvas via-[#201015] to-surface-canvas border-rose-500/80 text-white';
         }
         if (card.value === 'wild_targeted_draw_two') {
-          return 'from-slate-950 via-cyan-950 to-slate-900 border-cyan-400 text-white shadow-cyan-500/30';
+          return 'from-surface-canvas via-[#0f1d24] to-surface-canvas border-cyan-400/80 text-white';
         }
         if (card.value === 'wild_forced_swap') {
-          return 'from-slate-950 via-emerald-950 to-slate-900 border-emerald-400 text-white shadow-emerald-500/30';
+          return 'from-surface-canvas via-[#0f2219] to-surface-canvas border-emerald-400/80 text-white';
         }
         if (card.value === 'wild_team_play') {
-          return 'from-slate-950 via-cyan-950 to-slate-900 border-cyan-400 text-white shadow-cyan-500/30';
+          return 'from-surface-canvas via-[#0f1d24] to-surface-canvas border-cyan-400/80 text-white';
         }
         if (card.value === 'wild_team_draw_four') {
-          return 'from-slate-950 via-blue-950 to-slate-900 border-blue-400 text-white shadow-blue-500/30';
+          return 'from-surface-canvas via-[#101726] to-surface-canvas border-blue-400/80 text-white';
         }
         if (card.value === 'wild_hit_4') {
-          return 'from-slate-950 via-rose-950 to-slate-900 border-rose-500 text-white shadow-rose-500/30';
+          return 'from-surface-canvas via-[#201015] to-surface-canvas border-rose-500/80 text-white';
         }
         if (card.value === 'wild_attack_attack') {
-          return 'from-slate-950 via-red-950 to-slate-900 border-red-500 text-white shadow-red-500/30';
+          return 'from-surface-canvas via-[#221012] to-surface-canvas border-red-500/80 text-white';
         }
         if (card.value === 'wild_customizable') {
-          return 'from-slate-950 via-amber-950 to-slate-900 border-amber-400 text-white shadow-amber-500/30';
+          return 'from-surface-canvas via-[#221c10] to-surface-canvas border-amber-400/80 text-white';
         }
         if (card.value === 'wild_all_flip') {
-          return 'from-slate-950 via-teal-950 to-slate-900 border-teal-400 text-white shadow-teal-500/30';
+          return 'from-surface-canvas via-[#0e2022] to-surface-canvas border-teal-400/80 text-white';
         }
         if (card.value === 'flex_wild_draw_four') {
-          return 'from-slate-950 via-purple-950 to-slate-900 border-purple-400 text-white shadow-purple-500/30';
+          return 'from-surface-canvas via-[#1a1226] to-surface-canvas border-purple-400/80 text-white';
         }
         if (card.value === 'flex_wild_target_draw_two') {
-          return 'from-slate-950 via-cyan-950 to-slate-900 border-cyan-400 text-white shadow-cyan-500/30';
+          return 'from-surface-canvas via-[#0f1d24] to-surface-canvas border-cyan-400/80 text-white';
         }
         if (card.value === 'flex_wild_all_draw') {
-          return 'from-slate-950 via-emerald-950 to-slate-900 border-emerald-400 text-white shadow-emerald-500/30';
+          return 'from-surface-canvas via-[#0f2219] to-surface-canvas border-emerald-400/80 text-white';
         }
         if (card.value === 'wild_skip_two') {
-          return 'from-slate-950 via-orange-950 to-slate-900 border-orange-400 text-white shadow-orange-500/30';
+          return 'from-surface-canvas via-[#241710] to-surface-canvas border-orange-400/80 text-white';
         }
         if (card.value === 'wild_reverse') {
-          return 'from-slate-950 via-blue-950 to-slate-900 border-blue-400 text-white shadow-blue-500/30';
+          return 'from-surface-canvas via-[#101726] to-surface-canvas border-blue-400/80 text-white';
         }
         if (card.value === 'wild_skip') {
-          return 'from-slate-950 via-red-950 to-slate-900 border-red-400 text-white shadow-red-500/30';
+          return 'from-surface-canvas via-[#201015] to-surface-canvas border-red-400/80 text-white';
         }
-        return 'from-slate-900 via-indigo-950 to-purple-950 border-purple-400 text-white';
+        return 'from-surface-canvas via-[#151826] to-surface-canvas border-amber-400/70 text-white';
     }
   };
 
@@ -273,16 +273,16 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
       data-has-flip-icon={card.hasFlipIcon ? 'true' : undefined}
       data-has-passing-symbol={card.hasPassingSymbol ? 'true' : undefined}
       data-is-playable={isPlayable}
-      whileHover={isPlayable && onClick ? { scale: 1.08, y: -8 } : {}}
-      whileTap={isPlayable && onClick ? { scale: 0.95 } : {}}
+      whileHover={isPlayable && onClick ? { scale: 1.06, y: -6 } : {}}
+      whileTap={isPlayable && onClick ? { scale: 0.96 } : {}}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       onClick={isPlayable ? onClick : undefined}
       className={`relative select-none border-2 bg-gradient-to-br shadow-card flex flex-col justify-between p-1.5 sm:p-2.5 overflow-hidden transition-all duration-200 ${colorClasses} ${sizeClasses} ${
-        isDarkSide ? 'border-slate-950/80 shadow-2xl ring-1 ring-white/20' : ''
+        isDarkSide ? 'border-slate-950/80 shadow-modal ring-1 ring-white/20' : ''
       } ${
         isPlayable
           ? 'cursor-pointer ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-950 shadow-brass'
-          : 'opacity-85'
+          : 'opacity-90'
       } ${className}`}
     >
       {/* Corner value - Top Left */}

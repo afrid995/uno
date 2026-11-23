@@ -151,7 +151,7 @@ export const ChallengePanel: React.FC = () => {
               }`}
             >
               <span
-                className={`w-2 h-2 rounded-full animate-ping ${
+                className={`w-2 h-2 rounded-full ${
                   lastChallengeResult.challengeWon ? 'bg-emerald-400' : 'bg-rose-400'
                 }`}
               />
@@ -234,7 +234,7 @@ export const ChallengePanel: React.FC = () => {
 
       {/* Waiting Indicator for Other Players */}
       {!isTargeted && isChallengeResolution && (
-        <div className="p-3 rounded-xl border border-amber-400/30 bg-surface-card text-center text-xs text-amber-200 animate-pulse shadow-card">
+        <div className="p-3 rounded-xl border border-amber-400/30 bg-surface-card text-center text-xs text-amber-200 shadow-card">
           Waiting for victim to accept or challenge {offenderName}&apos;s action...
         </div>
       )}

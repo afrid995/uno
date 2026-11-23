@@ -65,8 +65,8 @@ export const ChatPanel: React.FC = () => {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-surface-panel/80">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                <MessageSquare className="w-4 h-4" />
+              <div className="w-7 h-7 rounded-lg bg-surface-elevated border border-white/[0.08] flex items-center justify-center text-amber-400">
+                <MessageSquare className="w-3.5 h-3.5" />
               </div>
               <div>
                 <h3 className="text-xs font-bold font-display uppercase tracking-wider text-slate-200">
@@ -78,7 +78,7 @@ export const ChatPanel: React.FC = () => {
             <button
               data-testid="chat-close-btn"
               onClick={() => setIsOpen(false)}
-              className="p-1 rounded-lg text-slate-400 hover:text-white bg-surface-panel hover:bg-surface-elevated border border-white/[0.06] transition-colors"
+              className="p-1 rounded-lg text-slate-400 hover:text-white bg-surface-panel hover:bg-surface-elevated border border-white/[0.06] transition-colors cursor-pointer"
               aria-label="Close Chat"
             >
               <X className="w-4 h-4" />
@@ -94,7 +94,7 @@ export const ChatPanel: React.FC = () => {
               </div>
               <button
                 onClick={clearError}
-                className="text-rose-400 hover:text-rose-200 text-xs ml-2 font-bold"
+                className="text-rose-400 hover:text-rose-200 text-xs ml-2 font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -110,7 +110,7 @@ export const ChatPanel: React.FC = () => {
               <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-500 space-y-1">
                 <MessageSquare className="w-8 h-8 opacity-40 mb-1" />
                 <p className="text-xs font-semibold text-slate-400">No messages yet</p>
-                <p className="text-[10px]">Say hello or cheer on your teammates!</p>
+                <p className="text-[10px]">Send a greeting or chat with your table.</p>
               </div>
             ) : (
               messages.map((msg) => {
@@ -136,7 +136,7 @@ export const ChatPanel: React.FC = () => {
                     <div
                       className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs break-words shadow-card ${
                         isSelf
-                          ? 'bg-blue-600 text-white rounded-tr-xs'
+                          ? 'bg-red-600 text-white rounded-tr-xs'
                           : 'bg-surface-panel border border-white/[0.08] text-slate-200 rounded-tl-xs'
                       }`}
                     >
@@ -167,14 +167,14 @@ export const ChatPanel: React.FC = () => {
                 data-testid="chat-send-btn"
                 disabled={!inputText.trim() || isSending}
                 onClick={handleSend}
-                className="absolute right-1.5 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all cursor-pointer shadow-card"
+                className="absolute right-1.5 p-1.5 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all cursor-pointer shadow-sm"
                 aria-label="Send message"
               >
                 <Send className="w-3.5 h-3.5" />
               </button>
             </div>
             <div className="flex items-center justify-between mt-1 px-1 text-[9px] text-slate-500 font-mono">
-              <span>Shift + Enter for new line</span>
+              <span>Shift + Enter for newline</span>
               <span>{inputText.length}/300</span>
             </div>
           </div>

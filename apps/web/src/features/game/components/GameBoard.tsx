@@ -136,7 +136,7 @@ export const GameBoard: React.FC = () => {
         {/* Turn indicator badge */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           {isMyTurn ? (
-            <div data-testid="your-turn-badge" className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-amber-400/15 border border-amber-400/80 text-amber-300 font-bold text-xs sm:text-sm animate-pulse shadow-brass">
+            <div data-testid="your-turn-badge" className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-surface-elevated border border-amber-400 text-amber-300 font-bold text-xs sm:text-sm shadow-brass">
               <span className="w-2 h-2 rounded-full bg-amber-400" />
               <span>YOUR TURN</span>
             </div>

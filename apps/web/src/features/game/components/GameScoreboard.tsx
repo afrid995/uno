@@ -81,7 +81,7 @@ export const GameScoreboard: React.FC = () => {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       {isCurrentTurn && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                       )}
                       <div className="truncate font-semibold flex items-center gap-1.5">
                         <span className="truncate">{player.username}</span>

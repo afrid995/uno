@@ -83,10 +83,10 @@ export const GamePage: React.FC = () => {
   return (
     <div className="w-full h-full flex-1 flex flex-col justify-between safe-p py-1 sm:py-2 select-none overflow-hidden">
       {/* Top Header Row */}
-      <header className="w-full max-w-7xl mx-auto px-2 sm:px-4 flex items-center justify-between py-1 border-b border-white/[0.08] mb-0.5 sm:mb-1 shrink-0">
+      <header className="w-full max-w-7xl mx-auto px-2 sm:px-4 flex items-center justify-between py-1.5 border-b border-white/[0.08] mb-0.5 sm:mb-1 shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <span className="font-display font-bold text-sm tracking-wide text-white">
               {getVariantTitle(gameState?.variant)}
             </span>
@@ -99,7 +99,7 @@ export const GamePage: React.FC = () => {
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-card border border-white/[0.08] hover:border-white/[0.15] text-xs text-slate-300 transition-colors cursor-pointer"
               title="Click to copy Room Code"
             >
-              <span className="text-[10px] text-slate-500 uppercase font-mono">Room:</span>
+              <span className="text-[10px] text-slate-400 uppercase font-mono">Room:</span>
               <span className="font-mono font-bold text-amber-300">{roomCode}</span>
               {copied ? (
                 <Check className="w-3 h-3 text-emerald-400 ml-0.5" />
@@ -127,7 +127,7 @@ export const GamePage: React.FC = () => {
               </span>
               <button
                 onClick={handleLeave}
-                className="py-1 px-3 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition-colors cursor-pointer"
+                className="py-1 px-3 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition-colors cursor-pointer shadow-sm"
               >
                 Yes, Leave
               </button>

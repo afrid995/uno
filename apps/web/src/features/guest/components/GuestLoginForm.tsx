@@ -51,17 +51,19 @@ export const GuestLoginForm: React.FC = () => {
   };
 
   const displayError = localError || serverError;
-  const isInputValidLength = username.trim().length >= USERNAME_RULES.MIN_LENGTH && username.trim().length <= USERNAME_RULES.MAX_LENGTH;
+  const isInputValidLength =
+    username.trim().length >= USERNAME_RULES.MIN_LENGTH &&
+    username.trim().length <= USERNAME_RULES.MAX_LENGTH;
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-md mx-auto" noValidate>
-      <div className="p-6 sm:p-8 rounded-2xl bg-surface-card border border-white/[0.08] shadow-modal relative">
+      <div className="p-6 sm:p-7 rounded-2xl bg-surface-card border border-white/[0.08] shadow-card relative">
         <div className="text-center mb-6">
-          <h2 className="font-display font-bold text-2xl text-white tracking-tight">
-            Enter Game Lobby
+          <h2 className="font-display font-bold text-xl sm:text-2xl text-white tracking-tight">
+            Join the Table
           </h2>
-          <p className="text-sm text-slate-400 mt-1.5">
-            Choose a display name. No registration or password required.
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            Enter a display name. No registration or password required.
           </p>
         </div>
 
@@ -69,11 +71,11 @@ export const GuestLoginForm: React.FC = () => {
         <div className="space-y-2 mb-6">
           <div className="flex justify-between items-center text-xs">
             <label htmlFor="username-input" className="font-medium text-slate-300">
-              Player Name
+              Player name
             </label>
             <span
-              className={`font-mono text-[11px] ${
-                username.length > USERNAME_RULES.MAX_LENGTH ? 'text-rose-400 font-bold' : 'text-slate-500'
+              className={`font-mono text-[11px] tabular-nums ${
+                username.length > USERNAME_RULES.MAX_LENGTH ? 'text-rose-400 font-semibold' : 'text-slate-400'
               }`}
             >
               {username.length}/{USERNAME_RULES.MAX_LENGTH}
@@ -93,26 +95,26 @@ export const GuestLoginForm: React.FC = () => {
               disabled={isLoading}
               aria-invalid={!!displayError}
               aria-describedby={displayError ? 'username-error' : undefined}
-              className={`w-full px-4 py-3.5 rounded-xl bg-slate-900/90 border text-slate-100 placeholder-slate-500 focus:outline-none transition-all duration-200 text-base ${
+              className={`w-full px-4 py-3 rounded-xl bg-surface-panel border text-slate-100 placeholder-slate-500 focus:outline-none transition-colors text-sm sm:text-base ${
                 displayError
-                  ? 'border-rose-500 focus:ring-2 focus:ring-rose-500/50'
+                  ? 'border-rose-500/80 focus:border-rose-500'
                   : isInputValidLength
-                  ? 'border-emerald-500/60 focus:ring-2 focus:ring-emerald-500/40'
-                  : 'border-white/[0.08] focus:ring-1 focus:ring-amber-400/50 focus:border-amber-400'
+                  ? 'border-emerald-500/60 focus:border-emerald-400'
+                  : 'border-white/[0.08] focus:border-amber-400/80'
               }`}
             />
             {isInputValidLength && !displayError && (
-              <CheckCircle2 className="absolute right-3.5 top-3.5 w-5 h-5 text-emerald-400 pointer-events-none" />
+              <CheckCircle2 className="absolute right-3.5 top-3.5 w-4 h-4 text-emerald-400 pointer-events-none" />
             )}
           </div>
 
-          {/* Error Message */}
+          {/* Error Alert */}
           {displayError && (
             <motion.div
               id="username-error"
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-start gap-2 text-xs text-rose-400 pt-1"
+              className="flex items-start gap-1.5 text-xs text-rose-400 pt-1"
               role="alert"
             >
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -121,8 +123,8 @@ export const GuestLoginForm: React.FC = () => {
           )}
 
           <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
-            <span>• Duplicate names allowed</span>
-            <span>• Secure guest token generated</span>
+            <span>Duplicate names supported</span>
+            <span>Cryptographic session key</span>
           </div>
         </div>
 
@@ -130,18 +132,18 @@ export const GuestLoginForm: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full relative group overflow-hidden rounded-xl font-display font-bold text-base tracking-wide py-4 px-6 text-white shadow-card transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed bg-red-600 hover:bg-red-500 hover:scale-[1.01] active:scale-[0.99] border border-red-500/50"
+          className="w-full relative rounded-xl font-display font-semibold text-sm sm:text-base tracking-wide py-3.5 px-5 text-white shadow-card transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-[#d9383a] hover:bg-[#c6282a] active:bg-[#b02224] border border-white/10 cursor-pointer"
         >
           <div className="flex items-center justify-center gap-2">
             {isLoading ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Creating Guest Session...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+                <span>Creating guest session...</span>
               </>
             ) : (
               <>
                 <span>Play Now</span>
-                <Play className="w-4 h-4 fill-current transition-transform group-hover:translate-x-1" />
+                <Play className="w-3.5 h-3.5 fill-current" />
               </>
             )}
           </div>

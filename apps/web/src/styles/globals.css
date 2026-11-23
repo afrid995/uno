@@ -4,44 +4,48 @@
 
 @layer base {
   body {
-    @apply bg-[#090c12] text-slate-100 antialiased font-sans overflow-x-hidden selection:bg-amber-600 selection:text-white;
-    background-image: 
-      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(17, 38, 26, 0.35) 0%, transparent 70%),
-      radial-gradient(ellipse 70% 45% at 50% 110%, rgba(15, 21, 32, 0.5) 0%, transparent 80%);
+    @apply bg-[#090c11] text-slate-100 antialiased font-sans overflow-x-hidden selection:bg-amber-600 selection:text-white;
+    background-color: #090c11;
+    background-image:
+      radial-gradient(ellipse 60% 50% at 50% 0%, rgba(14, 44, 29, 0.22) 0%, transparent 80%),
+      linear-gradient(to bottom, #090c11 0%, #07090d 100%);
   }
 
-  /* Accessible focus indicators */
+  /* Accessible high-contrast focus indicators */
   :focus-visible {
-    @apply outline-none ring-2 ring-amber-400/90 ring-offset-2 ring-offset-[#090c12];
+    @apply outline-none ring-2 ring-amber-400/90 ring-offset-2 ring-offset-[#090c11];
+  }
+
+  /* Universal tabular figures for counters and timers */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @layer utilities {
   .glass-panel {
-    background: rgba(17, 22, 32, 0.88);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+    background: rgba(16, 20, 29, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.55);
   }
 
   .premium-card {
-    background: #141a26;
+    background: #141924;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 3px 12px -2px rgba(0, 0, 0, 0.5);
   }
 
   .felt-surface {
-    background: radial-gradient(ellipse at center, #103322 0%, #0c2518 60%, #07180f 100%);
-    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.85), 0 16px 45px rgba(0, 0, 0, 0.85);
+    background: radial-gradient(ellipse at center, #0e2a1b 0%, #0a2015 65%, #06150d 100%);
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.85), 0 20px 50px rgba(0, 0, 0, 0.9);
   }
 
-  .text-glow-red {
-    text-shadow: 0 0 16px rgba(224, 49, 49, 0.4);
-  }
-
-  .text-glow-blue {
-    text-shadow: 0 0 16px rgba(25, 113, 194, 0.4);
+  /* Card Linen texture subtle overlay */
+  .card-bezel {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 2px 8px rgba(0, 0, 0, 0.4);
   }
 
   /* Mobile safe-area utilities */

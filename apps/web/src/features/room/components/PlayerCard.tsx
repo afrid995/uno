@@ -83,7 +83,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, isCurrentPlayer,
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg bg-surface-panel text-slate-400 border border-white/[0.06]">
-            <CircleDashed className="w-3.5 h-3.5 animate-pulse text-slate-500" />
+            <CircleDashed className="w-3.5 h-3.5 text-slate-500" />
             Not Ready
           </span>
         )}

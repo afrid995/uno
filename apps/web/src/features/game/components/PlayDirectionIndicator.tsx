@@ -35,15 +35,10 @@ export const PlayDirectionIndicator: React.FC<PlayDirectionIndicatorProps> = ({
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          <filter id={`glow-${direction}`} x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-
           <linearGradient id={`grad-${direction}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={strokeColor} stopOpacity="0.8" />
-            <stop offset="50%" stopColor={isClockwise ? '#10b981' : '#f59e0b'} stopOpacity="0.9" />
-            <stop offset="100%" stopColor={strokeColor} stopOpacity="0.8" />
+            <stop offset="0%" stopColor={strokeColor} stopOpacity="0.7" />
+            <stop offset="50%" stopColor={isClockwise ? '#34d399' : '#fbbf24'} stopOpacity="0.9" />
+            <stop offset="100%" stopColor={strokeColor} stopOpacity="0.7" />
           </linearGradient>
 
           {/* Marker arrows */}
@@ -62,16 +57,16 @@ export const PlayDirectionIndicator: React.FC<PlayDirectionIndicatorProps> = ({
           </marker>
         </defs>
 
-        {/* Ambient Glow Ellipse */}
+        {/* Ambient Guide Ellipse */}
         <ellipse
           cx="300"
           cy="180"
           rx="250"
           ry="140"
           stroke={glowColor}
-          strokeWidth="6"
-          strokeDasharray="8 12"
-          className="opacity-40"
+          strokeWidth="1.5"
+          strokeDasharray="4 8"
+          className="opacity-25"
         />
 
         {/* Animated Dashed Flow Path */}
@@ -82,14 +77,13 @@ export const PlayDirectionIndicator: React.FC<PlayDirectionIndicatorProps> = ({
           rx="250"
           ry="140"
           stroke={`url(#grad-${direction})`}
-          strokeWidth="2.5"
-          strokeDasharray="16 16"
+          strokeWidth="2"
+          strokeDasharray="14 14"
           strokeLinecap="round"
-          filter={`url(#glow-${direction})`}
           animate={
             shouldReduceMotion
               ? { strokeDashoffset: 0 }
-              : { strokeDashoffset: isClockwise ? [0, -64] : [0, 64] }
+              : { strokeDashoffset: isClockwise ? [0, -56] : [0, 56] }
           }
           transition={{
             duration: 3,
