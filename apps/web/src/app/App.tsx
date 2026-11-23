@@ -1,13 +1,23 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { useGuestStore } from '../stores/guestStore';
 import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
 import { LandingPage } from '../pages/LandingPage';
-import { DashboardPage } from '../pages/DashboardPage';
-import { LobbyPage } from '../pages/LobbyPage';
-import { JoinInvitePage } from '../pages/JoinInvitePage';
-import { GamePage } from '../pages/GamePage';
+import { Spinner } from '@/components/ui/spinner';
+
+const DashboardPage = lazy(() =>
+  import('../pages/DashboardPage').then((m) => ({ default: m.DashboardPage }))
+);
+const LobbyPage = lazy(() =>
+  import('../pages/LobbyPage').then((m) => ({ default: m.LobbyPage }))
+);
+const JoinInvitePage = lazy(() =>
+  import('../pages/JoinInvitePage').then((m) => ({ default: m.JoinInvitePage }))
+);
+const GamePage = lazy(() =>
+  import('../pages/GamePage').then((m) => ({ default: m.GamePage }))
+);
 
 export const App: React.FC = () => {
   const { resumeSession, guest, isResuming } = useGuestStore();
@@ -43,33 +53,42 @@ export const App: React.FC = () => {
             <p className="text-xs text-slate-400 font-medium">Checking session...</p>
           </div>
         ) : (
-          <Routes>
-            <Route
-              path="/"
-              element={guest ? <Navigate to="/dashboard" replace /> : <LandingPage />}
-            />
-            <Route
-              path="/dashboard"
-              element={<DashboardPage />}
-            />
-            <Route
-              path="/room/:roomCode"
-              element={<LobbyPage />}
-            />
-            <Route
-              path="/game/:roomCode"
-              element={<GamePage />}
-            />
-            <Route
-              path="/join"
-              element={<JoinInvitePage />}
-            />
-            <Route
-              path="/join/:roomCode"
-              element={<JoinInvitePage />}
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <Suspense
+            fallback={
+              <div className="flex flex-col items-center justify-center p-12 space-y-3">
+                <Spinner size="lg" className="text-amber-400" />
+                <p className="text-xs text-slate-400 font-medium font-mono">Loading card room...</p>
+              </div>
+            }
+          >
+            <Routes>
+              <Route
+                path="/"
+                element={guest ? <Navigate to="/dashboard" replace /> : <LandingPage />}
+              />
+              <Route
+                path="/dashboard"
+                element={<DashboardPage />}
+              />
+              <Route
+                path="/room/:roomCode"
+                element={<LobbyPage />}
+              />
+              <Route
+                path="/game/:roomCode"
+                element={<GamePage />}
+              />
+              <Route
+                path="/join"
+                element={<JoinInvitePage />}
+              />
+              <Route
+                path="/join/:roomCode"
+                element={<JoinInvitePage />}
+              />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
         )}
       </main>
 

@@ -107,9 +107,11 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div role="radiogroup" aria-label="Game variant" className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <button
                 type="button"
+                role="radio"
+                aria-checked={variant === 'classic'}
                 data-testid="variant-select-classic"
                 onClick={() => handleSelectVariant('classic')}
                 className={cn(
@@ -127,6 +129,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
 
               <button
                 type="button"
+                role="radio"
+                aria-checked={variant === 'uno_flip'}
                 data-testid="variant-select-uno-flip"
                 onClick={() => handleSelectVariant('uno_flip')}
                 className={cn(
@@ -147,6 +151,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
 
               <button
                 type="button"
+                role="radio"
+                aria-checked={variant === 'uno_show_em_no_mercy'}
                 data-testid="variant-select-no-mercy"
                 onClick={() => handleSelectVariant('uno_show_em_no_mercy')}
                 className={cn(
@@ -167,6 +173,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
 
               <button
                 type="button"
+                role="radio"
+                aria-checked={variant === 'uno_all_wild'}
                 data-testid="variant-select-all-wild"
                 onClick={() => handleSelectVariant('uno_all_wild')}
                 className={cn(
@@ -187,6 +195,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
 
               <button
                 type="button"
+                role="radio"
+                aria-checked={variant === 'uno_flex'}
                 data-testid="variant-select-uno-flex"
                 onClick={() => handleSelectVariant('uno_flex')}
                 className={cn(
@@ -207,6 +217,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
 
               <button
                 type="button"
+                role="radio"
+                aria-checked={variant === 'uno_teams'}
                 data-testid="variant-select-uno-teams"
                 onClick={() => handleSelectVariant('uno_teams')}
                 className={cn(
@@ -227,6 +239,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
 
               <button
                 type="button"
+                role="radio"
+                aria-checked={variant === 'uno_attack'}
                 data-testid="variant-select-uno-attack"
                 onClick={() => handleSelectVariant('uno_attack')}
                 className={cn(
@@ -294,7 +308,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
               </span>
             </div>
 
-            <div className="flex items-center justify-between gap-1.5">
+            <div role="group" aria-label="Player capacity" className="flex items-center justify-between gap-1.5">
               {(variant === 'uno_show_em_no_mercy'
                 ? [2, 3, 4, 5, 6]
                 : variant === 'uno_flex'
@@ -306,6 +320,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
                 <button
                   key={num}
                   type="button"
+                  aria-pressed={maxPlayers === num}
                   onClick={() => setMaxPlayers(num)}
                   className={cn(
                     'flex-1 py-2 rounded-lg text-xs font-bold font-display border transition-all cursor-pointer',

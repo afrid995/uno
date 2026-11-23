@@ -609,10 +609,15 @@ describe('Authoritative UNO Declaration, Catch, and Penalty Mechanics (All Varia
         variant: 'uno_flex',
         dealerIndex: 2,
       });
-      const [c1, c2, ...rest] = initial.players[0].hand;
+      const c1 = initial.players[0].hand.find((c) => c.type === 'number') ?? initial.players[0].hand[0];
+      const remainingHand = initial.players[0].hand.filter((c) => c.id !== c1.id);
+      const c2 = remainingHand[0];
+      const rest = remainingHand.slice(1);
       initial.players[0].hand = [c1, c2];
       initial.drawPile.push(...rest);
       initial.activeColor = c1.color ?? 'red';
+      initial.topDiscardCard = { ...c1, id: 'top-discard-matching' };
+      initial.pendingActionState = null;
 
       const { nextState: s1 } = adapter.processAction(initial, {
         type: 'PLAY_CARD',
