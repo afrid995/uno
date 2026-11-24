@@ -150,9 +150,9 @@ sequenceDiagram
 
 ---
 
-## 8. Real-Browser Playwright End-to-End Verification
+## 8. Real-Browser Playwright End-to-End Verification (Local)
 
-A comprehensive end-to-end test (`test-browser-e2e.mjs`) was executed in real Chromium browsers with two separate isolated contexts (Host and Guest):
+A comprehensive end-to-end test was executed in real Chromium browsers with two separate isolated contexts (Host and Guest):
 1. **Host** created a private room with variant `UNO Show 'em No Mercy`.
 2. **Guest** joined the room via room code and clicked ready.
 3. **Host** started Match 1 (`GAME_STARTED` emitted in 108ms).
@@ -168,8 +168,38 @@ A comprehensive end-to-end test (`test-browser-e2e.mjs`) was executed in real Ch
 
 ---
 
-## 9. Verification Artifacts & Visual Evidence
+## 9. Live Production Verification (https://ultimate-beryl.vercel.app)
 
-- `reports/screenshots/rematch-production-fix/01_match1_active_board.png`: Active gameplay board during Match 1.
-- `reports/screenshots/rematch-production-fix/02_match_result_modal_champion.png`: Match Result Modal showing champion declaration, final standings, and active "PLAY AGAIN" button.
-- `reports/screenshots/rematch-production-fix/03_rematch_match2_active_board.png`: Active gameplay board during Match 2 immediately following "PLAY AGAIN" click, confirming seamless rematch start with 0 error alerts.
+Following commit and push of `ed03512` to `main`, deployments were monitored and confirmed live on Vercel (frontend) and Render (backend).
+
+An automated Playwright script (`scripts/verify-prod-rematch.mjs`) was executed directly against the live production environment (`https://ultimate-beryl.vercel.app` connecting to `https://uno-ultimate-server.onrender.com`):
+
+### Live Verification Flow:
+1. **Host (`HostAlice_461`)** logged in as guest on `https://ultimate-beryl.vercel.app/`.
+2. Created a private room with **UNO Show 'em No Mercy** variant (Room Code: `Z5V4N6`).
+3. **Guest (`GuestBob_247`)** joined room `Z5V4N6` and toggled ready.
+4. **Host** clicked Start Match; Match 1 loaded successfully over production WebSockets. Screenshot saved: `01_prod_match1_board.png`.
+5. Both players engaged in real gameplay across 37 live turns:
+   - Hand plays, draw pile draws, stack penalty acceptance, and wild color selections were communicated over live Socket.IO connections.
+   - At Turn 37, Match 1 reached natural conclusion (Mercy knockout / hand resolution).
+6. **Match Result Modal** appeared with Champion banner, final standings, and "PLAY AGAIN" button. Screenshot saved: `02_prod_match_result_modal.png`.
+7. **Host clicked PLAY AGAIN**:
+   - Modal closed cleanly within 200ms.
+   - Server initialized Match 2 and broadcast new `matchId` at sequence 0.
+   - Host client accepted Match 2 without sequence dropping.
+   - Match 2 game board mounted with fresh 7-card hands for both Alice and Bob.
+   - **Zero error alerts** or `"A match is already in progress for this room."` warnings appeared.
+   - Screenshot saved: `03_prod_rematch_match2_board.png`.
+
+---
+
+## 10. Verification Artifacts & Visual Evidence
+
+| Artifact File | Environment | Description |
+| :--- | :--- | :--- |
+| `reports/screenshots/rematch-production-fix/01_prod_match1_board.png` | **Live Production** | Match 1 active table on `https://ultimate-beryl.vercel.app` (Room `Z5V4N6`). |
+| `reports/screenshots/rematch-production-fix/02_prod_match_result_modal.png` | **Live Production** | Match Result Modal displaying champion, scores, and active "PLAY AGAIN" button. |
+| `reports/screenshots/rematch-production-fix/03_prod_rematch_match2_board.png` | **Live Production** | Match 2 active table with fresh 7-card hands after clicking PLAY AGAIN, zero errors. |
+| `reports/screenshots/rematch-production-fix/01_match1_active_board.png` | Local E2E | Baseline active gameplay board during Match 1. |
+| `reports/screenshots/rematch-production-fix/02_match_result_modal_champion.png` | Local E2E | Baseline Match Result Modal showing champion declaration and standings. |
+| `reports/screenshots/rematch-production-fix/03_rematch_match2_active_board.png` | Local E2E | Baseline Match 2 active board following rematch initialization. |
