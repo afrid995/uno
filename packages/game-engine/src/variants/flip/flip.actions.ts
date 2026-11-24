@@ -457,7 +457,9 @@ export class FlipActionProcessor {
           const pointsScored = this.calculateRoundScore(loserHands, newActiveSide);
 
           updatedPlayers = updatedPlayers.map((p, idx) =>
-            idx === playerIndex ? { ...p, score: p.score + pointsScored } : p
+            idx === playerIndex
+              ? { ...p, score: p.score + pointsScored, cumulativeScore: (p.cumulativeScore ?? p.score) + pointsScored }
+              : { ...p, cumulativeScore: p.cumulativeScore ?? p.score }
           );
 
           roundWinner = {
@@ -782,7 +784,9 @@ export class FlipActionProcessor {
           const pointsScored = this.calculateRoundScore(loserHands, activeSide);
 
           updatedPlayers = updatedPlayers.map((p) =>
-            p.id === offender.id ? { ...p, score: p.score + pointsScored } : p
+            p.id === offender.id
+              ? { ...p, score: p.score + pointsScored, cumulativeScore: (p.cumulativeScore ?? p.score) + pointsScored }
+              : { ...p, cumulativeScore: p.cumulativeScore ?? p.score }
           );
 
           roundWinner = {
@@ -871,7 +875,9 @@ export class FlipActionProcessor {
           const pointsScored = this.calculateRoundScore(loserHands, activeSide);
 
           updatedPlayers = updatedPlayers.map((p) =>
-            p.id === offender.id ? { ...p, score: p.score + pointsScored } : p
+            p.id === offender.id
+              ? { ...p, score: p.score + pointsScored, cumulativeScore: (p.cumulativeScore ?? p.score) + pointsScored }
+              : { ...p, cumulativeScore: p.cumulativeScore ?? p.score }
           );
 
           roundWinner = {
@@ -1016,7 +1022,9 @@ export class FlipActionProcessor {
           const pointsScored = this.calculateRoundScore(loserHands, activeSide);
 
           updatedPlayers = updatedPlayers.map((p) =>
-            p.id === offender.id ? { ...p, score: p.score + pointsScored } : p
+            p.id === offender.id
+              ? { ...p, score: p.score + pointsScored, cumulativeScore: (p.cumulativeScore ?? p.score) + pointsScored }
+              : { ...p, cumulativeScore: p.cumulativeScore ?? p.score }
           );
 
           roundWinner = {
@@ -1111,7 +1119,9 @@ export class FlipActionProcessor {
           const pointsScored = this.calculateRoundScore(loserHands, activeSide);
 
           updatedPlayers = updatedPlayers.map((p) =>
-            p.id === offender.id ? { ...p, score: p.score + pointsScored } : p
+            p.id === offender.id
+              ? { ...p, score: p.score + pointsScored, cumulativeScore: (p.cumulativeScore ?? p.score) + pointsScored }
+              : { ...p, cumulativeScore: p.cumulativeScore ?? p.score }
           );
 
           roundWinner = {

@@ -1215,3 +1215,7 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
     };
   },
 }));
+
+if (typeof window !== 'undefined') {
+  (window as any).__UNO_GAME_STORE__ = useGameStore;
+}

@@ -278,4 +278,91 @@ describe('MatchResultModal Isolation & Navigation Tests', () => {
     expect(screen.queryByTestId('match-result-play-again')).not.toBeInTheDocument();
     expect(screen.getByTestId('match-result-waiting-host')).toHaveTextContent(/Waiting for host to start Play Again/i);
   });
+
+  it('guarantees declared champion is rank #1 and formats single-match score cleanly', () => {
+    useRoomStore.setState({
+      room: {
+        id: 'room-1',
+        roomCode: 'ROOM99',
+        hostGuestId: 'p2',
+        status: 'FINISHED',
+        maxPlayers: 2,
+        playerCount: 2,
+        version: 1,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        settings: { variant: 'uno_show_em_no_mercy' },
+        members: [
+          { id: 'm1', guestId: 'p1', username: 'shaik afrid', role: 'PLAYER', readyStatus: true, connectionStatus: 'CONNECTED', joinedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString() },
+          { id: 'm2', guestId: 'p2', username: 'Afrid', role: 'HOST', readyStatus: true, connectionStatus: 'CONNECTED', joinedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString() },
+        ],
+      },
+      isStarting: false,
+    });
+
+    // In match 1, Afrid wins 250 pts by elimination.
+    useGameStore.setState({
+      gameState: {
+        ...mockCompletedGameState,
+        variant: 'uno_show_em_no_mercy',
+        targetScore: 1000,
+        roundNumber: 1,
+        winner: { id: 'p2', username: 'Afrid', score: 250, wonByLastStanding: true },
+        players: [
+          { id: 'p1', username: 'shaik afrid', cardCount: 25, isEliminated: true, score: 0, cumulativeScore: 0, hasDeclaredUno: false },
+          { id: 'p2', username: 'Afrid', cardCount: 7, isEliminated: false, score: 250, cumulativeScore: 250, hasDeclaredUno: false },
+        ],
+      },
+      showMatchResultModal: true,
+      matchWinnerData: { id: 'p2', username: 'Afrid', score: 250, wonByLastStanding: true },
+    });
+
+    render(
+      <MemoryRouter>
+        <MatchResultModal />
+      </MemoryRouter>
+    );
+
+    // Champion banner must name Afrid
+    expect(screen.getByText('Afrid is the Champion!')).toBeInTheDocument();
+
+    // Standings rank #1 must be Afrid (NOT shaik afrid!)
+    expect(screen.getByTestId('standing-name-0')).toHaveTextContent(/Afrid/);
+    expect(screen.getByTestId('standing-rank-0')).toHaveTextContent('#1');
+    expect(screen.getByTestId('standing-score-0')).toHaveTextContent('250 pts');
+    expect(screen.queryByTestId('standing-match-score-0')).not.toBeInTheDocument(); // clean single-match format
+
+    // Standings rank #2 must be shaik afrid
+    expect(screen.getByTestId('standing-name-1')).toHaveTextContent(/shaik afrid/);
+    expect(screen.getByTestId('standing-rank-1')).toHaveTextContent('#2');
+    expect(screen.getByTestId('standing-score-1')).toHaveTextContent('0 pts');
+
+    // Victory subtitle must indicate elimination win with singular "1 round"
+    expect(screen.getByTestId('victory-subtitle')).toHaveTextContent('Won by elimination as the last remaining player across 1 round!');
+  });
+
+  it('renders target score victory message with plural rounds when won on score target', () => {
+    useGameStore.setState({
+      gameState: {
+        ...mockCompletedGameState,
+        targetScore: 500,
+        roundNumber: 3,
+        winner: { id: 'p1', username: 'Alice', score: 540 },
+        players: [
+          { id: 'p1', username: 'Alice', cardCount: 0, isEliminated: false, score: 540, cumulativeScore: 540, hasDeclaredUno: true },
+          { id: 'p2', username: 'Bob', cardCount: 3, isEliminated: false, score: 210, cumulativeScore: 210, hasDeclaredUno: false },
+        ],
+      },
+      showMatchResultModal: true,
+      matchWinnerData: { id: 'p1', username: 'Alice', score: 540 },
+    });
+
+    render(
+      <MemoryRouter>
+        <MatchResultModal />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('victory-subtitle')).toHaveTextContent('Surpassed the target of 500 points across 3 rounds!');
+  });
 });

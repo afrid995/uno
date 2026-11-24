@@ -1,4 +1,4 @@
-import { prisma, MatchStatus } from '@uno-ultimate/database';
+import { prisma, MatchStatus, RoomStatus } from '@uno-ultimate/database';
 import { GameState, GameSerializer, GameEventRecord } from '@uno-ultimate/game-engine';
 import { logger } from '../../utils/logger';
 
@@ -87,6 +87,17 @@ export class GamePersistenceService {
           updatedAt: new Date(),
         },
       });
+
+      // 1b. If match reached completion, atomically update room status to FINISHED
+      if (isCompleted && nextState.roomId) {
+        await tx.room.update({
+          where: { id: nextState.roomId },
+          data: {
+            status: RoomStatus.FINISHED,
+            version: { increment: 1 },
+          },
+        });
+      }
 
       // 2. Update MatchPlayer rows
       for (const p of nextState.players) {

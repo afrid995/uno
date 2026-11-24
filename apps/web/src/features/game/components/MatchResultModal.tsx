@@ -36,10 +36,26 @@ export const MatchResultModal: React.FC = () => {
 
   const isHost = room ? room.hostGuestId === gameState.self.id : false;
 
-  // Sort players by cumulative score descending
-  const sortedPlayers = [...gameState.players].sort(
-    (a, b) => (b.cumulativeScore ?? b.score) - (a.cumulativeScore ?? a.score)
-  );
+  const isEliminationWin =
+    Boolean(winner?.wonByLastStanding) ||
+    (gameState.variant === 'uno_show_em_no_mercy' &&
+      gameState.players.filter((p) => !p.isEliminated).length <= 1) ||
+    (Boolean(winner) && (winner?.score ?? 0) < gameState.targetScore);
+
+  const roundsText = gameState.roundNumber === 1 ? '1 round' : `${gameState.roundNumber} rounds`;
+
+  const victorySubtitle = isEliminationWin
+    ? `Won by elimination as the last remaining player across ${roundsText}!`
+    : `Surpassed the target of ${gameState.targetScore} points across ${roundsText}!`;
+
+  // Sort players: declared champion is guaranteed rank #1; remaining sorted by effective total score descending
+  const sortedPlayers = [...gameState.players].sort((a, b) => {
+    if (winner && a.id === winner.id) return -1;
+    if (winner && b.id === winner.id) return 1;
+    const scoreA = a.cumulativeScore !== undefined && a.cumulativeScore > 0 ? a.cumulativeScore : a.score;
+    const scoreB = b.cumulativeScore !== undefined && b.cumulativeScore > 0 ? b.cumulativeScore : b.score;
+    return scoreB - scoreA;
+  });
 
   const handlePlayAgain = async () => {
     if (isStarting) return;
@@ -80,8 +96,8 @@ export const MatchResultModal: React.FC = () => {
               {winnerName} is the Champion!
             </h2>
 
-            <p className="text-sm text-slate-300 mb-6 max-w-sm mx-auto">
-              Surpassed the target of {gameState.targetScore} points across {gameState.roundNumber} rounds!
+            <p className="text-sm text-slate-300 mb-6 max-w-sm mx-auto" data-testid="victory-subtitle">
+              {victorySubtitle}
             </p>
 
             {/* Leaderboard */}
@@ -92,10 +108,13 @@ export const MatchResultModal: React.FC = () => {
               {sortedPlayers.map((p, idx) => {
                 const isWinner = idx === 0;
                 const rankLabel = `#${idx + 1}`;
+                const hasMultiMatchScore = p.cumulativeScore !== undefined && p.cumulativeScore > 0 && p.cumulativeScore > p.score;
+                const displayTotal = hasMultiMatchScore ? p.cumulativeScore : p.score;
 
                 return (
                   <div
                     key={p.id}
+                    data-testid={`standing-row-${idx}`}
                     className={cn(
                       'flex items-center justify-between p-2.5 rounded-xl text-sm',
                       isWinner
@@ -104,17 +123,17 @@ export const MatchResultModal: React.FC = () => {
                     )}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-mono font-bold min-w-6 text-slate-400">{rankLabel}</span>
-                      <span className="truncate">
+                      <span className="text-xs font-mono font-bold min-w-6 text-slate-400" data-testid={`standing-rank-${idx}`}>{rankLabel}</span>
+                      <span className="truncate" data-testid={`standing-name-${idx}`}>
                         {p.username} {p.id === gameState.self.id && <span className="text-amber-400/90 font-mono font-normal">(you)</span>}
                       </span>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="font-mono font-bold text-white">
-                        {p.cumulativeScore !== undefined ? `${p.cumulativeScore} pts total` : `${p.score} pts`}
+                      <span className="font-mono font-bold text-white" data-testid={`standing-score-${idx}`}>
+                        {hasMultiMatchScore ? `${displayTotal} pts total` : `${p.score} pts`}
                       </span>
-                      {p.cumulativeScore !== undefined && (
-                        <span className="text-[11px] text-slate-400 font-mono">
+                      {hasMultiMatchScore && (
+                        <span className="text-[11px] text-slate-400 font-mono" data-testid={`standing-match-score-${idx}`}>
                           Match: {p.score} pts
                         </span>
                       )}

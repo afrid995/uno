@@ -801,8 +801,8 @@ export class NoMercyActionProcessor {
       drawnCards,
     });
 
-    // Check Mercy Rule (> 25 cards in hand)
-    if (newHand.length > UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
+    // Check Mercy Rule (>= 25 cards in hand)
+    if (newHand.length >= UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
       return this.applyMercyElimination(
         state,
         playerIndex,
@@ -949,8 +949,8 @@ export class NoMercyActionProcessor {
     const drawnCard = drawnCards[0];
     const newHand: Card[] = drawnCard ? [...player.hand, drawnCard] : [...player.hand];
 
-    // Check Mercy Rule during drawing (> 25 cards in hand)
-    if (newHand.length > UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
+    // Check Mercy Rule during drawing (>= 25 cards in hand)
+    if (newHand.length >= UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
       return this.applyMercyElimination(
         state,
         playerIndex,
@@ -1126,8 +1126,8 @@ export class NoMercyActionProcessor {
       penaltyCards: drawnCards.length,
     });
 
-    // Check Mercy Rule on penalized player (> 25 cards in hand)
-    if (newHand.length > UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
+    // Check Mercy Rule on penalized player (>= 25 cards in hand)
+    if (newHand.length >= UNO_NO_MERCY_RULES.MERCY_HAND_LIMIT) {
       return this.applyMercyElimination(
         state,
         targetIndex,
@@ -1211,15 +1211,20 @@ export class NoMercyActionProcessor {
         eliminatedBonusCount
       );
       const totalScore = winner.score + roundScore;
+      const newTotalSessionScore = (winner.cumulativeScore ?? winner.score) + roundScore;
 
       const updatedPlayersWithScore = updatedPlayers.map((p) =>
-        p.id === winner.id ? { ...p, score: totalScore } : p
+        p.id === winner.id
+          ? { ...p, score: totalScore, roundScore, cumulativeScore: newTotalSessionScore }
+          : { ...p, roundScore: 0, cumulativeScore: p.cumulativeScore ?? p.score }
       );
 
       const gameWinner: GameWinner = {
         id: winner.id,
         username: winner.username,
         score: totalScore,
+        roundScore,
+        wonByLastStanding: true,
       };
 
       ctx.addEvent('GAME_WON', winner.id, {
@@ -1293,15 +1298,19 @@ export class NoMercyActionProcessor {
       state.eliminatedBonusCount || 0
     );
     const totalScore = winner.score + roundScore;
+    const newTotalSessionScore = (winner.cumulativeScore ?? winner.score) + roundScore;
 
     const updatedPlayers = players.map((p) =>
-      p.id === winner.id ? { ...p, score: totalScore } : p
+      p.id === winner.id
+        ? { ...p, score: totalScore, roundScore, cumulativeScore: newTotalSessionScore }
+        : { ...p, roundScore: 0, cumulativeScore: p.cumulativeScore ?? p.score }
     );
 
     const roundWinner: GameWinner = {
       id: winner.id,
       username: winner.username,
       score: totalScore,
+      roundScore,
     };
 
     const isMatchOver = totalScore >= state.targetScore;

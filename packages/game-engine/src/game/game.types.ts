@@ -158,6 +158,7 @@ export interface GameWinner {
   readonly username: string;
   readonly score: number;
   readonly roundScore?: number;
+  readonly wonByLastStanding?: boolean;
 }
 
 export interface InspectionHand {

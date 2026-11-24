@@ -123,7 +123,7 @@ export const GameScoreboard: React.FC = () => {
                       <span className="font-bold text-amber-400 min-w-8 text-right">
                         {player.score} pts
                       </span>
-                      {player.cumulativeScore !== undefined && (
+                      {player.cumulativeScore !== undefined && player.cumulativeScore > 0 && player.cumulativeScore > player.score && (
                         <span className="text-[10px] text-slate-400 min-w-8 text-right">
                           Total: {player.cumulativeScore}
                         </span>

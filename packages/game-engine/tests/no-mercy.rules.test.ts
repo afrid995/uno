@@ -281,7 +281,7 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
       assertValidNoMercyGameState(res2.nextState);
     });
 
-    it('keeps a player active when their hand reaches exactly 25 cards', () => {
+    it('eliminates a player when their hand reaches exactly 25 cards (>= 25 boundary)', () => {
       let state = NoMercyFixtureBuilder.createInitialGameFixture({
         dealerIndex: 2, // P1 starts
         players: [
@@ -314,8 +314,45 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
       });
 
       const bob = res2.nextState.players.find((p) => p.id === 'p2')!;
+      expect(bob.isEliminated).toBe(true);
+      expect(bob.hand).toHaveLength(0); // Exactly 25 cards -> Eliminated!
+      expect(res2.nextState.eliminatedPlayerIds || []).toContain('p2');
+      assertValidNoMercyGameState(res2.nextState);
+    });
+
+    it('keeps a player active when their hand reaches 24 cards (below 25 limit)', () => {
+      let state = NoMercyFixtureBuilder.createInitialGameFixture({
+        dealerIndex: 2, // P1 starts
+        players: [
+          { id: 'p1', username: 'Alice' },
+          { id: 'p2', username: 'Bob' },
+          { id: 'p3', username: 'Charlie' },
+        ],
+      });
+
+      // Expand Bob's hand to 18 cards (18 + 6 = 24 cards)
+      state = NoMercyFixtureBuilder.setHandSize(state, 'p2', 18);
+
+      const { nextState: s1, card: d6 } = NoMercyFixtureBuilder.injectPlayableCard(
+        state,
+        'p1',
+        'wild_draw_six'
+      );
+      const res1 = NoMercyActionProcessor.process(s1, {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: d6.id,
+        chosenColor: 'yellow',
+      });
+
+      const res2 = NoMercyActionProcessor.process(res1.nextState, {
+        type: 'ACCEPT_STACK_PENALTY',
+        playerId: 'p2',
+      });
+
+      const bob = res2.nextState.players.find((p) => p.id === 'p2')!;
       expect(bob.isEliminated).toBe(false);
-      expect(bob.hand).toHaveLength(25); // Exactly 25 cards -> Active!
+      expect(bob.hand).toHaveLength(24); // Exactly 24 cards -> Active!
       expect(res2.nextState.eliminatedPlayerIds || []).not.toContain('p2');
       assertValidNoMercyGameState(res2.nextState);
     });
@@ -1093,14 +1130,15 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
         });
       }).toThrow(/is not an eligible Draw Card/);
 
-      // Charlie accepts the penalty and draws 18 cards; hand had 7 cards, now 7 + 18 = 25 -> Active with exactly 25 cards!
-      const acceptRes = NoMercyActionProcessor.process(s5, {
+      // Charlie accepts the penalty and draws 18 cards; adjust hand to 6 cards, now 6 + 18 = 24 -> Active with 24 cards!
+      const s5With6 = NoMercyFixtureBuilder.setHandSize(s5, 'p3', 6);
+      const acceptRes = NoMercyActionProcessor.process(s5With6, {
         type: 'ACCEPT_STACK_PENALTY',
         playerId: 'p3',
       });
       const charlie = acceptRes.nextState.players.find((p) => p.id === 'p3')!;
       expect(charlie.isEliminated).toBe(false);
-      expect(charlie.hand).toHaveLength(25);
+      expect(charlie.hand).toHaveLength(24);
       // Turn advances in clockwise from Charlie (idx 2) to Alice (idx 0)
       expect(acceptRes.nextState.currentPlayerIndex).toBe(0);
       assertValidNoMercyGameState(acceptRes.nextState);
@@ -1265,7 +1303,7 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
         expect(bob24.hand).toHaveLength(24);
         assertValidNoMercyGameState(res24_2.nextState);
 
-        // Test 25 cards -> Active
+        // Test 25 cards -> Eliminated (>= 25 boundary)
         let s25 = NoMercyFixtureBuilder.createInitialGameFixture({
           dealerIndex: 2,
           players: [
@@ -1279,8 +1317,9 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
         const res25_1 = NoMercyActionProcessor.process(s25_1, { type: 'PLAY_CARD', playerId: 'p1', cardId: d4_25.id });
         const res25_2 = NoMercyActionProcessor.process(res25_1.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p2' });
         const bob25 = res25_2.nextState.players.find((p) => p.id === 'p2')!;
-        expect(bob25.isEliminated).toBe(false);
-        expect(bob25.hand).toHaveLength(25);
+        expect(bob25.isEliminated).toBe(true);
+        expect(bob25.hand).toHaveLength(0);
+        expect(res25_2.nextState.setAsideCards?.length).toBeGreaterThanOrEqual(25);
         assertValidNoMercyGameState(res25_2.nextState);
 
         // Test 26 cards -> Eliminated
@@ -1322,8 +1361,23 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
         assertValidNoMercyGameState(res27_2.nextState);
       });
 
-      it('evaluates hand sizes at 25 (active) and 26 (eliminated) via normal 1-card draw', () => {
-        // Player with 24 cards draws 1 card -> 25 cards -> Active!
+      it('evaluates hand sizes at 24 (active) and 25 (eliminated) via normal 1-card draw', () => {
+        // Player with 23 cards draws 1 card -> 24 cards -> Active!
+        let state23 = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 1, // P1 starts
+          players: [
+            { id: 'p1', username: 'Alice' },
+            { id: 'p2', username: 'Bob' },
+          ],
+        });
+        state23 = NoMercyFixtureBuilder.setHandSize(state23, 'p1', 23);
+        const res1 = NoMercyActionProcessor.process(state23, { type: 'DRAW_CARD', playerId: 'p1' });
+        const p1After24 = res1.nextState.players.find((p) => p.id === 'p1')!;
+        expect(p1After24.isEliminated).toBe(false);
+        expect(p1After24.hand).toHaveLength(24);
+        assertValidNoMercyGameState(res1.nextState);
+
+        // Player with 24 cards draws 1 card -> 25 cards -> Eliminated!
         let state24 = NoMercyFixtureBuilder.createInitialGameFixture({
           dealerIndex: 1, // P1 starts
           players: [
@@ -1332,25 +1386,10 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
           ],
         });
         state24 = NoMercyFixtureBuilder.setHandSize(state24, 'p1', 24);
-        const res1 = NoMercyActionProcessor.process(state24, { type: 'DRAW_CARD', playerId: 'p1' });
-        const p1After25 = res1.nextState.players.find((p) => p.id === 'p1')!;
-        expect(p1After25.isEliminated).toBe(false);
-        expect(p1After25.hand).toHaveLength(25);
-        assertValidNoMercyGameState(res1.nextState);
-
-        // Player with 25 cards draws 1 card -> 26 cards -> Eliminated!
-        let state25 = NoMercyFixtureBuilder.createInitialGameFixture({
-          dealerIndex: 1, // P1 starts
-          players: [
-            { id: 'p1', username: 'Alice' },
-            { id: 'p2', username: 'Bob' },
-          ],
-        });
-        state25 = NoMercyFixtureBuilder.setHandSize(state25, 'p1', 25);
-        const res2 = NoMercyActionProcessor.process(state25, { type: 'DRAW_CARD', playerId: 'p1' });
-        const p1After26 = res2.nextState.players.find((p) => p.id === 'p1')!;
-        expect(p1After26.isEliminated).toBe(true);
-        expect(p1After26.hand).toHaveLength(0);
+        const res2 = NoMercyActionProcessor.process(state24, { type: 'DRAW_CARD', playerId: 'p1' });
+        const p1After25 = res2.nextState.players.find((p) => p.id === 'p1')!;
+        expect(p1After25.isEliminated).toBe(true);
+        expect(p1After25.hand).toHaveLength(0);
         assertValidNoMercyGameState(res2.nextState);
       });
     });
@@ -1578,8 +1617,24 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
         expect(r4_2.nextState.turnDirection).toBe('counter_clockwise');
       });
 
-      it('Edge cases 8 & 9: Penalty recipient reaches exactly 25 cards (active) vs exceeds 25 cards (eliminated)', () => {
-        // Recipient reaches exactly 25 cards (tested in 2-player mode where Bob receives 8)
+      it('Edge cases 8 & 9: Penalty recipient reaches 24 cards (active) vs reaches exactly 25 cards (eliminated)', () => {
+        // Recipient reaches 24 cards (tested in 2-player mode where Bob receives 8)
+        let sActive = NoMercyFixtureBuilder.createInitialGameFixture({
+          dealerIndex: 1,
+          players: [{ id: 'p1', username: 'Alice' }, { id: 'p2', username: 'Bob' }],
+        });
+        // Bob hand size 17: plays 1 card (16), receives 8 cards penalty -> 16 + 8 = 24 cards!
+        sActive = NoMercyFixtureBuilder.setHandSize(sActive, 'p2', 17);
+        const { nextState: sa1, card: d4_a } = NoMercyFixtureBuilder.injectPlayableCard(sActive, 'p1', 'draw_four', sActive.activeColor ?? 'blue');
+        const ra1 = NoMercyActionProcessor.process(sa1, { type: 'PLAY_CARD', playerId: 'p1', cardId: d4_a.id });
+        const { nextState: sa2, card: wrd4_a } = NoMercyFixtureBuilder.injectPlayableCard(ra1.nextState, 'p2', 'wild_reverse_draw_four');
+        const ra2 = NoMercyActionProcessor.process(sa2, { type: 'PLAY_CARD', playerId: 'p2', cardId: wrd4_a.id, chosenColor: 'red' });
+        const ra3 = NoMercyActionProcessor.process(ra2.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p2' });
+        const bobActive = ra3.nextState.players.find((p) => p.id === 'p2')!;
+        expect(bobActive.isEliminated).toBe(false);
+        expect(bobActive.hand).toHaveLength(24); // 24 -> ACTIVE!
+
+        // Recipient reaches exactly 25 cards (eliminated under >= 25 boundary)
         let sExact = NoMercyFixtureBuilder.createInitialGameFixture({
           dealerIndex: 1,
           players: [{ id: 'p1', username: 'Alice' }, { id: 'p2', username: 'Bob' }],
@@ -1592,8 +1647,8 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
         const re2 = NoMercyActionProcessor.process(se2, { type: 'PLAY_CARD', playerId: 'p2', cardId: wrd4_e.id, chosenColor: 'red' });
         const re3 = NoMercyActionProcessor.process(re2.nextState, { type: 'ACCEPT_STACK_PENALTY', playerId: 'p2' });
         const bobExact = re3.nextState.players.find((p) => p.id === 'p2')!;
-        expect(bobExact.isEliminated).toBe(false);
-        expect(bobExact.hand).toHaveLength(25); // Exactly 25 -> ACTIVE!
+        expect(bobExact.isEliminated).toBe(true);
+        expect(bobExact.hand).toHaveLength(0); // Exactly 25 -> ELIMINATED!
 
         // Recipient exceeds 25 cards (e.g. 26 cards in 3-player mode where Alice receives 8)
         let sExceed = NoMercyFixtureBuilder.createInitialGameFixture({

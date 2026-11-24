@@ -263,6 +263,13 @@ describe('UNO Ultimate — Rematch & Cumulative Score Persistence Socket Integra
     await new Promise<void>((res) => sHostReconnected.on('connect', res));
 
     let reconnectedState: PlayerGameState | null = null;
+    const statePromise = new Promise<void>((resolve) => {
+      sHostReconnected.on(SOCKET_EVENTS.GAME_STATE, (payload: { state: PlayerGameState }) => {
+        reconnectedState = payload.state;
+        resolve();
+      });
+    });
+
     const resumeAck = await new Promise<any>((resolve) => {
       sHostReconnected.emit(SOCKET_EVENTS.ROOM_RESUME, { roomCode }, (res: any) => {
         resolve(res);
@@ -270,12 +277,7 @@ describe('UNO Ultimate — Rematch & Cumulative Score Persistence Socket Integra
     });
     expect(resumeAck.success).toBe(true);
 
-    await new Promise<void>((resolve) => {
-      sHostReconnected.on(SOCKET_EVENTS.GAME_STATE, (payload: { state: PlayerGameState }) => {
-        reconnectedState = payload.state;
-        resolve();
-      });
-    });
+    await statePromise;
     expect((reconnectedState as PlayerGameState | null)?.players.find((p: any) => p.id === hostGuestId)?.cumulativeScore).toBe(720);
 
     // 10. Clean up room

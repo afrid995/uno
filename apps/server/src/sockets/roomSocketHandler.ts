@@ -21,6 +21,7 @@ import { HTTP_STATUS } from '@uno-ultimate/shared';
 import { roomService } from '../modules/room/room.service';
 import { gameService } from '../modules/game/game.service';
 import { gameSessionManager } from '../modules/game/game.session.manager';
+import { gamePersistenceService } from '../modules/game/game.persistence.service';
 import { gameStatePublisher } from '../modules/game/game.state.publisher';
 import { prisma } from '@uno-ultimate/database';
 import { logger } from '../utils/logger';
@@ -407,15 +408,47 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       const isRematch = options?.isRematch === true;
       const activeMembers = (currentRoom?.members || []).filter((m) => m.connectionStatus !== 'DISCONNECTED');
 
-      if (!currentRoom || activeMembers.length < 2 || currentRoom.status === 'IN_GAME') {
+      if (!currentRoom || activeMembers.length < 2) {
         cb?.({
           success: false,
           error: {
             code: ERROR_CODES.BAD_REQUEST,
-            message: currentRoom?.status === 'IN_GAME' ? 'A match is already in progress for this room.' : 'Cannot start match yet.',
+            message: 'Cannot start match yet.',
           },
         });
         return;
+      }
+
+      if (!isRematch && currentRoom.status === 'IN_GAME') {
+        cb?.({
+          success: false,
+          error: {
+            code: ERROR_CODES.BAD_REQUEST,
+            message: 'A match is already in progress for this room.',
+          },
+        });
+        return;
+      }
+
+      if (isRematch && currentRoom.status === 'IN_GAME') {
+        const activeMatch = await gamePersistenceService.findActiveMatchForRoom(currentRoom.id);
+        const activeSession = gameSessionManager.getSessionByRoomCode(targetRoomCode);
+        const isSessionActive = activeSession && activeSession.state.status !== 'COMPLETED';
+
+        if (activeMatch || isSessionActive) {
+          cb?.({
+            success: false,
+            error: {
+              code: ERROR_CODES.BAD_REQUEST,
+              message: 'A match is already in progress for this room.',
+            },
+          });
+          return;
+        }
+
+        if (activeSession && activeSession.state.status === 'COMPLETED') {
+          gameSessionManager.removeSessionByRoomCode(targetRoomCode);
+        }
       }
 
       // Verify non-host members are still all ready (only required for initial lobby start, not for rematch)
@@ -657,11 +690,20 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       }
 
       if (room.status === 'IN_GAME') {
-        cb({
-          success: false,
-          error: { code: ERROR_CODES.BAD_REQUEST, message: 'A match is already in progress for this room.' },
-        });
-        return;
+        const activeMatch = await gamePersistenceService.findActiveMatchForRoom(room.id);
+        const activeSession = gameSessionManager.getSessionByRoomCode(roomCode);
+        const isSessionActive = activeSession && activeSession.state.status !== 'COMPLETED';
+
+        if (activeMatch || isSessionActive) {
+          cb({
+            success: false,
+            error: { code: ERROR_CODES.BAD_REQUEST, message: 'A match is already in progress for this room.' },
+          });
+          return;
+        }
+
+        // Room was still marked IN_GAME despite match completion; self-heal room status
+        await roomService.updateRoomStatus(room.id, 'FINISHED');
       }
 
       if (room.hostGuestId !== guestId) {
