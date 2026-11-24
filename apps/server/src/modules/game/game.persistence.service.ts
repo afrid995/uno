@@ -169,6 +169,32 @@ export class GamePersistenceService {
       select: { id: true },
     });
   }
+
+  /**
+   * Finalizes any non-completed match records for a room in PostgreSQL
+   * (e.g. prior match before a rematch, or interrupted/orphaned sessions).
+   */
+  async finalizeStaleMatchesForRoom(roomId: string): Promise<number> {
+    const result = await prisma.match.updateMany({
+      where: {
+        roomId,
+        status: { in: [MatchStatus.INITIALIZING, MatchStatus.IN_PROGRESS] },
+      },
+      data: {
+        status: MatchStatus.COMPLETED,
+        updatedAt: new Date(),
+      },
+    });
+
+    if (result.count > 0) {
+      logger.info('Finalized stale match records in database for room', {
+        roomId,
+        count: result.count,
+      });
+    }
+
+    return result.count;
+  }
 }
 
 export const gamePersistenceService = new GamePersistenceService();

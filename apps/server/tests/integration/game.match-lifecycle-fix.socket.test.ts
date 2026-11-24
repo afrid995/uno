@@ -264,4 +264,101 @@ describe('UNO Ultimate — Match Lifecycle, Rematch Synchronization & Result Acc
     await new Promise<void>((res) => sPlayer.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
     await new Promise<void>((res) => sHost.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
   });
+
+  it('rematch succeeds even when prior match in DB was left in IN_PROGRESS status without active session (stale match self-heal)', async () => {
+    const sHost = createClient(hostToken);
+    const sPlayer = createClient(playerToken);
+
+    await Promise.all([
+      new Promise<void>((res) => sHost.on('connect', res)),
+      new Promise<void>((res) => sPlayer.on('connect', res)),
+    ]);
+
+    const createAck = await new Promise<any>((resolve) => {
+      sHost.emit(
+        SOCKET_EVENTS.ROOM_CREATE,
+        { maxPlayers: 2, settings: { variant: 'classic' } },
+        resolve
+      );
+    });
+    const roomCode = createAck.data.roomCode;
+    const roomId = createAck.data.id;
+
+    await new Promise<any>((resolve) => sPlayer.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve));
+    await new Promise<any>((resolve) => sPlayer.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve));
+    await new Promise<any>((resolve) => sHost.emit(SOCKET_EVENTS.ROOM_START, { immediate: true }, resolve));
+
+    const match1Session = gameSessionManager.getSessionByRoomCode(roomCode)!;
+    const match1Id = match1Session.state.id;
+
+    // Verify Match 1 is IN_PROGRESS in DB
+    const dbMatch1Before = await prisma.match.findUnique({ where: { id: match1Id } });
+    expect(dbMatch1Before?.status).toBe(MatchStatus.IN_PROGRESS);
+
+    // Simulate match completion in memory / removal (e.g. game finished event),
+    // but DB was intentionally left with Match 1 as IN_PROGRESS
+    gameSessionManager.removeSessionByRoomCode(roomCode);
+
+    // Host clicks Rematch: Must NOT fail with "A match is already in progress for this room."!
+    // It should automatically finalize Match 1 in DB and start Match 2!
+    const rematchAck = await new Promise<any>((resolve) => {
+      sHost.emit(SOCKET_EVENTS.ROOM_REMATCH, { immediate: true }, resolve);
+    });
+    expect(rematchAck.success).toBe(true);
+    expect(rematchAck.data?.starting).toBe(true);
+    expect(rematchAck.data?.matchId).not.toBe(match1Id);
+
+    // Verify Match 1 was finalized to COMPLETED in PostgreSQL!
+    const dbMatch1After = await prisma.match.findUnique({ where: { id: match1Id } });
+    expect(dbMatch1After?.status).toBe(MatchStatus.COMPLETED);
+
+    // Verify Match 2 is now active in memory
+    const match2Session = gameSessionManager.getSessionByRoomCode(roomCode)!;
+    expect(match2Session.state.id).not.toBe(match1Id);
+    expect(match2Session.state.status).toBe('IN_PROGRESS');
+
+    // Clean up
+    await new Promise<void>((res) => sPlayer.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
+    await new Promise<void>((res) => sHost.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
+  });
+
+  it('rematch is strictly rejected if an in-memory session is genuinely IN_PROGRESS', async () => {
+    const sHost = createClient(hostToken);
+    const sPlayer = createClient(playerToken);
+
+    await Promise.all([
+      new Promise<void>((res) => sHost.on('connect', res)),
+      new Promise<void>((res) => sPlayer.on('connect', res)),
+    ]);
+
+    const createAck = await new Promise<any>((resolve) => {
+      sHost.emit(
+        SOCKET_EVENTS.ROOM_CREATE,
+        { maxPlayers: 2, settings: { variant: 'classic' } },
+        resolve
+      );
+    });
+    const roomCode = createAck.data.roomCode;
+
+    await new Promise<any>((resolve) => sPlayer.emit(SOCKET_EVENTS.ROOM_JOIN, { roomCode }, resolve));
+    await new Promise<any>((resolve) => sPlayer.emit(SOCKET_EVENTS.ROOM_READY, { isReady: true }, resolve));
+    await new Promise<any>((resolve) => sHost.emit(SOCKET_EVENTS.ROOM_START, { immediate: true }, resolve));
+
+    const match1Session = gameSessionManager.getSessionByRoomCode(roomCode)!;
+    expect(match1Session.state.status).toBe('IN_PROGRESS');
+
+    // Rematch attempted while match is genuinely actively being played:
+    const rematchAck = await new Promise<any>((resolve) => {
+      sHost.emit(SOCKET_EVENTS.ROOM_REMATCH, { immediate: true }, resolve);
+    });
+    expect(rematchAck.success).toBe(false);
+    expect(rematchAck.error?.message).toBe('A match is already in progress for this room.');
+
+    // Verify Match 1 is still undisturbed in memory
+    expect(gameSessionManager.getSessionByRoomCode(roomCode)?.state.id).toBe(match1Session.state.id);
+
+    // Clean up
+    await new Promise<void>((res) => sPlayer.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
+    await new Promise<void>((res) => sHost.emit(SOCKET_EVENTS.ROOM_LEAVE, undefined, () => res()));
+  });
 });

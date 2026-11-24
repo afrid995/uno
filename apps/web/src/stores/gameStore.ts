@@ -1075,8 +1075,8 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
 
     const handleGameState = (payload: { state: PlayerGameState }) => {
       const current = get().gameState;
-      // Discard stale out-of-order state updates
-      if (current && payload.state.sequenceNumber < current.sequenceNumber) {
+      // Discard stale out-of-order state updates only within the SAME match
+      if (current && current.id === payload.state.id && payload.state.sequenceNumber < current.sequenceNumber) {
         return;
       }
 
@@ -1216,6 +1216,6 @@ export const useGameStore = create<GameStateStore>((set, get) => ({
   },
 }));
 
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && import.meta.env.DEV) {
   (window as any).__UNO_GAME_STORE__ = useGameStore;
 }

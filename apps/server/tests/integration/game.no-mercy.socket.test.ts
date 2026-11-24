@@ -348,21 +348,22 @@ describe('UNO Show \'em No Mercy — Server Socket.IO Multiplayer Integration Te
     }
     expect(session.state.currentPlayerIndex).toBe(0);
 
-    // Now inject another Wild Reverse Draw 4 into P1's hand
+    // Now inject a normal Draw 4 into P1's hand to pass penalty to P2
     const { nextState: sWithSecondWrd4, card: wrd4Second } = NoMercyFixtureBuilder.injectPlayableCard(
       session.state,
       p1Id,
-      'wild_reverse_draw_four'
+      'draw_four',
+      session.state.activeColor ?? 'yellow'
     );
     session.state = sWithSecondWrd4;
 
-    // P1 stacks Wild Reverse Draw 4 onto active Draw penalty -> MUST BE ACCEPTED (+4 >= 4)!
+    // P1 stacks Draw 4 onto active Draw penalty -> MUST BE ACCEPTED (+4 >= 4)!
     const stackWrd4Ack = await new Promise<any>((resolve) => {
-      s1.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: wrd4Second.id, chosenColor: 'blue' }, resolve);
+      s1.emit(SOCKET_EVENTS.GAME_PLAY_CARD, { cardId: wrd4Second.id }, resolve);
     });
     expect(stackWrd4Ack.success).toBe(true);
 
-    // Penalty accumulates to 8 and reverses back to P2!
+    // Penalty accumulates to 8 and targets P2!
     expect(session.state.pendingActionState?.type).toBe('AWAITING_STACK_RESOLUTION');
     if (session.state.pendingActionState?.type === 'AWAITING_STACK_RESOLUTION') {
       expect(session.state.pendingActionState.targetPlayerId).toBe(p2Id);

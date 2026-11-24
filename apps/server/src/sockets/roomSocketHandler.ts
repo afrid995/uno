@@ -420,22 +420,10 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       }
 
       if (!isRematch && currentRoom.status === 'IN_GAME') {
-        cb?.({
-          success: false,
-          error: {
-            code: ERROR_CODES.BAD_REQUEST,
-            message: 'A match is already in progress for this room.',
-          },
-        });
-        return;
-      }
-
-      if (isRematch && currentRoom.status === 'IN_GAME') {
-        const activeMatch = await gamePersistenceService.findActiveMatchForRoom(currentRoom.id);
         const activeSession = gameSessionManager.getSessionByRoomCode(targetRoomCode);
-        const isSessionActive = activeSession && activeSession.state.status !== 'COMPLETED';
+        const isSessionGenuinelyActive = Boolean(activeSession && activeSession.state.status === 'IN_PROGRESS');
 
-        if (activeMatch || isSessionActive) {
+        if (isSessionGenuinelyActive) {
           cb?.({
             success: false,
             error: {
@@ -446,8 +434,42 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
           return;
         }
 
-        if (activeSession && activeSession.state.status === 'COMPLETED') {
+        // Self-heal stuck IN_GAME status if session already finished or nonexistent
+        if (activeSession) {
           gameSessionManager.removeSessionByRoomCode(targetRoomCode);
+        }
+        await gamePersistenceService.finalizeStaleMatchesForRoom(currentRoom.id);
+        await roomService.updateRoomStatus(currentRoom.id, 'WAITING');
+      }
+
+      if (isRematch) {
+        const activeSession = gameSessionManager.getSessionByRoomCode(targetRoomCode);
+        const isSessionGenuinelyActive = Boolean(activeSession && activeSession.state.status === 'IN_PROGRESS');
+
+        if (isSessionGenuinelyActive) {
+          logger.warn('executeMatchStart rematch rejected: active match session in progress', {
+            roomCode: targetRoomCode,
+            matchId: activeSession?.matchId,
+          });
+          cb?.({
+            success: false,
+            error: {
+              code: ERROR_CODES.BAD_REQUEST,
+              message: 'A match is already in progress for this room.',
+            },
+          });
+          return;
+        }
+
+        // Clean up completed session or stale DB match records for this room
+        if (activeSession) {
+          gameSessionManager.removeSessionByRoomCode(targetRoomCode);
+        }
+
+        await gamePersistenceService.finalizeStaleMatchesForRoom(currentRoom.id);
+
+        if (currentRoom.status === 'IN_GAME') {
+          await roomService.updateRoomStatus(currentRoom.id, 'FINISHED');
         }
       }
 
@@ -506,7 +528,8 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
         activeMembers.map((m) => ({ guestId: m.guestId, username: m.username })),
         variant,
         roomSettings,
-        cumulativeScores
+        cumulativeScores,
+        { isRematch }
       );
       const engineAndPersistDurationMs = Date.now() - engineStart;
 
@@ -581,11 +604,24 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
       }
 
       if (room.status === 'IN_GAME') {
-        callback({
-          success: false,
-          error: { code: ERROR_CODES.BAD_REQUEST, message: 'A match is already in progress for this room.' },
-        });
-        return;
+        const activeSession = gameSessionManager.getSessionByRoomCode(roomCode);
+        const isSessionGenuinelyActive = Boolean(activeSession && activeSession.state.status === 'IN_PROGRESS');
+
+        if (isSessionGenuinelyActive) {
+          callback({
+            success: false,
+            error: { code: ERROR_CODES.BAD_REQUEST, message: 'A match is already in progress for this room.' },
+          });
+          return;
+        }
+
+        // Room status was stuck in IN_GAME with no active match session: self-heal
+        logger.info('Self-healing stuck IN_GAME room status on room:start', { roomCode, roomId: room.id });
+        if (activeSession) {
+          gameSessionManager.removeSessionByRoomCode(roomCode);
+        }
+        await gamePersistenceService.finalizeStaleMatchesForRoom(room.id);
+        await roomService.updateRoomStatus(room.id, 'WAITING');
       }
 
       if (room.hostGuestId !== guestId) {
@@ -689,20 +725,30 @@ export function registerRoomHandlers(io: UnoServer, socket: UnoSocket): void {
         return;
       }
 
+      const activeSession = gameSessionManager.getSessionByRoomCode(roomCode);
+      const isSessionGenuinelyActive = Boolean(activeSession && activeSession.state.status === 'IN_PROGRESS');
+
+      if (isSessionGenuinelyActive) {
+        logger.warn('ROOM_REMATCH rejected: active session is in progress', {
+          roomCode,
+          matchId: activeSession?.matchId,
+          guestId,
+        });
+        cb({
+          success: false,
+          error: { code: ERROR_CODES.BAD_REQUEST, message: 'A match is already in progress for this room.' },
+        });
+        return;
+      }
+
+      // Self-heal: Clean up any completed/stale session and finalize prior match records in DB
+      if (activeSession) {
+        gameSessionManager.removeSessionByRoomCode(roomCode);
+      }
+      await gamePersistenceService.finalizeStaleMatchesForRoom(room.id);
+
       if (room.status === 'IN_GAME') {
-        const activeMatch = await gamePersistenceService.findActiveMatchForRoom(room.id);
-        const activeSession = gameSessionManager.getSessionByRoomCode(roomCode);
-        const isSessionActive = activeSession && activeSession.state.status !== 'COMPLETED';
-
-        if (activeMatch || isSessionActive) {
-          cb({
-            success: false,
-            error: { code: ERROR_CODES.BAD_REQUEST, message: 'A match is already in progress for this room.' },
-          });
-          return;
-        }
-
-        // Room was still marked IN_GAME despite match completion; self-heal room status
+        logger.info('Self-healing room status from IN_GAME to FINISHED on rematch', { roomCode, roomId: room.id });
         await roomService.updateRoomStatus(room.id, 'FINISHED');
       }
 

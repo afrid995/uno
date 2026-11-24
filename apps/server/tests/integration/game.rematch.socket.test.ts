@@ -192,8 +192,12 @@ describe('UNO Ultimate — Rematch & Cumulative Score Persistence Socket Integra
     expect(match2Session.state.turnNumber).toBe(1);
     expect(match2Session.state.sequenceNumber).toBe(0);
     expect(match2Session.state.discardPile.length).toBe(1);
-    expect(match2Session.state.players[0].hand.length).toBe(7);
-    expect(match2Session.state.players[1].hand.length).toBe(7);
+    const topCard = match2Session.state.topDiscardCard;
+    const startingPlayerIdx = match2Session.state.dealerIndex === 0 ? 1 : 0;
+    const expectedHand0 = topCard.value === 'draw_two' && startingPlayerIdx === 0 ? 9 : 7;
+    const expectedHand1 = topCard.value === 'draw_two' && startingPlayerIdx === 1 ? 9 : 7;
+    expect(match2Session.state.players[0].hand.length).toBe(expectedHand0);
+    expect(match2Session.state.players[1].hand.length).toBe(expectedHand1);
 
     // Verify cumulative scores are preserved in the new match!
     const hostPlayerInMatch2 = match2Session.state.players.find((p) => p.id === hostGuestId)!;

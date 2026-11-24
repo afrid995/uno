@@ -43,16 +43,39 @@ export class GameService {
     members: { guestId: string; username: string }[],
     variant: string = 'classic',
     settings: Record<string, unknown> = {},
-    cumulativeScores?: Map<string, number>
+    cumulativeScores?: Map<string, number>,
+    options?: { isRematch?: boolean }
   ): Promise<GameState> {
-    // 1. Guard against duplicate active matches
-    const existingMatch = await gamePersistenceService.findActiveMatchForRoom(roomId);
-    if (existingMatch) {
+    const isRematch = options?.isRematch === true;
+    const activeSession = gameSessionManager.getSessionByRoomCode(roomCode);
+    const isSessionGenuinelyActive = Boolean(
+      activeSession &&
+      activeSession.state.status === 'IN_PROGRESS'
+    );
+
+    // 1. Guard against duplicate active matches:
+    // Only reject if an in-memory session is actively in progress
+    if (isSessionGenuinelyActive) {
+      logger.warn('startMatch rejected: match session is actively in progress', {
+        roomId,
+        roomCode,
+        matchId: activeSession?.matchId,
+        isRematch,
+      });
       throw new AppError(
         HTTP_STATUS.CONFLICT,
         ERROR_CODES.BAD_REQUEST,
         'A match is already in progress for this room.'
       );
+    }
+
+    // 2. Clean up any stale or predecessor match records in PostgreSQL
+    // If starting a rematch or no active session exists, finalize prior matches
+    await gamePersistenceService.finalizeStaleMatchesForRoom(roomId);
+
+    // If session was completed or stale, remove it from memory before registering new match
+    if (activeSession) {
+      gameSessionManager.removeSessionByRoomCode(roomCode);
     }
 
     if (variant === 'uno_show_em_no_mercy') {
