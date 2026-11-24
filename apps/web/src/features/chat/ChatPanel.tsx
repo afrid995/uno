@@ -31,6 +31,18 @@ export const ChatPanel: React.FC = () => {
     }
   }, [isOpen]);
 
+  // Handle Escape key to close chat
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isOpen, setIsOpen]);
+
   const handleSend = async () => {
     const trimmed = inputText.trim();
     if (!trimmed || isSending) return;
@@ -42,6 +54,11 @@ export const ChatPanel: React.FC = () => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsOpen(false);
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();

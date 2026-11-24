@@ -1,0 +1,551 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UNO Ultimate shadcn/ui Component Inventory",
+  "metadata": {
+    "generatedAt": "2026-11-24T12:55:00.000Z",
+    "version": "1.0.0",
+    "repository": "https://github.com/afrid995/uno",
+    "scope": "apps/web",
+    "totalCatalogCount": 66,
+    "uniqueCount": 66,
+    "summary": {
+      "official_component_integrated": 18,
+      "verified_custom_equivalent": 22,
+      "installed_dependency_only": 7,
+      "partial_substitute": 2,
+      "needs_improvement": 1,
+      "not_applicable": 16,
+      "blocked": 0
+    }
+  },
+  "components": [
+    {
+      "name": "Accordion",
+      "classification": "installed_dependency_only",
+      "source": "@radix-ui/react-accordion",
+      "location": "node_modules/@radix-ui/react-accordion",
+      "inActiveWorkflow": false,
+      "notes": "Radix dependency installed in repository; rules summaries in room creation currently use visual cards and tabs instead of inline accordions."
+    },
+    {
+      "name": "Alert",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/alert.tsx",
+      "location": "apps/web/src/components/ui/alert.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Alert with brass, destructive, emerald variants. Used in JoinInvitePage, DisconnectRecovery, and testing."
+    },
+    {
+      "name": "Alert Dialog",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/alert-dialog.tsx",
+      "location": "apps/web/src/components/ui/alert-dialog.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn AlertDialog primitive wrapping Radix. Used for match forfeit confirmation in LobbyPage and GamePage."
+    },
+    {
+      "name": "Aspect Ratio",
+      "classification": "verified_custom_equivalent",
+      "source": "@radix-ui/react-aspect-ratio",
+      "location": "apps/web/src/features/game/components/PlayingCard.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Playing cards use precise Tailwind aspect-ratio `aspect-[2/3]` to match physical card geometry. Radix primitive available."
+    },
+    {
+      "name": "Attachment",
+      "classification": "not_applicable",
+      "source": null,
+      "location": null,
+      "inActiveWorkflow": false,
+      "notes": "Multiplayer card game has no user attachment upload requirements; assets are strictly deterministic and server-controlled."
+    },
+    {
+      "name": "Avatar",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/avatar.tsx",
+      "location": "apps/web/src/components/ui/avatar.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Avatar primitive wrapping Radix. Used in PlayerSeat, PlayerCard, and Lobby roster."
+    },
+    {
+      "name": "Badge",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/badge.tsx",
+      "location": "apps/web/src/components/ui/badge.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Badge with brass, emerald, purple, destructive variants. Used in CreateRoomModal, LobbyPage, and DashboardView."
+    },
+    {
+      "name": "Breadcrumb",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/pages/LobbyPage.tsx",
+      "location": "apps/web/src/pages/LobbyPage.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Semantic header navigation path (`Dashboard / Room Code`) with accessible chevron separators in LobbyPage."
+    },
+    {
+      "name": "Bubble",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "location": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Tailwind-styled chat speech message bubbles with player color chips and timestamp alignment."
+    },
+    {
+      "name": "Button",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/button.tsx",
+      "location": "apps/web/src/components/ui/button.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Button with default (crimson), brass, destructive, outline, secondary, ghost variants across all screens."
+    },
+    {
+      "name": "Button Group",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/room/components/CreateRoomModal.tsx",
+      "location": "apps/web/src/features/room/components/CreateRoomModal.tsx",
+      "inActiveWorkflow": true,
+      "notes": "WAI-ARIA compliant segmented button group (`role=\"group\"`, `aria-label=\"Player capacity\"`, `aria-pressed`) for player capacities."
+    },
+    {
+      "name": "Calendar",
+      "classification": "not_applicable",
+      "source": null,
+      "location": null,
+      "inActiveWorkflow": false,
+      "notes": "Digital card game has no booking or calendar scheduling features."
+    },
+    {
+      "name": "Card",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/card.tsx",
+      "location": "apps/web/src/components/ui/card.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Card with CardHeader, CardTitle, CardDescription, CardContent, CardFooter. Used in DashboardView, JoinInvitePage."
+    },
+    {
+      "name": "Carousel",
+      "classification": "not_applicable",
+      "source": null,
+      "location": "apps/web/src/features/game/components/PlayerHand.tsx",
+      "inActiveWorkflow": false,
+      "notes": "Card hands use horizontal responsive overlapping flex-wrap with scroll fallback; carousel pagination is unsuitable for rapid hand play."
+    },
+    {
+      "name": "Chart",
+      "classification": "not_applicable",
+      "source": null,
+      "location": null,
+      "inActiveWorkflow": false,
+      "notes": "Game scoring uses tabular rankings and point breakdowns; time-series or analytic charts are not applicable."
+    },
+    {
+      "name": "Checkbox",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/components/ui/dropdown-menu.tsx",
+      "location": "apps/web/src/components/ui/dropdown-menu.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Integrated via DropdownMenuCheckboxItem and custom accessible toggle switches."
+    },
+    {
+      "name": "Code Block",
+      "classification": "not_applicable",
+      "source": null,
+      "location": null,
+      "inActiveWorkflow": false,
+      "notes": "No developer code blocks or syntax-highlighted code blocks exist in card room."
+    },
+    {
+      "name": "Collapsible",
+      "classification": "installed_dependency_only",
+      "source": "@radix-ui/react-collapsible",
+      "location": "node_modules/@radix-ui/react-collapsible",
+      "inActiveWorkflow": false,
+      "notes": "Radix dependency installed. Chat uses a sliding drawer (Sheet pattern) rather than an inline layout-shifting collapsible."
+    },
+    {
+      "name": "Combobox",
+      "classification": "not_applicable",
+      "source": null,
+      "location": null,
+      "inActiveWorkflow": false,
+      "notes": "Mutually exclusive 7-variant selection uses visual preview cards; combobox search is unneeded."
+    },
+    {
+      "name": "Command",
+      "classification": "not_applicable",
+      "source": null,
+      "location": null,
+      "inActiveWorkflow": false,
+      "notes": "Spotlight/Cmd-K search palette is not appropriate for a dedicated card game table."
+    },
+    {
+      "name": "Context Menu",
+      "classification": "installed_dependency_only",
+      "source": "@radix-ui/react-context-menu",
+      "location": "node_modules/@radix-ui/react-context-menu",
+      "inActiveWorkflow": false,
+      "notes": "Installed dependency. Context menus are disabled on game cards to preserve instant tap/click responsiveness."
+    },
+    {
+      "name": "Data Table",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/game/components/MatchResultModal.tsx",
+      "location": "apps/web/src/features/game/components/MatchResultModal.tsx",
+      "inActiveWorkflow": true,
+      "notes": "End-of-match score standings table with rank columns, point differentials, and player identities."
+    },
+    {
+      "name": "Date Picker",
+      "classification": "not_applicable",
+      "source": null,
+      "location": null,
+      "inActiveWorkflow": false,
+      "notes": "No date input requirements exist in the multiplayer gaming loop."
+    },
+    {
+      "name": "Dialog",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/dialog.tsx",
+      "location": "apps/web/src/components/ui/dialog.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Dialog primitive wrapping Radix. Powers CreateRoomModal, JoinRoomModal, MatchResultModal."
+    },
+    {
+      "name": "Direction",
+      "classification": "not_applicable",
+      "source": null,
+      "location": "apps/web/src/features/game/components/PlayDirectionIndicator.tsx",
+      "inActiveWorkflow": false,
+      "notes": "Radix DirectionProvider configures document text RTL/LTR. PlayDirectionIndicator handles clockwise/counter-clockwise game flow."
+    },
+    {
+      "name": "Drawer",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "location": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Framer Motion animated slide-out side drawer for in-game multiplayer chat and system logs."
+    },
+    {
+      "name": "Dropdown Menu",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/dropdown-menu.tsx",
+      "location": "apps/web/src/components/ui/dropdown-menu.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn DropdownMenu primitive wrapping Radix. Used for user profile actions and lobby room settings."
+    },
+    {
+      "name": "Empty",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "location": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Empty state illustration and typography in ChatPanel ('No messages yet') and empty lobby slots."
+    },
+    {
+      "name": "Field",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/guest/GuestLoginForm.tsx",
+      "location": "apps/web/src/features/guest/GuestLoginForm.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Accessible form field pattern linking Label, Input, validation state, and helper text via ARIA."
+    },
+    {
+      "name": "Hover Card",
+      "classification": "installed_dependency_only",
+      "source": "@radix-ui/react-hover-card",
+      "location": "node_modules/@radix-ui/react-hover-card",
+      "inActiveWorkflow": false,
+      "notes": "Installed dependency. Compact Tooltips are preferred over large HoverCards to avoid obstructing adjacent player seats."
+    },
+    {
+      "name": "Input",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/input.tsx",
+      "location": "apps/web/src/components/ui/input.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Input primitive. Used in GuestLoginForm, JoinRoomModal, and ChatPanel."
+    },
+    {
+      "name": "Input Group",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "location": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Input merged with trailing submit button in ChatPanel and formatted room code input in JoinRoomModal."
+    },
+    {
+      "name": "Input OTP",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/input-otp.tsx",
+      "location": "apps/web/src/components/ui/input-otp.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn InputOTP primitive wrapping input-otp with defensive slot context fallback."
+    },
+    {
+      "name": "Item",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/room/components/PlayerCard.tsx",
+      "location": "apps/web/src/features/room/components/PlayerCard.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Semantic list items in player rosters, dropdown items, and card action menus."
+    },
+    {
+      "name": "Kbd",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "location": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Monospace keyboard shortcut indicator badges ('Enter' to send, 'Esc' to close)."
+    },
+    {
+      "name": "Label",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/label.tsx",
+      "location": "apps/web/src/components/ui/label.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Label primitive wrapping Radix. Used across GuestLoginForm, CreateRoomModal, and modals."
+    },
+    {
+      "name": "Marker",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/game/components/PlayerSeat.tsx",
+      "location": "apps/web/src/features/game/components/PlayerSeat.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Active turn highlight ring and brass arrow pointer identifying current active player."
+    },
+    {
+      "name": "Menubar",
+      "classification": "not_applicable",
+      "source": null,
+      "location": null,
+      "inActiveWorkflow": false,
+      "notes": "Desktop app menubar is inappropriate for full-screen board game web applications."
+    },
+    {
+      "name": "Message",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "location": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Chat message item with sender attribution, formatted timestamp, and system event styling."
+    },
+    {
+      "name": "Message Scroller",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "location": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Auto-scrolling container pinned to bottom on incoming message updates in ChatPanel."
+    },
+    {
+      "name": "Native Select",
+      "classification": "partial_substitute",
+      "source": "apps/web/src/features/room/components/CreateRoomModal.tsx",
+      "location": "apps/web/src/features/room/components/CreateRoomModal.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Rich game variant preview cards with badge chips and rules summaries are used instead of a plain native select."
+    },
+    {
+      "name": "Navigation Menu",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/app/App.tsx",
+      "location": "apps/web/src/app/App.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Header navigation bar linking Dashboard, Room info, and profile controls."
+    },
+    {
+      "name": "Pagination",
+      "classification": "not_applicable",
+      "source": null,
+      "location": null,
+      "inActiveWorkflow": false,
+      "notes": "Card hands use horizontal responsive flex-wrap; game sessions display cumulative single-table results."
+    },
+    {
+      "name": "Popover",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/popover.tsx",
+      "location": "apps/web/src/components/ui/popover.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Popover primitive wrapping Radix. Used for card rule popovers and player details."
+    },
+    {
+      "name": "Progress",
+      "classification": "needs_improvement",
+      "source": "apps/web/src/features/game/components/PlayerSeat.tsx",
+      "location": "apps/web/src/features/game/components/PlayerSeat.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Turn timer currently uses SVG circular countdown rings; linear progress bar primitive is available for secondary progress indicators."
+    },
+    {
+      "name": "Questionnaire",
+      "classification": "not_applicable",
+      "source": null,
+      "location": null,
+      "inActiveWorkflow": false,
+      "notes": "Card gaming platform has no multi-step questionnaires or user surveys."
+    },
+    {
+      "name": "Radio Group",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/room/components/CreateRoomModal.tsx",
+      "location": "apps/web/src/features/room/components/CreateRoomModal.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Game variant selector implements WAI-ARIA `role=\"radiogroup\"` with `role=\"radio\"` and `aria-checked`."
+    },
+    {
+      "name": "Resizable",
+      "classification": "not_applicable",
+      "source": null,
+      "location": null,
+      "inActiveWorkflow": false,
+      "notes": "Game board uses automatic CSS grid and viewport-adaptive proportions rather than split panes."
+    },
+    {
+      "name": "Scroll Area",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/scroll-area.tsx",
+      "location": "apps/web/src/components/ui/scroll-area.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn ScrollArea wrapping Radix. Powers smooth chat scrolling and overflowing card hands."
+    },
+    {
+      "name": "Select",
+      "classification": "installed_dependency_only",
+      "source": "@radix-ui/react-select",
+      "location": "node_modules/@radix-ui/react-select",
+      "inActiveWorkflow": false,
+      "notes": "Installed dependency. Variant picker uses full visual cards with rich rules content rather than a closed dropdown select."
+    },
+    {
+      "name": "Separator",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/separator.tsx",
+      "location": "apps/web/src/components/ui/separator.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Separator primitive wrapping Radix. Used in LobbyPage, ChatPanel, and modals."
+    },
+    {
+      "name": "Sheet",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "location": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Slide-out right sheet panel for multiplayer chat and in-game notification logs."
+    },
+    {
+      "name": "Sidebar",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "location": "apps/web/src/features/chat/components/ChatPanel.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Collapsible right-side felt panel housing real-time messaging."
+    },
+    {
+      "name": "Skeleton",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/pages/JoinInvitePage.tsx",
+      "location": "apps/web/src/pages/JoinInvitePage.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Subtle dark slate pulsing skeleton containers (`animate-pulse bg-white/5 rounded-xl`) for pre-load states."
+    },
+    {
+      "name": "Slider",
+      "classification": "installed_dependency_only",
+      "source": "@radix-ui/react-slider",
+      "location": "node_modules/@radix-ui/react-slider",
+      "inActiveWorkflow": false,
+      "notes": "Radix slider installed; audio volume toggle currently uses discrete mute/unmute buttons."
+    },
+    {
+      "name": "Spinner",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/spinner.tsx",
+      "location": "apps/web/src/components/ui/spinner.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Spinner with warm amber Lucide Loader2, aria-label, role='status'. Used in Suspense and button submission."
+    },
+    {
+      "name": "Switch",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/room/components/CreateRoomModal.tsx",
+      "location": "apps/web/src/features/room/components/CreateRoomModal.tsx",
+      "inActiveWorkflow": true,
+      "notes": "WAI-ARIA accessible toggle switch (`role=\"switch\"`, `aria-checked`) for UNO Attack customizable cards."
+    },
+    {
+      "name": "Table",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/game/components/MatchResultModal.tsx",
+      "location": "apps/web/src/features/game/components/MatchResultModal.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Accessible HTML table elements (`table`, `thead`, `tbody`, `th`, `td`) with tabular figures for match results."
+    },
+    {
+      "name": "Tabs",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/tabs.tsx",
+      "location": "apps/web/src/components/ui/tabs.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Tabs wrapping Radix. Powers variant rules tab switching and settings views."
+    },
+    {
+      "name": "Textarea",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/textarea.tsx",
+      "location": "apps/web/src/components/ui/textarea.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Textarea primitive. Used for multi-line chat and bug report dialogs."
+    },
+    {
+      "name": "Toast",
+      "classification": "partial_substitute",
+      "source": "apps/web/src/features/game/components/NetworkRecoveryOverlay.tsx",
+      "location": "apps/web/src/features/game/components/NetworkRecoveryOverlay.tsx",
+      "inActiveWorkflow": true,
+      "notes": "In-game table notification banners and alert overlays replace floating toast stacks to avoid card occlusion."
+    },
+    {
+      "name": "Toggle",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/pages/LobbyPage.tsx",
+      "location": "apps/web/src/pages/LobbyPage.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Player ready state toggle button with instant optimistic UI feedback."
+    },
+    {
+      "name": "Toggle Group",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/features/room/components/CreateRoomModal.tsx",
+      "location": "apps/web/src/features/room/components/CreateRoomModal.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Segmented player capacity controls grouping buttons under `role=\"group\"`."
+    },
+    {
+      "name": "Tooltip",
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/tooltip.tsx",
+      "location": "apps/web/src/components/ui/tooltip.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Tooltip wrapping Radix. Used on UnoButton, action buttons, and card information hints."
+    },
+    {
+      "name": "Trace",
+      "classification": "not_applicable",
+      "source": null,
+      "location": null,
+      "inActiveWorkflow": false,
+      "notes": "Distributed tracing visualization is not applicable to digital card game client."
+    },
+    {
+      "name": "Typography",
+      "classification": "verified_custom_equivalent",
+      "source": "apps/web/src/index.css",
+      "location": "apps/web/src/index.css",
+      "inActiveWorkflow": true,
+      "notes": "Custom typography system combining Cormorant Garamond / serif display headings with Inter body and tabular mono scores."
+    }
+  ]
+}

@@ -32,7 +32,7 @@ export const LandingPage: React.FC = () => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08 }}
-          className="font-display font-black text-4xl sm:text-6xl text-white tracking-tight leading-tight"
+          className="font-display font-bold text-4xl sm:text-5xl text-white tracking-tight leading-tight"
         >
           UNO <span className="text-amber-400">ULTIMATE</span>
         </motion.h1>

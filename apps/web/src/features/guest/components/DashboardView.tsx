@@ -76,7 +76,7 @@ export const DashboardView: React.FC = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-white tracking-tight">
+                    <h1 className="font-display font-semibold text-2xl sm:text-3xl text-white tracking-tight">
                       Welcome, <span className="text-amber-400">{guest.username}</span>
                     </h1>
                     <p className="text-xs sm:text-sm text-slate-400 leading-relaxed mt-0.5">

@@ -30,15 +30,8 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (
-              id.includes('react') ||
-              id.includes('react-dom') ||
-              id.includes('react-router-dom')
-            ) {
-              return 'vendor-react';
-            }
-            if (id.includes('framer-motion')) {
-              return 'vendor-motion';
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
             }
             if (
               id.includes('@radix-ui') ||
@@ -47,15 +40,31 @@ export default defineConfig({
             ) {
               return 'vendor-radix';
             }
+            if (id.includes('framer-motion')) {
+              return 'vendor-motion';
+            }
             if (id.includes('howler')) {
               return 'vendor-audio';
             }
-            if (id.includes('lucide-react')) {
-              return 'vendor-icons';
-            }
-            if (id.includes('socket.io-client')) {
+            if (id.includes('socket.io-client') || id.includes('engine.io-client')) {
               return 'vendor-socket';
             }
+            if (
+              id.includes('/react/') ||
+              id.includes('\\react\\') ||
+              id.includes('/react-dom/') ||
+              id.includes('\\react-dom\\') ||
+              id.includes('/react-router/') ||
+              id.includes('\\react-router\\') ||
+              id.includes('/react-router-dom/') ||
+              id.includes('\\react-router-dom\\') ||
+              id.includes('scheduler')
+            ) {
+              return 'vendor-react';
+            }
+          }
+          if (id.includes('packages/game-engine') || id.includes('packages\\game-engine')) {
+            return 'game-engine';
           }
         },
       },

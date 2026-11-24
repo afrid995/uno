@@ -437,7 +437,7 @@ export const LobbyPage: React.FC = () => {
       </div>
 
       {/* Player Actions & Host Controls Bar */}
-      <Card className="p-5 sm:p-6 rounded-2xl bg-[#141924] border-white/[0.08] shadow-card flex flex-col sm:flex-row items-center justify-between gap-4">
+      <Card className="p-5 sm:p-6 rounded-2xl bg-[#141924]/95 backdrop-blur-md border-white/[0.08] shadow-card flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-4 z-20">
         <div className="flex items-center gap-3 w-full sm:w-auto">
           {confirmLeave ? (
             <div className="flex items-center gap-2 w-full sm:w-auto">

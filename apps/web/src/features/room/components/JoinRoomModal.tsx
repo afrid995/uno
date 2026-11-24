@@ -31,8 +31,14 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({ isOpen, onClose })
   if (!isOpen) return null;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Uppercase automatically and remove invalid characters
-    const clean = e.target.value.toUpperCase().replace(/[^23456789ABCDEFGHJKLMNPQRSTUVWXYZ]/g, '');
+    let raw = e.target.value.trim();
+    // Intelligently extract 6-character room code if a full URL or invitation link is pasted
+    const urlMatch = raw.match(/(?:\/join\/|\/room\/|=)([23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6})/i);
+    if (urlMatch) {
+      raw = urlMatch[1];
+    }
+    // Uppercase automatically and remove invalid Base32 characters
+    const clean = raw.toUpperCase().replace(/[^23456789ABCDEFGHJKLMNPQRSTUVWXYZ]/g, '');
     setRoomCode(clean.slice(0, ROOM_RULES.CODE_LENGTH));
     if (localError) setLocalError(null);
     if (storeError) clearError();
@@ -87,7 +93,7 @@ export const JoinRoomModal: React.FC<JoinRoomModalProps> = ({ isOpen, onClose })
                 value={roomCode}
                 onChange={handleInputChange}
                 placeholder="e.g. 7X8K2M"
-                maxLength={ROOM_RULES.CODE_LENGTH}
+                maxLength={120}
                 autoComplete="off"
                 autoFocus
                 className={cn(

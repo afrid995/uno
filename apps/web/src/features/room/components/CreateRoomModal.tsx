@@ -354,7 +354,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({ isOpen, onClos
             </Alert>
           )}
 
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex items-center gap-3 pt-3 sticky bottom-0 bg-[#141924]/95 backdrop-blur-sm -mx-6 sm:-mx-7 px-6 sm:px-7 pb-1 border-t border-white/[0.06] mt-4">
             <Button
               type="button"
               variant="secondary"

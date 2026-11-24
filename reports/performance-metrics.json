@@ -1,0 +1,74 @@
+{
+  "landing": {
+    "name": "Landing Page",
+    "loadDuration": 1198,
+    "fcpCold": 724,
+    "fcpWarm": 104,
+    "domContentLoaded": 317,
+    "complete": 318,
+    "transferredBytes": 4461511,
+    "resourceCount": 61
+  },
+  "bundle": {
+    "totalJsRawKb": "990.40",
+    "totalCssRawKb": "80.09",
+    "jsChunks": [
+      {
+        "file": "badge-CUUaXU3N.js",
+        "size": "27.05 kB"
+      },
+      {
+        "file": "ChatToggleButton-ClkcgH9L.js",
+        "size": "8.16 kB"
+      },
+      {
+        "file": "DashboardPage-DfKsQf87.js",
+        "size": "24.30 kB"
+      },
+      {
+        "file": "game-engine-CqHssCxL.js",
+        "size": "245.16 kB"
+      },
+      {
+        "file": "GamePage-CeQMfvKn.js",
+        "size": "100.63 kB"
+      },
+      {
+        "file": "index-Ds_Q7ue4.js",
+        "size": "60.15 kB"
+      },
+      {
+        "file": "JoinInvitePage-BTcu3ms1.js",
+        "size": "13.71 kB"
+      },
+      {
+        "file": "LobbyPage-CnNUJzBO.js",
+        "size": "18.91 kB"
+      },
+      {
+        "file": "tooltip-6eL1ruOC.js",
+        "size": "0.73 kB"
+      },
+      {
+        "file": "vendor-icons-DHsLCxbp.js",
+        "size": "19.92 kB"
+      },
+      {
+        "file": "vendor-motion-BdJahUCs.js",
+        "size": "125.94 kB"
+      },
+      {
+        "file": "vendor-radix-CjGMQvAi.js",
+        "size": "103.82 kB"
+      },
+      {
+        "file": "vendor-react-BPp36Im0.js",
+        "size": "201.18 kB"
+      },
+      {
+        "file": "vendor-socket-BYY0o7Jn.js",
+        "size": "40.74 kB"
+      }
+    ]
+  }
+}
