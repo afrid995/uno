@@ -117,13 +117,22 @@ export class NoMercyMoveValidator {
           };
         }
 
-        // If card is a wild draw card, verify chosenColor is provided
-        if (card.type === 'wild' && !action.chosenColor) {
-          return {
-            valid: false,
-            code: 'MUST_CHOOSE_COLOR',
-            message: 'Must choose a color when playing a Wild Draw card.',
-          };
+        // If card is a wild draw card, verify chosenColor is provided and valid
+        if (card.type === 'wild') {
+          if (!action.chosenColor) {
+            return {
+              valid: false,
+              code: 'MUST_CHOOSE_COLOR',
+              message: 'Must choose a color when playing a Wild Draw card.',
+            };
+          }
+          if (!NO_MERCY_COLORS.includes(action.chosenColor as ClassicCardColor)) {
+            return {
+              valid: false,
+              code: 'INVALID_CHOSEN_COLOR',
+              message: 'Invalid chosen color.',
+            };
+          }
         }
 
         return { valid: true };

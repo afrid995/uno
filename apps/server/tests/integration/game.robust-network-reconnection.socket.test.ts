@@ -469,9 +469,10 @@ describe('Robust Multiplayer Network Recovery & Seamless Reconnection Integratio
       pendingActionState: {
         type: 'AWAITING_WILD_DRAW_FOUR_RESOLUTION',
         victimPlayerId: guest2Id,
-        cardPlayerId: guest1Id,
+        playedByPlayerId: guest1Id,
+        wasOfficiallyLegal: true,
         chosenColor: 'red',
-        originalColor: 'blue',
+        offenderHandSnapshot: [],
       },
     };
 

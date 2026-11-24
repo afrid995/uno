@@ -878,16 +878,17 @@ describe('UNO Show \'em No Mercy — Official Rules & Mechanics (Mattel HWV18)',
 
       // Direction reversed to counter-clockwise
       expect(res2.nextState.turnDirection).toBe('counter_clockwise');
-      // In 2-player match, target passes back to Alice with accumulated +6 penalty!
+      // In 2-player match under official Mattel HWV18 rules, playing Wild Reverse Draw 4
+      // skips the opponent and rebounds the accumulated penalty to the player who played it (Bob)!
       expect(res2.nextState.pendingActionState).toEqual({
         type: 'AWAITING_STACK_RESOLUTION',
-        targetPlayerId: 'p1',
+        targetPlayerId: 'p2',
         playedByPlayerId: 'p2',
         accumulatedPenalty: 6,
         lastStackedValue: 4,
         lastCardValue: 'wild_reverse_draw_four',
       });
-      expect(res2.nextState.currentPlayerIndex).toBe(0);
+      expect(res2.nextState.currentPlayerIndex).toBe(1);
       assertValidNoMercyGameState(res2.nextState);
     });
 

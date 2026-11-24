@@ -218,8 +218,13 @@ export class NoMercyActionProcessor {
   /**
    * Returns list of non-eliminated players.
    */
-  static getActivePlayers(players: readonly Player[]): Player[] {
-    return players.filter((p) => !p.isEliminated);
+  static getActivePlayers(
+    players: readonly Player[],
+    eliminatedPlayerIds?: readonly string[]
+  ): Player[] {
+    return players.filter(
+      (p) => !p.isEliminated && (!eliminatedPlayerIds || !eliminatedPlayerIds.includes(p.id))
+    );
   }
 
   /**
@@ -482,7 +487,7 @@ export class NoMercyActionProcessor {
     }
 
     // Resolve card effects
-    const activePlayers = this.getActivePlayers(updatedPlayers);
+    const activePlayers = this.getActivePlayers(updatedPlayers, state.eliminatedPlayerIds);
     const activeCount = activePlayers.length;
     let turnDirection = state.turnDirection;
     let nextPlayerIndex = playerIndex;
@@ -654,7 +659,8 @@ export class NoMercyActionProcessor {
       lastCardValue: CardValue;
     };
 
-    const playerIndex = state.currentPlayerIndex;
+    const targetIdx = state.players.findIndex((p) => p.id === action.playerId);
+    const playerIndex = targetIdx !== -1 ? targetIdx : state.currentPlayerIndex;
     const player = state.players[playerIndex];
     const card = player.hand.find((c) => c.id === action.cardId)!;
     const penalty = getNoMercyStackCardValue(card.value)!;
@@ -699,22 +705,22 @@ export class NoMercyActionProcessor {
     }
 
     let nextTargetIndex: number;
-    const activePlayers = state.players.filter(
-      (p) => !p.isEliminated && !state.eliminatedPlayerIds?.includes(p.id)
-    );
+    const activePlayers = this.getActivePlayers(state.players, state.eliminatedPlayerIds);
     const activeCount = activePlayers.length;
 
-    if (
-      card.value === 'wild_reverse_draw_four' &&
-      (pending.lastCardValue === 'draw_four' || pending.lastCardValue === 'wild_draw_four') &&
-      activeCount === 2
-    ) {
-      // In exactly 2 active players, stacking Wild Reverse Draw 4 onto Draw 4 / Wild Draw 4
-      // reverses direction and rebounds the accumulated 8-card penalty onto Player B.
-      nextTargetIndex = playerIndex;
+    if (card.value === 'wild_reverse_draw_four') {
+      if (activeCount === 2) {
+        // In exactly 2 active players, Wild Reverse Draw 4 skips the opponent
+        // and rebounds the accumulated draw penalty onto the player who played it (self-targeting).
+        nextTargetIndex = playerIndex;
+      } else {
+        // In 3+ active players, the penalty passes to the next active player
+        // in the newly reversed turnDirection.
+        nextTargetIndex = this.getNextActivePlayerIndex(playerIndex, state.players, turnDirection, 1);
+      }
     } else {
-      // In 3+ active players (or when non-reverse card is played), the penalty passes
-      // to the next active player in turnDirection (which was reversed if WRD4 was played).
+      // For standard non-reversing draw cards (+2, +4, +6, +10), the penalty passes to
+      // the next active player in the current turnDirection.
       nextTargetIndex = this.getNextActivePlayerIndex(playerIndex, state.players, turnDirection, 1);
     }
     const nextTargetPlayer = state.players[nextTargetIndex];
