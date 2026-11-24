@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Flame, ShieldAlert, Check } from 'lucide-react';
 import { soundService } from '../../../lib/sound-service';
 import { BUTTON_INTERACTION_VARIANTS } from '../../../lib/game-motion';
+import { triggerHaptic } from '../../../lib/haptics';
 
 export interface UnoButtonProps {
   canCallUno: boolean;
@@ -23,8 +24,20 @@ export const UnoButton: React.FC<UnoButtonProps> = ({
   onCallUno,
   className = '',
 }) => {
+  // Authoritative declaration audio: trigger only when server confirms hasDeclaredUno
+  const prevDeclaredRef = React.useRef(hasDeclaredUno);
+  React.useEffect(() => {
+    if (!prevDeclaredRef.current && hasDeclaredUno) {
+      soundService.play('uno_shout');
+      triggerHaptic('success');
+    }
+    prevDeclaredRef.current = hasDeclaredUno;
+  }, [hasDeclaredUno]);
+
   const handleUnoClick = () => {
-    soundService.play('uno_shout');
+    if (canCallUno && !isArmed) {
+      triggerHaptic('medium');
+    }
     onCallUno();
   };
 

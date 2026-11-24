@@ -118,4 +118,41 @@ describe('PlayerHand Component', () => {
     fireEvent.click(cardElements[1]);
     expect(onCardClick).not.toHaveBeenCalled();
   });
+
+  it('suppresses accidental card play when pointer movement indicates horizontal hand drag or scroll', async () => {
+    vi.useFakeTimers();
+    const onCardClick = vi.fn();
+    const { container } = render(
+      <PlayerHand
+        hand={sampleCards}
+        playableCardIds={['c1']}
+        isCurrentTurn={true}
+        onCardClick={onCardClick}
+      />
+    );
+
+    const handContainer = screen.getByTestId('player-hand');
+    const playableCard = container.querySelector('[data-card-id="c1"]')!;
+
+    // 1. Simulate pointer drag (> 8px movement) starting on card
+    fireEvent.pointerDown(playableCard, { clientX: 100, clientY: 200 });
+    fireEvent.pointerMove(playableCard, { clientX: 130, clientY: 200 }); // moved 30px
+    fireEvent.pointerUp(playableCard, { clientX: 130, clientY: 200 });
+    fireEvent.click(playableCard);
+
+    // Click should be suppressed because user was scrolling
+    expect(onCardClick).not.toHaveBeenCalled();
+
+    // Advance timer to let drag suppression timeout expire
+    vi.advanceTimersByTime(100);
+
+    // 2. Perform a clean stationary tap (no drag movement)
+    fireEvent.pointerDown(playableCard, { clientX: 100, clientY: 200 });
+    fireEvent.pointerUp(playableCard, { clientX: 100, clientY: 200 });
+    fireEvent.click(playableCard);
+
+    // Now clean tap triggers play
+    expect(onCardClick).toHaveBeenCalledWith(sampleCards[0]);
+    vi.useRealTimers();
+  });
 });

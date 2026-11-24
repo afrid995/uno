@@ -129,4 +129,21 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Fast mobile touch interaction without double-tap zoom delay */
+  .touch-tap {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Dynamic viewport height fallback utilities for mobile browsers */
+  .h-dvh {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .max-h-dvh {
+    max-height: 100vh;
+    max-height: 100dvh;
+  }
 }

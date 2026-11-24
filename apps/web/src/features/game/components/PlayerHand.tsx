@@ -25,6 +25,44 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
   const sortedHand = useMemo(() => sortPlayerHand(hand), [hand]);
   const shouldReduceMotion = useReducedMotion();
 
+  // Pointer drag vs tap discrimination to prevent accidental card plays while scrolling on touch devices
+  const pointerStartRef = React.useRef<{ x: number; y: number } | null>(null);
+  const isDraggingRef = React.useRef(false);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const x = e.clientX ?? 0;
+    const y = e.clientY ?? 0;
+    pointerStartRef.current = { x, y };
+    isDraggingRef.current = false;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!pointerStartRef.current) return;
+    const clientX = e.clientX ?? 0;
+    const clientY = e.clientY ?? 0;
+    const dx = Math.abs(clientX - pointerStartRef.current.x);
+    const dy = Math.abs(clientY - pointerStartRef.current.y);
+    if (dx > 8 || dy > 8) {
+      isDraggingRef.current = true;
+    }
+  };
+
+  const handlePointerUp = () => {
+    pointerStartRef.current = null;
+    // Suppress synthetic click right after drag; reset drag flag on next tick
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 60);
+  };
+
+  const handleCardClickSafe = (card: Card) => {
+    if (isDraggingRef.current) {
+      // User was scrolling the hand horizontally, suppress accidental click
+      return;
+    }
+    onCardClick(card);
+  };
+
   // Dynamic spacing based on hand size to support large hands (e.g. 20+ cards in No Mercy)
   const overlapClass =
     sortedHand.length <= 4
@@ -38,7 +76,11 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
   return (
     <div
       data-testid="player-hand"
-      className={`w-full overflow-x-auto pb-3 pt-1 sm:pt-2 px-2 sm:px-4 no-scrollbar overscroll-contain touch-pan-x ${className}`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      className={`relative w-full overflow-x-auto pb-3 pt-1 sm:pt-2 px-2 sm:px-4 no-scrollbar overscroll-contain touch-pan-x ${className}`}
     >
       <div className={`flex items-center justify-center min-w-max mx-auto ${overlapClass}`}>
         {sortedHand.map((card, index) => {
@@ -58,7 +100,7 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
                 card={card}
                 isPlayable={isPlayable}
                 size={cardSize}
-                onClick={() => onCardClick(card)}
+                onClick={() => handleCardClickSafe(card)}
               />
             </motion.div>
           );

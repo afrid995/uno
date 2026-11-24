@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { RotateCw, RotateCcw } from 'lucide-react';
-import { soundService } from '../../../lib/sound-service';
 
 export interface PlayDirectionIndicatorProps {
   direction: 'clockwise' | 'counter_clockwise';
@@ -16,14 +15,6 @@ export const PlayDirectionIndicator: React.FC<PlayDirectionIndicatorProps> = ({
 }) => {
   const isClockwise = direction === 'clockwise';
   const shouldReduceMotion = useReducedMotion();
-
-  const prevDirection = React.useRef(direction);
-  React.useEffect(() => {
-    if (prevDirection.current !== direction) {
-      soundService.play('reverse');
-      prevDirection.current = direction;
-    }
-  }, [direction]);
 
   // Colors
   const strokeColor = isClockwise ? '#10b981' : '#f43f5e'; // emerald vs rose

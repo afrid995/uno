@@ -79,35 +79,39 @@ export const ChatPanel: React.FC = () => {
       {isOpen && (
         <motion.div
           data-testid="chat-panel"
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
+          exit={{ opacity: 0, y: 20, scale: 0.98 }}
           transition={{ duration: 0.2 }}
-          className="fixed bottom-16 sm:bottom-20 right-2 sm:right-6 w-[calc(100vw-1rem)] sm:w-96 h-[460px] max-h-[75vh] flex flex-col bg-[#141924] border border-white/[0.08] rounded-2xl shadow-modal backdrop-blur-md z-50 overflow-hidden"
+          className="fixed inset-x-0 bottom-0 sm:inset-x-auto sm:bottom-20 sm:right-6 w-full sm:w-96 h-[70dvh] sm:h-[460px] max-h-[85dvh] flex flex-col bg-[#141924] border-t sm:border border-white/[0.08] rounded-t-2xl sm:rounded-2xl shadow-modal backdrop-blur-md z-50 overflow-hidden safe-bottom"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-[#10141d]/80">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#1a202d] border border-white/[0.08] flex items-center justify-center text-amber-400">
-                <MessageSquare className="w-3.5 h-3.5" />
+          <div className="flex flex-col px-4 pt-2 pb-3 border-b border-white/[0.06] bg-[#10141d]/80">
+            {/* Mobile Grab Handle */}
+            <div className="w-8 h-1 rounded-full bg-white/20 mx-auto mb-1.5 sm:hidden shrink-0" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-[#1a202d] border border-white/[0.08] flex items-center justify-center text-amber-400">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold font-display uppercase tracking-wider text-slate-200">
+                    Room Chat
+                  </h3>
+                  <p className="text-[10px] text-slate-400">All players in this match</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xs font-bold font-display uppercase tracking-wider text-slate-200">
-                  Room Chat
-                </h3>
-                <p className="text-[10px] text-slate-400">All players in this match</p>
-              </div>
+              <Button
+                data-testid="chat-close-btn"
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsOpen(false)}
+                className="h-7 w-7 rounded-lg text-slate-400 hover:text-white bg-[#10141d] hover:bg-[#1a202d] border border-white/[0.06]"
+                aria-label="Close Chat"
+              >
+                <X className="w-4 h-4" />
+              </Button>
             </div>
-            <Button
-              data-testid="chat-close-btn"
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsOpen(false)}
-              className="h-7 w-7 rounded-lg text-slate-400 hover:text-white bg-[#10141d] hover:bg-[#1a202d] border border-white/[0.06]"
-              aria-label="Close Chat"
-            >
-              <X className="w-4 h-4" />
-            </Button>
           </div>
 
           {/* Error Banner */}
@@ -185,6 +189,8 @@ export const ChatPanel: React.FC = () => {
                 data-testid="chat-input"
                 rows={1}
                 maxLength={300}
+                inputMode="text"
+                enterKeyHint="send"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}

@@ -23,4 +23,18 @@ if (typeof window !== 'undefined') {
       dispatchEvent: () => false,
     });
   }
+
+  // Global PointerEvent polyfill for JSDOM
+  if (!window.PointerEvent) {
+    class PointerEvent extends MouseEvent {
+      pointerId?: number;
+      pointerType?: string;
+      constructor(type: string, params: PointerEventInit = {}) {
+        super(type, params);
+        this.pointerId = params.pointerId;
+        this.pointerType = params.pointerType;
+      }
+    }
+    window.PointerEvent = PointerEvent as unknown as typeof window.PointerEvent;
+  }
 }
