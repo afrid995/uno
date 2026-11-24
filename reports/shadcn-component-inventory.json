@@ -10,11 +10,11 @@
     "uniqueCount": 66,
     "summary": {
       "official_component_integrated": 19,
-      "verified_custom_equivalent": 22,
-      "installed_dependency_only": 6,
+      "verified_custom_equivalent": 25,
+      "installed_dependency_only": 5,
       "partial_substitute": 2,
       "needs_improvement": 1,
-      "not_applicable": 16,
+      "not_applicable": 14,
       "blocked": 0
     }
   },

@@ -127,7 +127,7 @@ export const LocalPlayerProfile: React.FC<LocalPlayerProfileProps> = ({
       {/* Badges: UNO, Team, Power */}
       <div className="hidden sm:flex items-center gap-1.5 ml-1">
         {selfPublic?.hasDeclaredUno && !isEliminated && (
-          <Badge variant="emerald" className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-slate-950 tracking-wider shadow-sm border-0">
+          <Badge variant="emerald" className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-500 text-slate-950 tracking-wider shadow-sm border-0">
             UNO!
           </Badge>
         )}

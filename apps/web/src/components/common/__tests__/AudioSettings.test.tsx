@@ -74,6 +74,19 @@ describe('Audio Settings and Sound Service', () => {
       expect(useAudioSettingsStore.getState().muted).toBe(true);
       expect(screen.getByText('Muted')).toBeInTheDocument();
     });
+
+    it('toggles tactile haptics preference correctly from inside popover', () => {
+      render(<AudioSettingsControl />);
+      fireEvent.click(screen.getByTestId('audio-settings-trigger'));
+
+      const hapticsBtn = screen.getByTestId('haptics-toggle-btn');
+      expect(hapticsBtn).toHaveTextContent('Enabled');
+      expect(useAudioSettingsStore.getState().hapticsEnabled).toBe(true);
+
+      fireEvent.click(hapticsBtn);
+      expect(useAudioSettingsStore.getState().hapticsEnabled).toBe(false);
+      expect(hapticsBtn).toHaveTextContent('Disabled');
+    });
   });
 
   describe('soundService', () => {

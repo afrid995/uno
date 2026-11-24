@@ -330,7 +330,7 @@ export const GameBoard: React.FC = () => {
             onClick={() => challengeUno(gameState.unoVulnerablePlayerId!)}
             className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-display font-bold text-xs uppercase tracking-wider shadow-card border border-red-400/50 cursor-pointer transition-all active:scale-95 flex items-center gap-1.5"
           >
-            <span>CATCH UNO!</span>
+            <span>Catch UNO</span>
           </button>
         </motion.div>
       )}

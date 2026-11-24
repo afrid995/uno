@@ -29,7 +29,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, isCurrentPlayer,
         {/* Avatar initial badge */}
         <Avatar
           className={cn(
-            'w-10 h-10 rounded-xl flex items-center justify-center font-display font-black text-sm select-none shrink-0 border',
+            'w-10 h-10 rounded-xl flex items-center justify-center font-display font-bold text-sm select-none shrink-0 border',
             isHost
               ? 'bg-[#1a202d] text-amber-300 border-amber-400/40 shadow-brass'
               : isCurrentPlayer
@@ -50,13 +50,13 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, isCurrentPlayer,
             </span>
 
             {isCurrentPlayer && (
-              <Badge variant="outline" className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-white/[0.08] text-slate-200 border-white/[0.1] shrink-0">
+              <Badge variant="outline" className="px-1.5 py-0.5 text-[10px] font-semibold bg-white/[0.08] text-slate-200 border-white/[0.1] shrink-0">
                 You
               </Badge>
             )}
 
             {isHost && (
-              <Badge variant="brass" className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider shrink-0">
+              <Badge variant="brass" className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold shrink-0">
                 <Crown className="w-3 h-3 text-amber-400" />
                 Host
               </Badge>

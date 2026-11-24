@@ -65,7 +65,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         <div className="relative shrink-0">
           <Avatar
             className={cn(
-              'w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-display font-black text-xs border-0',
+              'w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-display font-bold text-xs border-0',
               isEliminated
                 ? 'bg-rose-950/60 text-rose-400/60 border border-rose-900/40'
                 : isCurrentTurn
@@ -96,7 +96,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
               <Badge
                 data-testid="playing-badge"
                 variant="brass"
-                className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-display font-black text-[8px] uppercase tracking-wider border-0"
+                className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 font-display font-bold text-[8px] uppercase tracking-wider border-0"
               >
                 TURN
               </Badge>
@@ -129,7 +129,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
               data-power-status={player.powerCardStatus}
               variant="secondary"
               className={cn(
-                'px-1 py-0.5 rounded text-[8px] font-black border',
+                'px-1 py-0.5 rounded text-[8px] font-bold border',
                 player.powerCardStatus === 'green_check'
                   ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
                   : 'bg-rose-500/20 text-rose-400 border-rose-500/50'
@@ -153,7 +153,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
 
           {/* UNO declared pill */}
           {!isEliminated && player.hasDeclaredUno && (
-            <Badge variant="emerald" className="px-1.5 py-0.5 rounded text-[8px] font-black bg-emerald-500 text-slate-950 border-0">
+            <Badge variant="emerald" className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-emerald-500 text-slate-950 border-0">
               UNO!
             </Badge>
           )}
@@ -259,14 +259,14 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
 
       {/* Cards Remaining Fan / Count or Eliminated Badge */}
       {isEliminated ? (
-        <Badge variant="destructive" className="mt-2 px-2.5 py-0.5 rounded-full bg-rose-950/90 border border-rose-700 text-[10px] font-black text-rose-300 tracking-wider">
+        <Badge variant="destructive" className="mt-2 px-2.5 py-0.5 rounded-full bg-rose-950/90 border border-rose-700 text-[10px] font-bold text-rose-300 tracking-wider">
           ELIMINATED
         </Badge>
       ) : (
         <div className="mt-2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#090c11]/80 border border-slate-800 shadow-inner">
           <div className="w-3 h-4 rounded-xs bg-red-600 border border-red-300 rotate-[-10deg]" />
           <div className="w-3 h-4 rounded-xs bg-blue-600 border border-blue-300 rotate-[10deg] -ml-2" />
-          <span className="text-xs font-black text-white ml-1.5 font-mono">
+          <span className="text-xs font-bold text-white ml-1.5 font-mono">
             {player.cardCount}
           </span>
         </div>
@@ -281,7 +281,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
             data-team-id={player.teamId}
             variant="secondary"
             className={cn(
-              'px-2 py-0.5 rounded-full text-[9px] font-black border tracking-wider',
+              'px-2 py-0.5 rounded-full text-[9px] font-semibold border tracking-wider',
               player.teamId === 'team_1'
                 ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
                 : player.teamId === 'team_2'
@@ -300,7 +300,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
           <Badge
             data-testid="player-out-badge"
             variant="brass"
-            className="px-2 py-0.5 rounded-full bg-amber-500/20 border-amber-500/40 text-[9px] font-black text-amber-300 tracking-wider"
+            className="px-2 py-0.5 rounded-full bg-amber-500/20 border-amber-500/40 text-[9px] font-semibold text-amber-300 tracking-wider"
           >
             WAITING FOR PARTNER
           </Badge>
@@ -313,7 +313,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
             data-power-status={player.powerCardStatus}
             variant="secondary"
             className={cn(
-              'px-2 py-0.5 rounded-full text-[9px] font-black border flex items-center gap-1 shadow-sm',
+              'px-2 py-0.5 rounded-full text-[9px] font-semibold border flex items-center gap-1 shadow-sm',
               player.powerCardStatus === 'green_check'
                 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
                 : 'bg-rose-500/20 text-rose-400 border-rose-500/50'
@@ -326,7 +326,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
         )}
 
         {!isEliminated && player.hasDeclaredUno && (
-          <Badge variant="emerald" className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500 text-slate-950 tracking-wider shadow-sm border-0">
+          <Badge variant="emerald" className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-500 text-slate-950 tracking-wider shadow-sm border-0">
             UNO!
           </Badge>
         )}
@@ -341,7 +341,7 @@ export const PlayerSeat: React.FC<PlayerSeatProps> = ({
             className="mt-1 h-7 px-3 py-1 rounded-lg text-[10px] font-bold bg-red-600 hover:bg-red-500 text-white flex items-center gap-1 shadow-card border border-red-400/50"
           >
             <ShieldAlert className="w-3 h-3" />
-            <span>CATCH UNO!</span>
+            <span>Catch UNO</span>
           </Button>
         )}
       </div>

@@ -41,7 +41,7 @@ export const AttackLauncher: React.FC<AttackLauncherProps> = ({
       <div className="w-full flex items-center justify-between px-2 mb-2">
         <div className="flex items-center gap-1.5">
           <Zap className="w-4 h-4 text-red-400 animate-pulse" />
-          <span className="text-[11px] font-display font-black tracking-widest text-red-400 uppercase">
+          <span className="text-[11px] font-display font-bold text-red-400 uppercase tracking-wider">
             Launcher
           </span>
         </div>
@@ -87,7 +87,7 @@ export const AttackLauncher: React.FC<AttackLauncherProps> = ({
               initial={{ scale: 0.9, opacity: 0, y: 6 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className={`absolute inset-x-2 top-4 z-20 py-1.5 px-2 rounded-xl text-center font-display font-black text-xs shadow-modal backdrop-blur-md border ${
+              className={`absolute inset-x-2 top-4 z-20 py-1.5 px-2 rounded-xl text-center font-display font-bold text-xs shadow-modal backdrop-blur-md border ${
                 hasDispensed
                   ? 'bg-red-950/95 border-red-500 text-red-200'
                   : 'bg-emerald-950/90 border-emerald-500 text-emerald-200'

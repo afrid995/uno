@@ -49,7 +49,7 @@ export const RoundResultModal: React.FC = () => {
               <Trophy className="w-7 h-7 text-slate-950" />
             </div>
 
-            <Badge variant="brass" className="text-xs font-bold uppercase tracking-widest mb-1 font-display">
+            <Badge variant="brass" className="text-xs font-bold uppercase tracking-wider mb-1 font-display">
               Round {gameState.roundNumber} Complete
             </Badge>
             <h3 className="text-2xl font-bold text-white mb-2 font-display">

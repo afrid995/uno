@@ -73,7 +73,7 @@ export const InviteLinkCard: React.FC<InviteLinkCardProps> = ({ roomCode }) => {
               {copiedLink ? (
                 <>
                   <Check className="w-4 h-4 text-emerald-400" />
-                  <span className="text-emerald-400">Invite Link Copied!</span>
+                  <span className="text-emerald-400">Invite link copied</span>
                 </>
               ) : (
                 <>

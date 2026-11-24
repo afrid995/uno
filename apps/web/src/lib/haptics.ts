@@ -1,3 +1,5 @@
+import { useAudioSettingsStore } from '../stores/audioSettingsStore';
+
 /**
  * Safe, feature-detected mobile haptic vibration utility for UNO Ultimate.
  * Respects browser capabilities and user preferences.
@@ -6,6 +8,7 @@ export type HapticType = 'light' | 'medium' | 'success' | 'warning';
 
 export function triggerHaptic(type: HapticType = 'light'): void {
   if (typeof window === 'undefined') return;
+  if (!useAudioSettingsStore.getState().hapticsEnabled) return;
   if (!('vibrate' in navigator) || typeof navigator.vibrate !== 'function') return;
 
   try {

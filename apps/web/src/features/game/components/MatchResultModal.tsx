@@ -72,7 +72,7 @@ export const MatchResultModal: React.FC = () => {
               <Trophy className="w-9 h-9 text-slate-950" />
             </div>
 
-            <Badge variant="brass" className="px-3 py-1 text-xs font-bold uppercase tracking-widest mb-2 font-display">
+            <Badge variant="brass" className="px-3 py-1 text-xs font-bold uppercase tracking-wider mb-2 font-display">
               Match Finished
             </Badge>
 

@@ -1,14 +1,23 @@
 import React from 'react';
-import { Volume2, VolumeX, Volume1, Play } from 'lucide-react';
+import { Volume2, VolumeX, Volume1, Play, Smartphone } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { useAudioSettingsStore } from '../../stores/audioSettingsStore';
 import { soundService } from '../../lib/sound-service';
+import { triggerHaptic } from '../../lib/haptics';
 
 export const AudioSettingsControl: React.FC<{ className?: string }> = ({ className = '' }) => {
-  const { soundEnabled, volume, muted, setSoundEnabled, setVolume, toggleMute } =
-    useAudioSettingsStore();
+  const {
+    soundEnabled,
+    volume,
+    muted,
+    hapticsEnabled,
+    setSoundEnabled,
+    setVolume,
+    toggleMute,
+    toggleHaptics,
+  } = useAudioSettingsStore();
 
   const isMuted = !soundEnabled || muted || volume === 0;
 
@@ -104,6 +113,32 @@ export const AudioSettingsControl: React.FC<{ className?: string }> = ({ classNa
                 className="flex-1"
               />
             </div>
+          </div>
+
+          {/* Haptic Feedback Toggle */}
+          <div className="flex items-center justify-between text-xs text-slate-300 pt-1 pb-1 border-t border-white/[0.06]">
+            <div className="flex items-center gap-1.5 text-slate-300">
+              <Smartphone className="w-3.5 h-3.5 text-amber-400" />
+              <span>Tactile Haptics</span>
+            </div>
+            <button
+              type="button"
+              data-testid="haptics-toggle-btn"
+              onClick={() => {
+                toggleHaptics();
+                if (!hapticsEnabled) {
+                  setTimeout(() => triggerHaptic('light'), 50);
+                }
+              }}
+              className={`px-2 py-0.5 rounded text-[11px] font-semibold border transition-all cursor-pointer ${
+                hapticsEnabled
+                  ? 'bg-amber-400/20 text-amber-300 border-amber-400/40'
+                  : 'bg-[#10141d] text-slate-400 border-white/[0.08]'
+              }`}
+              aria-label={hapticsEnabled ? 'Disable haptic feedback' : 'Enable haptic feedback'}
+            >
+              {hapticsEnabled ? 'Enabled' : 'Disabled'}
+            </button>
           </div>
 
           {/* Controls Footer */}
