@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, AlertTriangle, Layers, Radio } from 'lucide-react';
 import { AttackLauncherState } from '@uno-ultimate/game-protocol';
+import { soundService } from '../../../lib/sound-service';
 
 export interface AttackLauncherProps {
   cardCount: number;
@@ -25,6 +26,11 @@ export const AttackLauncher: React.FC<AttackLauncherProps> = ({
   const tension = launcherState?.tension ?? 0;
   const recentLaunch = launcherState?.lastLaunchResult;
   const hasDispensed = recentLaunch && recentLaunch.cardsLaunched > 0;
+
+  const handleLauncherPress = () => {
+    soundService.play('attack_launch');
+    onPress();
+  };
 
   return (
     <div
@@ -108,7 +114,7 @@ export const AttackLauncher: React.FC<AttackLauncherProps> = ({
           disabled={!canPress || isLoading}
           whileHover={canPress && !isLoading ? { scale: 1.02 } : {}}
           whileTap={canPress && !isLoading ? { scale: 0.96, y: 1 } : {}}
-          onClick={canPress && !isLoading ? onPress : undefined}
+          onClick={canPress && !isLoading ? handleLauncherPress : undefined}
           className={`relative z-10 w-24 h-16 rounded-xl font-display font-bold text-sm tracking-wider uppercase transition-all duration-200 border shadow-card flex flex-col items-center justify-center cursor-pointer ${
             canPress && !isLoading
               ? 'bg-red-600 hover:bg-red-500 border-red-400 text-white shadow-card'

@@ -9,6 +9,7 @@ import { NetworkRecoveryOverlay } from '../features/game/components/NetworkRecov
 import { CardAnimationOverlay } from '../features/game/components/CardAnimationOverlay';
 import { ChatPanel } from '../features/chat/ChatPanel';
 import { ChatToggleButton } from '../features/chat/ChatToggleButton';
+import { AudioSettingsControl } from '../components/common/AudioSettingsControl';
 import { LogOut, Copy, Check } from 'lucide-react';
 
 const getVariantTitle = (variant?: string): string => {
@@ -116,8 +117,9 @@ export const GamePage: React.FC = () => {
           )}
         </div>
 
-        {/* Right side controls: Chat Toggle & Leave Match */}
+        {/* Right side controls: Audio Settings, Chat Toggle & Leave Match */}
         <div className="flex items-center gap-2">
+          <AudioSettingsControl />
           <ChatToggleButton />
 
           {confirmLeave ? (

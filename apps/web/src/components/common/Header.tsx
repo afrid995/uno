@@ -3,6 +3,7 @@ import { User, LogOut, Shield, ChevronDown } from 'lucide-react';
 import { useGuestStore } from '../../stores/guestStore';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { AudioSettingsControl } from './AudioSettingsControl';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +37,8 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Guest Session Status */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <AudioSettingsControl />
           {guest ? (
             <div className="flex items-center gap-2 sm:gap-3">
               <DropdownMenu>

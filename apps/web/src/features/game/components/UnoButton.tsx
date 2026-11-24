@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Flame, ShieldAlert, Check } from 'lucide-react';
+import { soundService } from '../../../lib/sound-service';
+import { BUTTON_INTERACTION_VARIANTS } from '../../../lib/game-motion';
 
 export interface UnoButtonProps {
   canCallUno: boolean;
@@ -21,6 +23,11 @@ export const UnoButton: React.FC<UnoButtonProps> = ({
   onCallUno,
   className = '',
 }) => {
+  const handleUnoClick = () => {
+    soundService.play('uno_shout');
+    onCallUno();
+  };
+
   if (hasDeclaredUno) {
     return (
       <div
@@ -50,10 +57,10 @@ export const UnoButton: React.FC<UnoButtonProps> = ({
     return (
       <motion.button
         data-testid="uno-button"
-        whileHover={!isLoading ? { scale: 1.02 } : {}}
-        whileTap={!isLoading ? { scale: 0.98 } : {}}
+        whileHover={!isLoading ? BUTTON_INTERACTION_VARIANTS.hover : {}}
+        whileTap={!isLoading ? BUTTON_INTERACTION_VARIANTS.tap : {}}
         disabled={isLoading}
-        onClick={onCallUno}
+        onClick={handleUnoClick}
         title="UNO is armed! Click to toggle off or play your card to declare UNO."
         className={`px-5 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 select-none bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-brass cursor-pointer border border-amber-300 active:scale-[0.98] ${className}`}
       >
@@ -66,10 +73,10 @@ export const UnoButton: React.FC<UnoButtonProps> = ({
   return (
     <motion.button
       data-testid="uno-button"
-      whileHover={canCallUno && !isLoading ? { scale: 1.02 } : {}}
-      whileTap={canCallUno && !isLoading ? { scale: 0.98 } : {}}
+      whileHover={canCallUno && !isLoading ? BUTTON_INTERACTION_VARIANTS.hover : {}}
+      whileTap={canCallUno && !isLoading ? BUTTON_INTERACTION_VARIANTS.tap : {}}
       disabled={!canCallUno || isLoading}
-      onClick={onCallUno}
+      onClick={handleUnoClick}
       title={
         canCallUno
           ? 'Shout UNO before playing down to 1 card!'

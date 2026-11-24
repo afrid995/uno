@@ -5,6 +5,7 @@ import { Trophy } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { soundService } from '../../../lib/sound-service';
 
 export const RoundResultModal: React.FC = () => {
   const {
@@ -21,6 +22,13 @@ export const RoundResultModal: React.FC = () => {
     gameState &&
     gameState.status === 'ROUND_OVER'
   );
+
+  React.useEffect(() => {
+    if (isVisible) {
+      soundService.play('round_win');
+    }
+  }, [isVisible]);
+
   if (!isVisible || !gameState) return null;
 
   const winnerName = roundWinnerData?.username || gameState.roundWinner?.username || 'Winner';

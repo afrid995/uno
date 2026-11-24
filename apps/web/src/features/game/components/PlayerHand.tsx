@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { Card } from '@uno-ultimate/game-protocol';
 import { PlayingCard } from './PlayingCard';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { sortPlayerHand } from '../utils/cardSorting';
+import { MOTION_DURATIONS } from '../../../lib/game-motion';
 
 export interface PlayerHandProps {
   hand: readonly Card[];
@@ -22,8 +23,9 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
   cardSize = 'md',
 }) => {
   const sortedHand = useMemo(() => sortPlayerHand(hand), [hand]);
+  const shouldReduceMotion = useReducedMotion();
 
-  // Dynamic spacing based on hand size to prevent horizontal clipping while keeping cards accessible
+  // Dynamic spacing based on hand size to support large hands (e.g. 20+ cards in No Mercy)
   const overlapClass =
     sortedHand.length <= 4
       ? '-space-x-2 sm:-space-x-3'
@@ -41,13 +43,15 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
       <div className={`flex items-center justify-center min-w-max mx-auto ${overlapClass}`}>
         {sortedHand.map((card, index) => {
           const isPlayable = isCurrentTurn && playableCardIds.includes(card.id);
+          const duration = shouldReduceMotion ? MOTION_DURATIONS.reduced : 0.2;
+          const delay = shouldReduceMotion ? 0 : Math.min(index * 0.015, 0.15);
 
           return (
             <motion.div
               key={card.id}
-              initial={{ y: 20, opacity: 0 }}
+              initial={shouldReduceMotion ? false : { y: 16, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: Math.min(index * 0.02, 0.3), duration: 0.2 }}
+              transition={{ delay, duration, ease: [0.25, 1, 0.5, 1] }}
               className="relative z-10 hover:z-30 focus:z-30 active:z-30 shrink-0"
             >
               <PlayingCard

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Card, CardAnimationEvent } from '@uno-ultimate/game-protocol';
+import { soundService } from '../lib/sound-service';
 
 export interface ActiveFlyingCard {
   id: string;
@@ -91,6 +92,18 @@ export const useCardAnimationStore = create<CardAnimationState>((set, get) => ({
       const startPos = isSelf ? playerHandPos : opponentSeatPos;
       const endPos = discardPilePos;
 
+      // Restrained tactile sound cue
+      const cardVal = event.card?.value;
+      if (cardVal === 'skip' || cardVal === 'skip_everyone' || cardVal === 'wild_skip' || cardVal === 'flex_skip') {
+        soundService.play('skip');
+      } else if (cardVal === 'reverse' || cardVal === 'wild_reverse' || cardVal === 'flex_reverse') {
+        soundService.play('reverse');
+      } else if (cardVal === 'wild' || (typeof cardVal === 'string' && cardVal.startsWith('wild_'))) {
+        soundService.play('wild_color');
+      } else {
+        soundService.play('card_play');
+      }
+
       newCards.push({
         id: `${event.id}-0`,
         type: 'PLAY',
@@ -106,6 +119,12 @@ export const useCardAnimationStore = create<CardAnimationState>((set, get) => ({
       const startPos = drawPilePos;
       const endPos = isSelf ? playerHandPos : opponentSeatPos;
       const count = Math.min(Math.max(1, event.cardCount || 1), 16);
+
+      if (count > 1) {
+        soundService.play('draw_penalty');
+      } else {
+        soundService.play('card_draw');
+      }
 
       for (let i = 0; i < count; i++) {
         newCards.push({

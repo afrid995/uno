@@ -9,9 +9,9 @@
     "totalCatalogCount": 66,
     "uniqueCount": 66,
     "summary": {
-      "official_component_integrated": 18,
+      "official_component_integrated": 19,
       "verified_custom_equivalent": 22,
-      "installed_dependency_only": 7,
+      "installed_dependency_only": 6,
       "partial_substitute": 2,
       "needs_improvement": 1,
       "not_applicable": 16,
@@ -453,11 +453,11 @@
     },
     {
       "name": "Slider",
-      "classification": "installed_dependency_only",
-      "source": "@radix-ui/react-slider",
-      "location": "node_modules/@radix-ui/react-slider",
-      "inActiveWorkflow": false,
-      "notes": "Radix slider installed; audio volume toggle currently uses discrete mute/unmute buttons."
+      "classification": "official_component_integrated",
+      "source": "apps/web/src/components/ui/slider.tsx",
+      "location": "apps/web/src/components/ui/slider.tsx",
+      "inActiveWorkflow": true,
+      "notes": "Official shadcn Slider built on @radix-ui/react-slider with brass thumb, matte track, and keyboard accessibility. Used in AudioSettingsControl for analog volume control."
     },
     {
       "name": "Spinner",

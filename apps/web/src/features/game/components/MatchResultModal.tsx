@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
+import { soundService } from '../../../lib/sound-service';
 
 export const MatchResultModal: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +22,13 @@ export const MatchResultModal: React.FC = () => {
     gameState &&
     gameState.status === 'COMPLETED'
   );
+
+  React.useEffect(() => {
+    if (isVisible) {
+      soundService.play('match_win');
+    }
+  }, [isVisible]);
+
   if (!isVisible || !gameState) return null;
 
   const winner = matchWinnerData || gameState.winner;

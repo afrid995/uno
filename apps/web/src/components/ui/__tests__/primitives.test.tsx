@@ -40,6 +40,7 @@ import {
 } from '../alert-dialog';
 import { ScrollArea } from '../scroll-area';
 import { Popover, PopoverTrigger, PopoverContent } from '../popover';
+import { Slider } from '../slider';
 
 describe('UI Primitives', () => {
   describe('Button', () => {
@@ -307,6 +308,24 @@ describe('UI Primitives', () => {
 
       expect(screen.getByText('Log item 1')).toBeInTheDocument();
       expect(screen.getByText('Log item 2')).toBeInTheDocument();
+    });
+  });
+
+  describe('Slider', () => {
+    it('renders slider element with accessibility role and value', () => {
+      render(
+        <Slider
+          defaultValue={[50]}
+          max={100}
+          min={0}
+          step={1}
+          aria-label="Sound volume"
+        />
+      );
+
+      const slider = screen.getByRole('slider');
+      expect(slider).toBeInTheDocument();
+      expect(slider).toHaveAttribute('aria-valuenow', '50');
     });
   });
 });

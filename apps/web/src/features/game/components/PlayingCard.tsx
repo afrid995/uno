@@ -1,6 +1,8 @@
 import React from 'react';
 import { Card, CardColor } from '@uno-ultimate/game-protocol';
 import { motion } from 'framer-motion';
+import { soundService } from '../../../lib/sound-service';
+import { MOTION_TRANSITIONS } from '../../../lib/game-motion';
 
 export interface PlayingCardProps {
   card?: Card;
@@ -262,6 +264,13 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
     }
   };
 
+  const handleCardClick = () => {
+    if (isPlayable && onClick) {
+      soundService.play('card_select');
+      onClick();
+    }
+  };
+
   return (
     <motion.div
       data-testid="playing-card"
@@ -273,10 +282,10 @@ export const PlayingCard: React.FC<PlayingCardProps> = ({
       data-has-flip-icon={card.hasFlipIcon ? 'true' : undefined}
       data-has-passing-symbol={card.hasPassingSymbol ? 'true' : undefined}
       data-is-playable={isPlayable}
-      whileHover={isPlayable && onClick ? { scale: 1.06, y: -6 } : {}}
+      whileHover={isPlayable && onClick ? { scale: 1.06, y: -8 } : {}}
       whileTap={isPlayable && onClick ? { scale: 0.96 } : {}}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      onClick={isPlayable ? onClick : undefined}
+      transition={MOTION_TRANSITIONS.cardTactile}
+      onClick={handleCardClick}
       className={`relative select-none border-2 bg-gradient-to-br shadow-card flex flex-col justify-between p-1.5 sm:p-2.5 overflow-hidden transition-all duration-200 ${colorClasses} ${sizeClasses} ${
         isDarkSide ? 'border-slate-950/80 shadow-modal ring-1 ring-white/20' : ''
       } ${

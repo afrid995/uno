@@ -4,6 +4,7 @@ import { User, Award } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { soundService } from '../../../lib/sound-service';
 
 export interface LocalPlayerProfileProps {
   self: {
@@ -30,6 +31,14 @@ export const LocalPlayerProfile: React.FC<LocalPlayerProfileProps> = ({
   const username = selfPublic?.username || 'You';
   const score = selfPublic?.score ?? 0;
   const cardCount = self.hand.length;
+
+  const prevIsMyTurn = React.useRef(isMyTurn);
+  React.useEffect(() => {
+    if (!prevIsMyTurn.current && isMyTurn && !isEliminated) {
+      soundService.play('turn_alert');
+    }
+    prevIsMyTurn.current = isMyTurn;
+  }, [isMyTurn, isEliminated]);
 
   return (
     <div

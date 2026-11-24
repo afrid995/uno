@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useCardAnimationStore } from '../../../stores/cardAnimationStore';
 import { PlayingCard } from './PlayingCard';
+import { MOTION_DURATIONS } from '../../../lib/game-motion';
 
 export const CardAnimationOverlay: React.FC = () => {
   const { flyingCards, removeFlyingCard } = useCardAnimationStore();
@@ -15,7 +16,7 @@ export const CardAnimationOverlay: React.FC = () => {
     >
       <AnimatePresence>
         {flyingCards.map((flying) => {
-          const duration = shouldReduceMotion ? 0.05 : 0.35;
+          const duration = shouldReduceMotion ? MOTION_DURATIONS.reduced : 0.28;
           const delay = shouldReduceMotion ? 0 : flying.delay;
 
           return (
